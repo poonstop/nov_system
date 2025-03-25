@@ -31,7 +31,9 @@ $values = array_values($data);
 <body>
 <div class="container mt-5">
     <h1>Dashboard</h1>
-    <p>Welcome, <?= htmlspecialchars($_SESSION['username']); ?>!</p>
+    <span class="navbar-text me-3">
+    Welcome, <?php echo htmlspecialchars(ucfirst($_SESSION['username'] ?? 'User')); ?>!
+    </span>
     <div class="card mt-4">
         <div class="card-body">
             <h5 class="card-title">Violations by Municipality in La Union</h5>

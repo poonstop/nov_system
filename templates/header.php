@@ -93,7 +93,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <div class="d-flex align-items-center">
                 <?php if ($is_logged_in): ?>
                     <span class="navbar-text me-3">
-                    Welcome, <?php echo htmlspecialchars(ucfirst($_SESSION['username'] ?? 'User')); ?>
+                    Welcome, <?php echo htmlspecialchars(ucfirst($_SESSION['username'] ?? 'User')); ?>!
                     </span>
                     <!-- Changed from <a> to <button> to trigger modal -->
                     <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#logoutModal">
