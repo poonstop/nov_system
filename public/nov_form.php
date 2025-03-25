@@ -46,6 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <option value="Service and Repair">Service and Repair</option>
                 <option value="Others">Others</option>
             </select>
+            <!-- Placeholder for dynamic input -->
+            <div id="othersInputContainer" class="mt-3"></div>
         </div>
         <div class="mb-3">
             <label for="non_conforming_products" class="form-label">Non-Conforming Products/Goods/Services</label>
@@ -77,5 +79,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <button type="submit" class="btn btn-primary">Submit</button>
     </form>
 </div>
+
+<script>
+    const natureOfBusinessSelect = document.getElementById('nature_of_business');
+    const othersInputContainer = document.getElementById('othersInputContainer');
+
+    natureOfBusinessSelect.addEventListener('change', function () {
+        if (this.value === 'Others') {
+            // Add a text input if "Others" is selected
+            if (!document.getElementById('othersTextInput')) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'form-control';
+                input.id = 'othersTextInput';
+                input.name = 'nature_of_business_others';
+                input.placeholder = 'Please specify';
+                othersInputContainer.appendChild(input);
+            }
+        } else {
+            // Remove the text input if "Others" is deselected
+            const othersTextInput = document.getElementById('othersTextInput');
+            if (othersTextInput) {
+                othersInputContainer.removeChild(othersTextInput);
+            }
+        }
+    });
+</script>
 
 <?php include '../templates/footer.php'; ?>
