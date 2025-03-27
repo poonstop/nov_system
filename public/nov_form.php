@@ -125,19 +125,29 @@ $result = $conn->query($query);
                 <tbody>
                     <?php while ($row = $result->fetch_assoc()): ?>
                     <tr>
-                        <td><?= capitalizeWords(htmlspecialchars($row['name'])) ?></td>
-                        <td><?= capitalizeWords(htmlspecialchars($row['address'])) ?></td>
-                        <td><?= capitalizeWords(htmlspecialchars($row['owner_rep'])) ?></td>
-                        <td><?= capitalizeWords(htmlspecialchars($row['all_violations'])) ?></td>
-                        <td>
+                    <td><?= ucwords(strtolower(htmlspecialchars($row['name']))) ?></td>
+                    <td><?= ucwords(strtolower(htmlspecialchars($row['address']))) ?></td>
+                    <td><?= ucwords(strtolower(htmlspecialchars($row['owner_rep']))) ?></td>
+                     <td>
                         <?php 
-                              // Split violations by comma and capitalize each one
-                    $violations = array_map('trim', explode(',', $row['all_violations']));
-                    $capitalizedViolations = array_map('capitalizeWords', $violations);
-                    echo htmlspecialchars(implode(', ', $capitalizedViolations));
-                             ?>
-        </td>
-        <td>
+                              // Process violations for proper capitalization
+                $violations = array_map('trim', explode(',', $row['all_violations']));
+                $formattedViolations = array_map(function($v) {
+                    // Special case for PS/ICC
+                    if (strpos(strtolower($v), 'ps/icc') !== false) {
+                        return 'No PS/ICC Mark';
+                    }
+                    // Special case for accreditation
+                    if (strpos(strtolower($v), 'invalid/expired') !== false) {
+                        return 'Invalid/Expired Accreditation';
+                    }
+                    // Default capitalization
+                    return ucwords(strtolower($v));
+                }, $violations);
+                echo htmlspecialchars(implode(', ', array_unique($formattedViolations)));
+                     ?>
+                    </td>
+                    <td>
                             <?php if (!empty($row['nov_files'])): ?>
                                 <a href="nov_files/<?= $row['nov_files'] ?>" class="file-link" target="_blank">View NOV</a>
                             <?php else: ?>
