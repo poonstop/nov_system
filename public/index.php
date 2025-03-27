@@ -24,6 +24,10 @@ include '../templates/header.php';
         </div>
     </div>
 </div>
-
+<style>
+        body {
+         background: linear-gradient(to bottom, #ffffff 0%, #10346C 100%);
+        }
+</style>
 
 <?php include '../templates/footer.php'; ?>

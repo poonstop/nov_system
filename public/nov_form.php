@@ -1,109 +1,216 @@
 <?php
-include '../config/db.php';
+include __DIR__ . '/../connection.php';
 include '../templates/header.php';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $establishment_name = $_POST['establishment_name'];
-    $business_address = $_POST['business_address'];
-    $nature_of_business = $_POST['nature_of_business'];
-    $non_conforming_products = $_POST['non_conforming_products'];
-    $violations = isset($_POST['violations']) ? implode(", ", $_POST['violations']) : '';
-    $remarks = $_POST['remarks'];
-
-    $sql = "INSERT INTO nov_records (establishment_name, business_address, nature_of_business, non_conforming_products, violations, remarks) 
-            VALUES (?, ?, ?, ?, ?, ?)";
-
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ssssss", $establishment_name, $business_address, $nature_of_business, $non_conforming_products, $violations, $remarks);
-
-    if ($stmt->execute()) {
-        echo "<div class='alert alert-success'>Record saved successfully.</div>";
-    } else {
-        echo "<div class='alert alert-danger'>Error: " . $stmt->error . "</div>";
-    }
-
-    $stmt->close();
-}
+// Previous query remains the same
+$query = "
+    SELECT 
+        id,
+        name, 
+        address, 
+        IFNULL(owner_representative, 'Not specified') AS owner_rep,
+        GROUP_CONCAT(violations SEPARATOR ', ') AS all_violations,
+        COUNT(violations) AS num_violations,
+        MAX(created_at) AS latest_date,
+        nov_files 
+    FROM establishments 
+    GROUP BY name, address, owner_representative
+    ORDER BY latest_date DESC
+";
+$result = $conn->query($query);
 ?>
 
-<div class="container mt-5">
-    <h1 class="text-center">Notice of Violation Form</h1>
-    <form method="POST" action="">
-        <div class="mb-3">
-            <label for="establishment_name" class="form-label">Name of Establishment</label>
-            <input type="text" class="form-control" id="establishment_name" name="establishment_name" required>
-        </div>
-        <div class="mb-3">
-            <label for="business_address" class="form-label">Business Address</label>
-            <input type="text" class="form-control" id="business_address" name="business_address" required>
-        </div>
-        <div class="mb-3">
-            <label for="nature_of_business" class="form-label">Nature of Business</label>
-            <select class="form-select" id="nature_of_business" name="nature_of_business" required>
-                <option value="Retailer/Wholesaler">Retailer/Wholesaler</option>
-                <option value="Hardware">Hardware</option>
-                <option value="Supermarket/Grocery/Convenience Store">Supermarket/Grocery/Convenience Store</option>
-                <option value="Service and Repair">Service and Repair</option>
-                <option value="Others">Others</option>
-            </select>
-            <!-- Placeholder for dynamic input -->
-            <div id="othersInputContainer" class="mt-3"></div>
-        </div>
-        <div class="mb-3">
-            <label for="non_conforming_products" class="form-label">Non-Conforming Products/Goods/Services</label>
-            <textarea class="form-control" id="non_conforming_products" name="non_conforming_products" rows="3" required></textarea>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Violations</label>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="violations[]" value="No PS/ICC Mark" id="violation1">
-                <label class="form-check-label" for="violation1">No PS/ICC Mark</label>
+<style>
+    body {
+        background: linear-gradient(to bottom, #ffffff 0%, #10346C 100%);
+    }
+    .container {
+        margin-top: 20px;
+    }
+    .table-container {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .search-bar {
+        margin-bottom: 15px;
+        transition: all 0.3s ease;
+    }
+    .search-bar:focus {
+        box-shadow: 0 0 10px rgba(16, 52, 108, 0.3);
+        border-color: #10346C;
+    }
+    
+    /* Responsive Table Styles */
+    @media (max-width: 768px) {
+        .table-responsive {
+            display: block;
+            width: 100%;
+            overflow-x: auto;
+        }
+        
+        .table td, .table th {
+            white-space: nowrap;
+        }
+    }
+    
+    /* Search Result Animation */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    #recordsTable tbody tr {
+        transition: all 0.3s ease;
+    }
+    
+    #recordsTable tbody tr.search-match {
+        animation: fadeIn 0.5s ease;
+        background-color: rgba(16, 52, 108, 0.05);
+    }
+    
+    #recordsTable tbody tr:hover {
+        background-color: rgba(16, 52, 108, 0.1);
+        transform: scale(1.01);
+    }
+    
+    /* Empty Search Result Styling */
+    .no-results {
+        text-align: center;
+        color: #6c757d;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+    }
+</style>
+
+<div class="container">
+    <h4 class="mb-3 text-center">Existing Records</h4>
+
+    <!-- Search Bar with Icon -->
+    <div class="input-group mb-3">
+        <span class="input-group-text" style="background-color: #10346C; color: white;">
+            <i class="fas fa-search"></i>
+        </span>
+        <input 
+            type="text" 
+            id="searchInput" 
+            class="form-control search-bar" 
+            placeholder="Search establishment, address, or violations"
+            onkeyup="filterTable()"
+        >
+    </div>
+
+    <div class="table-container">
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered" id="recordsTable">
+                <!-- Previous table structure remains the same -->
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)" style="cursor: pointer;">Establishment</th>
+                        <th onclick="sortTable(1)" style="cursor: pointer;">Address</th>
+                        <th onclick="sortTable(2)" style="cursor: pointer;">Owner/Representative</th>  
+                        <th onclick="sortTable(3)" style="cursor: pointer;">Violations</th>
+                        <th>NOV File</th>
+                        <th onclick="sortTable(4)" style="cursor: pointer;">No. of Violations</th>
+                        <th onclick="sortTable(5)" style="cursor: pointer;">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php while ($row = $result->fetch_assoc()): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($row['name']) ?></td>
+                        <td><?= htmlspecialchars($row['address']) ?></td>
+                        <td><?= htmlspecialchars($row['owner_rep']) ?></td>
+                        <td><?= htmlspecialchars($row['all_violations']) ?></td>
+                        <td>
+                            <?php if (!empty($row['nov_files'])): ?>
+                                <a href="nov_files/<?= $row['nov_files'] ?>" class="file-link" target="_blank">View NOV</a>
+                            <?php else: ?>
+                                N/A
+                            <?php endif; ?>
+                        </td>
+                        <td><?= $row['num_violations'] ?></td>
+                        <td><?= date('M d, Y', strtotime($row['latest_date'])) ?></td>
+                    </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
+            <div id="noResults" class="no-results" style="display: none;">
+                <p>No results found. Try a different search term.</p>
             </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="violations[]" value="Invalid/Expired Accreditation" id="violation2">
-                <label class="form-check-label" for="violation2">Invalid/Expired Accreditation</label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="violations[]" value="Improper Labeling" id="violation3">
-                <label class="form-check-label" for="violation3">Improper Labeling</label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="violations[]" value="Price Tag Violations" id="violation4">
-                <label class="form-check-label" for="violation4">Price Tag Violations</label>
-            </div>
         </div>
-        <div class="mb-3">
-            <label for="remarks" class="form-label">Remarks</label>
-            <textarea class="form-control" id="remarks" name="remarks" rows="3"></textarea>
-        </div>
-        <button type="submit" class="btn btn-primary">Submit</button>
-    </form>
+    </div>
 </div>
 
-<script>
-    const natureOfBusinessSelect = document.getElementById('nature_of_business');
-    const othersInputContainer = document.getElementById('othersInputContainer');
+<?php include '../templates/footer.php'; ?>
 
-    natureOfBusinessSelect.addEventListener('change', function () {
-        if (this.value === 'Others') {
-            // Add a text input if "Others" is selected
-            if (!document.getElementById('othersTextInput')) {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'form-control';
-                input.id = 'othersTextInput';
-                input.name = 'nature_of_business_others';
-                input.placeholder = 'Please specify';
-                othersInputContainer.appendChild(input);
+<script>
+    function filterTable() {
+        const searchInput = document.getElementById('searchInput').value.toLowerCase();
+        const table = document.getElementById('recordsTable');
+        const rows = table.getElementsByTagName('tr');
+        const noResultsDiv = document.getElementById('noResults');
+        let visibleRowCount = 0;
+
+        for (let i = 1; i < rows.length; i++) {
+            const cells = rows[i].getElementsByTagName('td');
+            let match = false;
+
+            for (let j = 0; j < cells.length; j++) {
+                if (j !== 4 && cells[j] && cells[j].innerText.toLowerCase().includes(searchInput)) {
+                    match = true;
+                    break;
+                }
             }
-        } else {
-            // Remove the text input if "Others" is deselected
-            const othersTextInput = document.getElementById('othersTextInput');
-            if (othersTextInput) {
-                othersInputContainer.removeChild(othersTextInput);
+
+            if (match) {
+                rows[i].style.display = '';
+                rows[i].classList.add('search-match');
+                visibleRowCount++;
+            } else {
+                rows[i].style.display = 'none';
+                rows[i].classList.remove('search-match');
             }
         }
-    });
-</script>
 
-<?php include '../templates/footer.php'; ?>
+        // Show/hide no results message
+        noResultsDiv.style.display = visibleRowCount === 0 ? 'block' : 'none';
+    }
+
+    // Previous sortTable function remains the same
+    function sortTable(columnIndex) {
+        const table = document.getElementById('recordsTable');
+        const rows = Array.from(table.rows).slice(1);
+        const isAscending = table.getAttribute('data-sort') !== 'asc';
+        const multiplier = isAscending ? 1 : -1;
+
+        // Previous sorting logic remains the same
+        if (columnIndex === 5) {
+            rows.sort((a, b) => {
+                const aNum = parseInt(a.cells[columnIndex].innerText);
+                const bNum = parseInt(b.cells[columnIndex].innerText);
+                return (aNum - bNum) * multiplier;
+            });
+        } 
+        else if (columnIndex === 6) {
+            rows.sort((a, b) => {
+                const aDate = new Date(a.cells[columnIndex].innerText);
+                const bDate = new Date(b.cells[columnIndex].innerText);
+                return (aDate - bDate) * multiplier;
+            });
+        } 
+        else {
+            rows.sort((a, b) => {
+                const aText = a.cells[columnIndex].innerText.toLowerCase();
+                const bText = b.cells[columnIndex].innerText.toLowerCase();
+                return aText.localeCompare(bText) * multiplier;
+            });
+        }
+
+        rows.forEach(row => table.appendChild(row));
+        table.setAttribute('data-sort', isAscending ? 'asc' : 'desc');
+    }
+</script>

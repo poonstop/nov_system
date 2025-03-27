@@ -44,6 +44,14 @@ if (ini_get("session.use_cookies")) {
 // Close database connection
 $conn->close();
 
+// Check if it's an AJAX request
+if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+    // For AJAX requests, just return success
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'success']);
+    exit();
+}
+
 // Redirect to login page
 header("Location: login.php");
 exit();

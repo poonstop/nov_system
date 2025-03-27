@@ -1,44 +1,59 @@
 <?php
-// Establish database connection
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "nov_system";
+session_start();
+include __DIR__ . '/../connection.php';
 
-$conn = new mysqli($servername, $username, $password, $dbname);
-
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+if (isset($_SESSION['logout_message'])) {
+    echo '<script>
+    Swal.fire({
+        icon: "success",
+        title: "Logged Out",
+        text: "'.$_SESSION['logout_message'].'",
+        showConfirmButton: false,
+        timer: 2000
+    });
+    </script>';
+    unset($_SESSION['logout_message']);
 }
 
+// Redirect if already logged in
+if (isset($_SESSION['username'])) {
+    header("Location: index.php");
+    exit();
+}
+
+$login_error = "";
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
+    $username = trim($_POST['username']);
+    $password = trim($_POST['password']);
 
-    $sql = "SELECT * FROM users WHERE username = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $username);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
-        if (password_verify($password, $user['password'])) {
-            session_start();
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            header("Location: index.php");
-            exit;
-        } else {
-            $login_error = "Invalid password.";
-        }
+    // Validate inputs
+    if (empty($username) || empty($password)) {
+        $login_error = "Please fill in all fields";
     } else {
-        $login_error = "User not found.";
-    }
-}
+        $stmt = $conn->prepare("SELECT id, username, password, fullname FROM users WHERE username = ?");
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-$conn->close();
+        if ($result->num_rows == 1) {
+            $user = $result->fetch_assoc();
+            if (password_verify($password, $user['password'])) {
+                // Set session variables
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['fullname'] = $user['fullname'];
+                
+                header("Location: index.php");
+                exit();
+            } else {
+                $login_error = "Invalid password";
+            }
+        } else {
+            $login_error = "User not found";
+        }
+    }
+    $stmt->close();
+}
 ?>
 
 <!DOCTYPE html>
@@ -48,7 +63,14 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notice of Violation System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Favicon (tab logo) -->
+    <link rel="icon" href="../images/dti-logo.ico" type="../images/dti-logo.ico">
+    <link rel="shortcut icon" href="../images/dti-logo.ico" type="../images/dti-logo.ico">
+
+    <!-- For modern browsers (PNG format) -->
+    <link rel="icon" type="../images/dti-logo1.png" href="../images/dti-logo1.png">
     <style>
+        /* Keep your existing CSS styles */
         body {
             background: linear-gradient(to bottom, #ffffff 0%, #10346C 100%);
             color: #333;
@@ -89,15 +111,15 @@ $conn->close();
         }
 
         .logo-img {
-            width: 80px; /* Adjust the size of logos */
+            width: 80px;
             margin: 0 10px;
         }
 
         .time-display {
             text-align: center;
             color: #10346C;
-            font-size: 1.5rem; /* Increased font size */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Minimalistic and readable font */
+            font-size: 1.5rem;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             font-weight: 600;
             margin-bottom: 15px;
         }
@@ -141,7 +163,7 @@ $conn->close();
     <div class="header-title">Notice of Violation Monitoring System</div>
     <div class="time-display" id="current-time">Loading time...</div>
     <h1 class="text-center">Login</h1>
-    <?php if (isset($login_error)): ?>
+    <?php if ($login_error): ?>
         <div class="alert alert-danger text-center">
             <?= htmlspecialchars($login_error) ?>
         </div>
@@ -149,26 +171,37 @@ $conn->close();
     <form method="POST" action="">
         <div class="mb-3">
             <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" name="username" placeholder="Enter your username" required>
+            <input type="text" class="form-control" id="username" name="username" 
+                   placeholder="Enter your username" required autocomplete="username">
         </div>
         <div class="mb-3">
             <label for="password" class="form-label">Password</label>
-            <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+            <input type="password" class="form-control" id="password" name="password" 
+                   placeholder="Enter your password" required autocomplete="current-password">
         </div>
         <button type="submit" name="login" class="btn btn-primary w-100">Login</button>
     </form>
+    <div class="mt-3 text-center">
+        Don't have an account? <a href="register.php">Register here</a>
+    </div>
 </div>
+
 <script>
-    // Function to update the time display
+    // Time display script
     function updateTime() {
         const now = new Date();
-        const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        document.getElementById('current-time').textContent = formattedTime;
+        const options = { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit',
+            hour12: true
+        };
+        document.getElementById('current-time').textContent = now.toLocaleTimeString('en-PH', options);
     }
-    // Update time every second
     setInterval(updateTime, 1000);
     updateTime();
 </script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

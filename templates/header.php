@@ -83,10 +83,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo ($current_page == 'nov_form.php') ? 'active' : ''; ?>" href="nov_form.php">
+                        <a class="nav-link <?php echo ($current_page == 'establishments.php') ? 'active' : ''; ?>" href="establishments.php">
                             File NOV
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo ($current_page == 'nov_form.php') ? 'active' : ''; ?>" href="nov_form.php">
+                            Establishments Management
+                        </a>
                 </ul>
                 
                 <!-- User Info and Logout - MODIFIED SECTION -->
@@ -96,7 +100,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     Welcome, <?php echo htmlspecialchars(ucfirst($_SESSION['username'] ?? 'User')); ?>!
                     </span>
                     <!-- Changed from <a> to <button> to trigger modal -->
-                    <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                    <button class="btn btn-outline-danger" id="logoutBtn">
                         Logout
                     </button>
                 <?php else: ?>
@@ -107,25 +111,49 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </div>
         </div>
     </nav>
+    <!-- Add SweetAlert JS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.getElementById('logoutBtn').addEventListener('click', function() {
+    Swal.fire({
+        title: 'Confirm Logout',
+        text: 'Are you sure you want to log out of the NOVM System?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, logout!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show logout progress with countdown
+            let timerInterval;
+            Swal.fire({
+                title: 'Logging out...',
+                html: 'You will be redirected in <b></b> seconds.',
+                timer: 2000, // 2 seconds delay
+                timerProgressBar: true,
+                allowOutsideClick: false,
+                didOpen: () => {
+                    const b = Swal.getHtmlContainer().querySelector('b');
+                    timerInterval = setInterval(() => {
+                        b.textContent = (Swal.getTimerLeft() / 1000).toFixed(1);
+                    }, 100);
+                },
+                willClose: () => {
+                    clearInterval(timerInterval);
+                }
+            }).then((result) => {
+                // Perform the actual logout when timer completes
+                if (result.dismiss === Swal.DismissReason.timer) {
+                    window.location.href = 'logout.php';
+                }
+            });
+        }
+    });
+});
+</script>
 
-    <!-- Logout Confirmation Modal - ADD THIS NEW SECTION -->
-    <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="logoutModalLabel">Confirm Logout</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    Are you sure you want to log out of the NOVM System?
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <a href="logout.php" class="btn btn-danger">Logout</a>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Your existing scripts remain the same -->
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
