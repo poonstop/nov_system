@@ -152,6 +152,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
             box-shadow: 0 0 5px rgba(16, 52, 108, 0.5);
             outline: none;
         }
+        .password-container {
+            position: relative;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: #6c757d;
+        }
+        .toggle-password:hover {
+            color: #10346C;
+        }
     </style>
 </head>
 <body>
@@ -175,18 +191,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
                    placeholder="Enter your username" required autocomplete="username">
         </div>
         <div class="mb-3">
-            <label for="password" class="form-label">Password</label>
+        <label for="password" class="form-label">Password</label>
+        <div class="password-container">
             <input type="password" class="form-control" id="password" name="password" 
                    placeholder="Enter your password" required autocomplete="current-password">
+            <button type="button" class="toggle-password" aria-label="Show password">
+                <i class="fas fa-eye"></i>
+            </button>
         </div>
+    </div>
         <button type="submit" name="login" class="btn btn-primary w-100">Login</button>
     </form>
-    <div class="mt-3 text-center">
-        Don't have an account? <a href="register.php">Register here</a>
-    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<!-- Registration link for users who don't have an account -->
+<!--<div class="mt-3 text-center">
+        Don't have an account? <a href="register.php">Register here</a>    
 </div>
+</div>-->
 
 <script>
+     // Password toggle functionality
+     document.querySelector('.toggle-password').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = this.querySelector('i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
     // Time display script
     function updateTime() {
         const now = new Date();

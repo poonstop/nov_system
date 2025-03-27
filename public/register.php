@@ -1,4 +1,5 @@
 <?php
+/*
 session_start();
 include __DIR__ . '/../connection.php';
 
@@ -284,3 +285,4 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </script>
 </body>
 </html>
+*/

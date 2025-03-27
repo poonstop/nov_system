@@ -62,7 +62,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
         <div class="container">
             <!-- Brand/Logo -->
-            <a class="navbar-brand" href="index.php">Notice on Violation Monitoring System</a>
+            <a class="navbar-brand" href="index.php">Notice of Violation Monitoring System</a>
             
             <!-- Responsive Toggle Button -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
