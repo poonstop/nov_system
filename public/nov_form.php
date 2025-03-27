@@ -2,6 +2,10 @@
 include __DIR__ . '/../connection.php';
 include '../templates/header.php';
 
+// Helper function to capitalize first letter of each word
+function capitalizeWords($string) {
+    return ucwords(strtolower($string));
+}
 // Previous query remains the same
 $query = "
     SELECT 
@@ -121,11 +125,19 @@ $result = $conn->query($query);
                 <tbody>
                     <?php while ($row = $result->fetch_assoc()): ?>
                     <tr>
-                        <td><?= htmlspecialchars($row['name']) ?></td>
-                        <td><?= htmlspecialchars($row['address']) ?></td>
-                        <td><?= htmlspecialchars($row['owner_rep']) ?></td>
-                        <td><?= htmlspecialchars($row['all_violations']) ?></td>
+                        <td><?= capitalizeWords(htmlspecialchars($row['name'])) ?></td>
+                        <td><?= capitalizeWords(htmlspecialchars($row['address'])) ?></td>
+                        <td><?= capitalizeWords(htmlspecialchars($row['owner_rep'])) ?></td>
+                        <td><?= capitalizeWords(htmlspecialchars($row['all_violations'])) ?></td>
                         <td>
+                        <?php 
+                              // Split violations by comma and capitalize each one
+                    $violations = array_map('trim', explode(',', $row['all_violations']));
+                    $capitalizedViolations = array_map('capitalizeWords', $violations);
+                    echo htmlspecialchars(implode(', ', $capitalizedViolations));
+                             ?>
+        </td>
+        <td>
                             <?php if (!empty($row['nov_files'])): ?>
                                 <a href="nov_files/<?= $row['nov_files'] ?>" class="file-link" target="_blank">View NOV</a>
                             <?php else: ?>

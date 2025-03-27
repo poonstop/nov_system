@@ -112,6 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_issuer'])) {
             
             // Clear the session
             unset($_SESSION['nov_details']);
+            unset($_SESSION['form_data']);
             
             // Redirect to establishments page
             header("Location: establishments.php");
@@ -241,7 +242,7 @@ include '../templates/header.php';
 </head>
 <body>
     <div class="container py-5">
-        <h2 class="mb-4">File NOV</h2>
+        <h2 class="mb-4">Notice Management</h2>
         
         <!-- NOV Submission Form -->
         <div class="nov-form mb-5 shadow">
@@ -509,10 +510,16 @@ include '../templates/header.php';
                     confirmButtonText: 'View Records',
                     cancelButtonText: 'Close'
                 }).then((result) => {
+                    // Clear sessionStorage on success
+                    sessionStorage.removeItem('novFormData');
+                    
                     if (result.isConfirmed) {
                         window.location.href = 'nov_form.php';
-                    }
-                });
+                    } else {
+            // Optional: Reset the form if user stays on page
+            document.getElementById('novForm').reset();
+        }
+    });
                 <?php unset($_SESSION['success']); ?>
             <?php endif; ?>
 
@@ -527,6 +534,27 @@ include '../templates/header.php';
                 <?php unset($_SESSION['error']); ?>
             <?php endif; ?>
         });
+
+        function resetForm() {
+    const form = document.getElementById('novForm');
+    if (form) {
+        form.reset();
+
+           // Reset custom nature field visibility
+           const natureSelect = document.getElementById('natureSelect');
+        const customInput = document.getElementById('natureCustom');
+        if (natureSelect && customInput) {
+            customInput.style.display = 'none';
+            customInput.required = false;
+            customInput.value = '';
+        }
+        
+        // Uncheck all checkboxes
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+    }
+}
           // Function to clear session data
     function clearSessionData() {
         // Client-side session clearing

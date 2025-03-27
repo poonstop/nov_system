@@ -84,7 +84,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     </li>
                     <li class="nav-item">
                         <a class="nav-link <?php echo ($current_page == 'establishments.php') ? 'active' : ''; ?>" href="establishments.php">
-                            File NOV
+                            Notice Management
                         </a>
                     </li>
                     <li class="nav-item">
