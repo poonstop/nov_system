@@ -645,3 +645,4 @@ include '../templates/header.php';
 <?php
 ob_end_flush();
 ?>
+<?php include '../templates/footer.php'; ?>

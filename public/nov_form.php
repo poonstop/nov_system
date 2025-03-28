@@ -16,8 +16,8 @@ $query = "
         GROUP_CONCAT(violations SEPARATOR ', ') AS all_violations,
         COUNT(violations) AS num_violations,
         CASE 
-            WHEN MAX(created_at) IS NULL THEN CURRENT_TIMESTAMP
-            WHEN MAX(created_at) = '0000-00-00' THEN CURRENT_TIMESTAMP
+            WHEN MAX(created_at) IS NULL THEN NULL
+            WHEN MAX(created_at) = '0000-00-00 00:00:00' THEN NULL
             ELSE MAX(created_at)
         END AS latest_date,
         nov_files 
@@ -214,17 +214,23 @@ $result = $conn->query($query);
                             <?php endif; ?>
                         </td>
                         <td><?= $row['num_violations'] ?></td>
-                        <td><?= date('M d, Y', strtotime($row['latest_date'])) ?></td>
-                    </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
-            <div id="noResults" class="no-results" style="display: none;">
-                <p>No results found. Try a different search term.</p>
-            </div>
-        </div>
-    </div>
-</div>
+                        <td>
+    <?php 
+    if (!empty($row['latest_date']) && $row['latest_date'] != '0000-00-00 00:00:00') {
+        try {
+            $date = new DateTime($row['latest_date']);
+            echo $date->format('M d, Y h:i A'); // Format showing date and time
+        } catch (Exception $e) {
+            echo 'Invalid date/time';
+        }
+    } else {
+        echo 'No date';
+    }
+    ?>
+</td>
+</tr>
+    <?php endwhile; ?>
+</tbody>
 
 <!-- View NOV Modal -->
 <div id="viewModal" class="modal">
@@ -255,7 +261,6 @@ $result = $conn->query($query);
     </div>
 </div>
 
-<?php include '../templates/footer.php'; ?>
 
 <script>
     function openViewModal(id) {
@@ -297,13 +302,11 @@ $result = $conn->query($query);
    // Edit Modal Function
     function openEditModal(id) {
         const row = document.querySelector(`tr[data-id="${id}"]`);
-        if (!row) {
-            console.error('Row not found for ID:', id);
-            return;
-        }
+        if (!row) return;
         
         const editModal = document.getElementById('editModal');
         const editModalContent = document.getElementById('editModalContent');
+        const dateTimeCell = row.cells[6].innerText;
 
         // Format violations for select options
         const violations = row.cells[3].innerText.split(', ');
@@ -315,6 +318,15 @@ $result = $conn->query($query);
         ].map(option => {
             return `<option value="${option}" ${violations.includes(option) ? 'selected' : ''}>${option}</option>`;
         }).join('');
+        let datetimeValue = '';
+    try {
+        const dateObj = new Date(dateTimeCell);
+        if (!isNaN(dateObj.getTime())) {
+            datetimeValue = dateObj.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+        }
+    } catch (e) {
+        console.error('Date parse error:', e);
+    }
         
         editModalContent.innerHTML = `
             <form id="editForm">
@@ -352,44 +364,56 @@ $result = $conn->query($query);
                     </div>
                     <div class="col-md-6">
                         <div class="form-group mb-3">
-        <label>Date</label>
-        <input type="date" class="form-control" name="date" 
-               value="${formatDateForInput(row.cells[6].innerText)}"
-               min="2000-01-01" max="${new Date().toISOString().split('T')[0]}">
-                        </div>
+        <label>Date and Time</label>
+                        <input type="datetime-local" class="form-control" name="datetime" 
+                               value="${datetimeValue}"
+                               min="2000-01-01T00:00" 
+                               max="${new Date().toISOString().slice(0, 16)}">
                     </div>
                 </div>
-            </form>
-        `;
+            </div>
+        </form>
+    `;
         
         editModal.style.display = 'block';
     }
 
-    // Helper function to format date for input field
     function formatDateForInput(displayDate) {
-    // Handle cases where date is invalid (like "Nov 30, -0001")
-    if (displayDate.includes('-0001')) {
-        return ''; // Return empty or current date
+    // Return empty string for invalid dates
+    if (!displayDate || displayDate.includes('-0001') || displayDate.includes('0000-00-00')) {
+        return '';
     }
     
     try {
-        // Parse from displayed format (M d, Y)
+        // Try parsing from displayed format (M d, Y)
         const date = new Date(displayDate);
-        if (isNaN(date.getTime())) {
-            // Try parsing from other formats if needed
-            const parts = displayDate.split(/[\s,]+/);
-            if (parts.length === 3) {
-                const monthMap = {Jan:'01', Feb:'02', Mar:'03', Apr:'04', May:'05', Jun:'06', 
-                                 Jul:'07', Aug:'08', Sep:'09', Oct:'10', Nov:'11', Dec:'12'};
-                const year = parts[2].length === 4 ? parts[2] : new Date().getFullYear();
-                return `${year}-${monthMap[parts[0]]}-${parts[1].padStart(2,'0')}`;
-            }
-            return ''; // Fallback
+        if (!isNaN(date.getTime())) {
+            return date.toISOString().split('T')[0];
         }
-        return date.toISOString().split('T')[0];
+        
+        // Try parsing from other common formats
+        const formats = [
+            { regex: /^(\w{3}) (\d{1,2}), (\d{4})$/, handler: (m) => {
+                const months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',
+                               Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+                return `${m[3]}-${months[m[1]]}-${m[2].padStart(2,'0')}`;
+            }},
+            { regex: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, handler: (m) => {
+                return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+            }}
+        ];
+        
+        for (const format of formats) {
+            const match = displayDate.match(format.regex);
+            if (match) {
+                return format.handler(match);
+            }
+        }
+        
+        return ''; // Fallback for unparseable dates
     } catch (e) {
-        console.error('Date parse error:', e);
-        return ''; // Fallback to empty
+        console.error('Date parsing error:', e);
+        return '';
     }
 }
 
@@ -416,13 +440,13 @@ $result = $conn->query($query);
     const form = document.getElementById('editForm');
     const formData = new FormData(form);
     
-    // Ensure ID is captured correctly
-    const id = form.querySelector('input[name="id"]').value;
-    // Convert date to proper format
-    let dateValue = formData.get('date');
-    if (!dateValue) {
-        // If no date selected, use current date
-        dateValue = new Date().toISOString().split('T')[0];
+    // Process date input
+    let datetimeValue = formData.get('datetime');
+    if (!datetimeValue) {
+        datetimeValue = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    } else {
+        // Convert from datetime-local format (YYYY-MM-DDTHH:MM) to MySQL format
+        datetimeValue = datetimeValue.replace('T', ' ') + ':00';
     }
     
     const data = {
@@ -432,35 +456,43 @@ $result = $conn->query($query);
         owner_rep: formData.get('owner_rep'),
         violations: formData.getAll('violations[]').join(', '),
         num_violations: formData.get('num_violations'),
-        date: dateValue
+        datetime: datetimeValue
     };
-    
-    console.log('Sending data:', data);
     
     fetch('update_establishment.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json', // Changed back to JSON
-        },
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(data)
     })
-    .then(response => {
-        console.log('Raw response status:', response.status);
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
-        console.log('Response data:', data);
         if (data.success) {
-            alert('Changes saved successfully');
-            closeModal('editModal');
-            location.reload();
+            Swal.fire({
+                title: 'Success!',
+                text: 'Changes saved successfully',
+                icon: 'success',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                closeModal('editModal');
+                location.reload();
+            });
         } else {
-            alert('Error: ' + (data.message || 'Failed to save changes'));
+            Swal.fire({
+                title: 'Error!',
+                text: data.message || 'Failed to save changes',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
         }
     })
     .catch(error => {
-        console.error('Full error:', error);
-        alert('An error occurred while saving changes: ' + error);
+        console.error('Error:', error);
+        Swal.fire({
+            title: 'Error!',
+            text: 'An error occurred while saving changes',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
     });
 }
 
