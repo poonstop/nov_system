@@ -18,6 +18,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <title>NOVM System</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Favicon (tab logo) -->
     <link rel="icon" href="../images/dti-logo.ico" type="../images/dti-logo.ico">
     <link rel="shortcut icon" href="../images/dti-logo.ico" type="../images/dti-logo.ico">
