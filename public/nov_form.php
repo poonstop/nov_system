@@ -15,15 +15,12 @@ $query = "
         IFNULL(owner_representative, 'Not specified') AS owner_rep,
         GROUP_CONCAT(violations SEPARATOR ', ') AS all_violations,
         COUNT(violations) AS num_violations,
-        CASE 
-            WHEN MAX(created_at) IS NULL THEN NULL
-            WHEN MAX(created_at) = '0000-00-00 00:00:00' THEN NULL
-            ELSE MAX(created_at)
-        END AS latest_date,
+        date_created,
+        date_updated,
         nov_files 
     FROM establishments 
     GROUP BY name, address, owner_representative
-    ORDER BY latest_date DESC
+    ORDER BY date_updated DESC
 ";
 $result = $conn->query($query);
 ?>
@@ -176,7 +173,8 @@ $result = $conn->query($query);
                         <th onclick="sortTable(3)" style="cursor: pointer;">Violations</th>
                         <th>Actions</th>
                         <th onclick="sortTable(4)" style="cursor: pointer;">No. of Violations</th>
-                        <th onclick="sortTable(5)" style="cursor: pointer;">Date</th>
+                        <th onclick="sortTable(5)" style="cursor: pointer;">Date Created</th>
+                         <th onclick="sortTable(6)" style="cursor: pointer;">Last Updated</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -207,21 +205,35 @@ $result = $conn->query($query);
                     </td>
                     <td>
                     <?php if (!empty($row['nov_files'])): ?>
-                        <button class="btn btn-sm btn-primary" onclick="openViewModal(<?= $row['id'] ?>)">View NOV</button>
-                        <button class="btn btn-sm btn-secondary" onclick="openEditModal(<?= $row['id'] ?>)">Edit</button>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="openViewModal(<?= $row['id'] ?>)">View NOV</button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="openEditModal(<?= $row['id'] ?>)">Edit</button>
                             <?php else: ?>
                                 N/A
                             <?php endif; ?>
                         </td>
                         <td><?= $row['num_violations'] ?></td>
                         <td>
+                     <?php 
+                     if (!empty($row['date_created']) && $row['date_created'] != '0000-00-00 00:00:00') {
+                     try {
+                     $date = new DateTime($row['date_created']);
+                    echo $date->format('M d, Y h:i A');
+                      } catch (Exception $e) {
+                        echo 'Invalid date';
+                  }
+     } else {
+        echo 'No date';
+    }
+    ?>
+</td>
+    <td>
     <?php 
-    if (!empty($row['latest_date']) && $row['latest_date'] != '0000-00-00 00:00:00') {
+    if (!empty($row['date_updated']) && $row['date_updated'] != '0000-00-00 00:00:00') {
         try {
-            $date = new DateTime($row['latest_date']);
-            echo $date->format('M d, Y h:i A'); // Format showing date and time
+            $date = new DateTime($row['date_updated']);
+            echo $date->format('M d, Y h:i A');
         } catch (Exception $e) {
-            echo 'Invalid date/time';
+            echo 'Invalid date';
         }
     } else {
         echo 'No date';
@@ -231,6 +243,10 @@ $result = $conn->query($query);
 </tr>
     <?php endwhile; ?>
 </tbody>
+</table>
+        </div>
+    </div>
+</div>
 
 <!-- View NOV Modal -->
 <div id="viewModal" class="modal">
@@ -253,7 +269,9 @@ $result = $conn->query($query);
             <h3>Edit Establishment Details</h3>
             <span class="close-btn" onclick="closeModal('editModal')">&times;</span>
         </div>
-        <div id="editModalContent"></div>
+        <div id="editModalContent">
+            <!-- Form content will be inserted here by JavaScript -->
+        </div>
         <div class="text-center mt-3">
             <button class="btn btn-primary" onclick="saveChanges()">Save Changes</button>
             <button class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button>
@@ -263,7 +281,7 @@ $result = $conn->query($query);
 
 
 <script>
-    function openViewModal(id) {
+     function openViewModal(id) {
         // Find the row with the matching data-id
         const row = document.querySelector(`tr[data-id="${id}"]`);
          // Check if row exists
@@ -289,7 +307,8 @@ $result = $conn->query($query);
                         <h5>Violation Information</h5>
                         <p><strong>Violations:</strong> ${row.cells[3].innerText}</p>
                         <p><strong>Number of Violations:</strong> ${row.cells[5].innerText}</p>
-                        <p><strong>Date:</strong> ${row.cells[6].innerText}</p>
+                        <p><strong>Date Created:</strong> ${row.cells[6].innerText}</p>
+                        <p><strong>Last Updated:</strong> ${row.cells[7].innerText}</p>
                     </div>
                 </div>
             </div>
@@ -300,120 +319,126 @@ $result = $conn->query($query);
     }
 
    // Edit Modal Function
-    function openEditModal(id) {
-        const row = document.querySelector(`tr[data-id="${id}"]`);
-        if (!row) return;
-        
-        const editModal = document.getElementById('editModal');
-        const editModalContent = document.getElementById('editModalContent');
-        const dateTimeCell = row.cells[6].innerText;
-
-        // Format violations for select options
-        const violations = row.cells[3].innerText.split(', ');
-        const violationOptions = [
-            'No PS/ICC Mark',
-            'Invalid/Expired Accreditation',
-            'Other Violation 1',
-            'Other Violation 2'
-        ].map(option => {
-            return `<option value="${option}" ${violations.includes(option) ? 'selected' : ''}>${option}</option>`;
-        }).join('');
-        let datetimeValue = '';
-    try {
-        const dateObj = new Date(dateTimeCell);
-        if (!isNaN(dateObj.getTime())) {
-            datetimeValue = dateObj.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
-        }
-    } catch (e) {
-        console.error('Date parse error:', e);
-    }
-        
-        editModalContent.innerHTML = `
-            <form id="editForm">
-                <input type="hidden" name="id" value="${id}">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group mb-3">
-                            <label>Establishment Name</label>
-                            <input type="text" class="form-control" name="name" value="${row.cells[0].innerText}">
-                        </div>
-                        <div class="form-group mb-3">
-                            <label>Address</label>
-                            <input type="text" class="form-control" name="address" value="${row.cells[1].innerText}">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group mb-3">
-                            <label>Owner/Representative</label>
-                            <input type="text" class="form-control" name="owner_rep" value="${row.cells[2].innerText}">
-                        </div>
-                        <div class="form-group mb-3">
-                            <label>Violations</label>
-                            <select class="form-control" name="violations[]" multiple>
-                                ${violationOptions}
-                            </select>
-                        </div>
-                    </div>
+   function openEditModal(id) {
+    const row = document.querySelector(`tr[data-id="${id}"]`);
+    if (!row) return;
+    
+    const editModal = document.getElementById('editModal');
+    const editModalContent = document.getElementById('editModalContent');
+    
+    // Get current violations from the row
+    const violations = row.cells[3].innerText.split(', ');
+    
+    const violationOptions = [
+        'No PS/ICC Mark',
+        'Invalid/Expired Accreditation',
+        'Improper Labeling',
+        'Price Tag Violations'
+    ].map(option => {
+        return `<option value="${option}" ${violations.includes(option) ? 'selected' : ''}>${option}</option>`;
+    }).join('');
+    
+    // Get current violations count - fixed this line
+    const currentViolationsCount = parseInt(row.cells[5].innerText) || 0;
+    
+    // Get last updated value
+    const lastUpdatedCell = row.cells[7].innerText;
+    
+    editModalContent.innerHTML = `
+    <form id="editForm">
+        <input type="hidden" name="id" value="${id}">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group mb-3">
+                    <label>Establishment Name</label>
+                    <input type="text" class="form-control" name="name" value="${row.cells[0].innerText}">
                 </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group mb-3">
-                            <label>Number of Violations</label>
-                            <input type="number" class="form-control" name="num_violations" value="${row.cells[5].innerText}">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group mb-3">
-        <label>Date and Time</label>
-                        <input type="datetime-local" class="form-control" name="datetime" 
-                               value="${datetimeValue}"
-                               min="2000-01-01T00:00" 
-                               max="${new Date().toISOString().slice(0, 16)}">
-                    </div>
+                <div class="form-group mb-3">
+                    <label>Address</label>
+                    <input type="text" class="form-control" name="address" value="${row.cells[1].innerText}">
                 </div>
             </div>
-        </form>
-    `;
-        
-        editModal.style.display = 'block';
-    }
+            <div class="col-md-6">
+                <div class="form-group mb-3">
+                    <label>Owner/Representative</label>
+                    <input type="text" class="form-control" name="owner_rep" value="${row.cells[2].innerText}">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Violations</label>
+                    <select class="form-control" name="violations[]" multiple id="violationsSelect" onchange="updateViolationCount()">
+                        ${violationOptions}
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group mb-3">
+                    <label>Number of Violations</label>
+                    <input type="number" class="form-control" name="num_violations" 
+                       id="numViolationsInput" value="${currentViolationsCount}" >
+            </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group mb-3">
+                    <label>Last Updated</label>
+                    <input type="datetime-local" class="form-control" name="date_updated" 
+                           value="${formatDateForInput(lastUpdatedCell)}"
+                           min="2000-01-01T00:00" 
+                           max="${new Date().toISOString().slice(0, 16)}">
+                </div>
+            </div>
+        </div>
+    </form>`;
+     // Initialize the select element change handler
+     const select = editModalContent.querySelector('#violationsSelect');
+    select.addEventListener('change', function() {
+        const count = this.selectedOptions.length;
+        document.getElementById('numViolationsInput').value = count;
+    });
+    
+    editModal.style.display = 'block';
+}
+   
+// New function to update violation count when selection changes
+    function updateViolationCount() {
+    const select = document.getElementById('violationsSelect');
+    const numViolationsInput = document.getElementById('numViolationsInput');
+    const selectedCount = select.selectedOptions.length;
+    numViolationsInput.value = selectedCount;
+}
 
     function formatDateForInput(displayDate) {
-    // Return empty string for invalid dates
-    if (!displayDate || displayDate.includes('-0001') || displayDate.includes('0000-00-00')) {
-        return '';
+    if (!displayDate || displayDate.includes('Invalid date') || displayDate.includes('No date')) {
+        return new Date().toISOString().slice(0, 16);
     }
     
     try {
-        // Try parsing from displayed format (M d, Y)
-        const date = new Date(displayDate);
-        if (!isNaN(date.getTime())) {
-            return date.toISOString().split('T')[0];
+        // Try parsing from displayed format (Mar 31, 2025 01:13 PM)
+        const months = {
+            Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',
+            Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12'
+        };
+        
+        const parts = displayDate.split(/[\s,:]+/);
+        if (parts.length >= 6) {
+            const month = months[parts[0]];
+            const day = parts[1].padStart(2, '0');
+            const year = parts[2];
+            let hour = parseInt(parts[3]);
+            const minute = parts[4];
+            const ampm = parts[5].toUpperCase();
+            
+            if (ampm === 'PM' && hour < 12) hour += 12;
+            if (ampm === 'AM' && hour === 12) hour = 0;
+            
+            return `${year}-${month}-${day}T${hour.toString().padStart(2, '0')}:${minute}`;
         }
         
-        // Try parsing from other common formats
-        const formats = [
-            { regex: /^(\w{3}) (\d{1,2}), (\d{4})$/, handler: (m) => {
-                const months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',
-                               Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
-                return `${m[3]}-${months[m[1]]}-${m[2].padStart(2,'0')}`;
-            }},
-            { regex: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, handler: (m) => {
-                return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
-            }}
-        ];
-        
-        for (const format of formats) {
-            const match = displayDate.match(format.regex);
-            if (match) {
-                return format.handler(match);
-            }
-        }
-        
-        return ''; // Fallback for unparseable dates
+        return new Date(displayDate).toISOString().slice(0, 16);
     } catch (e) {
         console.error('Date parsing error:', e);
-        return '';
+        return new Date().toISOString().slice(0, 16);
     }
 }
 
@@ -437,98 +462,152 @@ $result = $conn->query($query);
     });
    
     function saveChanges() {
-    const form = document.getElementById('editForm');
-    const formData = new FormData(form);
-    
-    // Process date input
-    let datetimeValue = formData.get('datetime');
-    if (!datetimeValue) {
-        datetimeValue = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    } else {
-        // Convert from datetime-local format (YYYY-MM-DDTHH:MM) to MySQL format
-        datetimeValue = datetimeValue.replace('T', ' ') + ':00';
-    }
-    
-    const data = {
-        id: formData.get('id'),
-        name: formData.get('name'),
-        address: formData.get('address'),
-        owner_rep: formData.get('owner_rep'),
-        violations: formData.getAll('violations[]').join(', '),
-        num_violations: formData.get('num_violations'),
-        datetime: datetimeValue
-    };
-    
-    fetch('update_establishment.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            Swal.fire({
-                title: 'Success!',
-                text: 'Changes saved successfully',
-                icon: 'success',
-                confirmButtonText: 'OK'
-            }).then(() => {
-                closeModal('editModal');
-                location.reload();
-            });
-        } else {
-            Swal.fire({
-                title: 'Error!',
-                text: data.message || 'Failed to save changes',
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
+    const editForm = document.getElementById('editForm');
+    if (!editForm) {
+        console.error('Edit form not found!');
         Swal.fire({
             title: 'Error!',
-            text: 'An error occurred while saving changes',
+            text: 'Cannot find the form to save changes',
+            icon: 'error'
+        });
+        return;
+    }
+
+     // Get all form elements
+     const violationsSelect = document.getElementById('violationsSelect');
+    const numViolationsInput = document.getElementById('numViolationsInput');
+    
+    if (!violationsSelect || !numViolationsInput) {
+        console.error('Form elements not found!');
+        Swal.fire({
+            title: 'Error!',
+            text: 'Cannot find required form elements',
+            icon: 'error'
+        });
+        return;
+    }
+    // Prepare form data with validation
+    const formData = {
+        id: editForm.querySelector('[name="id"]').value,
+        name: editForm.querySelector('[name="name"]')?.value || '',
+        address: editForm.querySelector('[name="address"]')?.value || '',
+        owner_rep: editForm.querySelector('[name="owner_rep"]')?.value || '',
+        violations: Array.from(violationsSelect.selectedOptions)
+                      .map(opt => opt.value)
+                      .join(', '),
+        num_violations: parseInt(numViolationsInput.value) || 0,
+        date_updated: new Date().toISOString().slice(0, 19).replace('T', ' ')
+    };
+
+     // Override with selected date if available
+    const dateUpdatedInput = editForm.querySelector('[name="date_updated"]');
+    if (dateUpdatedInput?.value) {
+        formData.date_updated = dateUpdatedInput.value.replace('T', ' ') + ':00';
+    }
+
+    // Debug output
+    console.log('Form data being submitted:', formData);
+
+    // Enhanced fetch request with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    fetch('update_establishment.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(formData),
+        signal: controller.signal
+    })
+    .then(async response => {
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+            // Try to get error details from response
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(
+                errorData.message || 
+                `Server responded with status ${response.status}: ${response.statusText}`
+            );
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.message || 'Update failed without error message');
+        }
+        
+        Swal.fire({
+            title: 'Success!',
+            text: 'Changes saved successfully',
+            icon: 'success',
+            confirmButtonText: 'OK'
+        }).then(() => {
+            closeModal('editModal');
+            location.reload(); // Refresh to show updated data
+        });
+    })
+    .catch(error => {
+        clearTimeout(timeoutId);
+        console.error('Full error details:', error);
+        
+        let errorMessage = error.message;
+        if (error.name === 'AbortError') {
+            errorMessage = 'Request timed out. Please try again.';
+        } else if (error.message.includes('Failed to fetch')) {
+            errorMessage = 'Network connection failed. Please check your internet connection.';
+        }
+
+        Swal.fire({
+            title: 'Error!',
+            text: `Failed to save changes: ${errorMessage}`,
             icon: 'error',
             confirmButtonText: 'OK'
         });
     });
 }
 
-
     function filterTable() {
-        const searchInput = document.getElementById('searchInput').value.toLowerCase();
-        const table = document.getElementById('recordsTable');
-        const rows = table.getElementsByTagName('tr');
-        const noResultsDiv = document.getElementById('noResults');
-        let visibleRowCount = 0;
-
-        for (let i = 1; i < rows.length; i++) {
-            const cells = rows[i].getElementsByTagName('td');
-            let match = false;
-
-            for (let j = 0; j < cells.length; j++) {
-                if (j !== 4 && cells[j] && cells[j].innerText.toLowerCase().includes(searchInput)) {
-                    match = true;
-                    break;
-                }
-            }
-
-            if (match) {
-                rows[i].style.display = '';
-                rows[i].classList.add('search-match');
-                visibleRowCount++;
-            } else {
-                rows[i].style.display = 'none';
-                rows[i].classList.remove('search-match');
-            }
-        }
-
-        // Show/hide no results message
-        noResultsDiv.style.display = visibleRowCount === 0 ? 'block' : 'none';
+        const searchInput = document.getElementById('searchInput');
+    const table = document.getElementById('recordsTable');
+    if (!table) {
+        console.error('Table not found');
+        return;
     }
 
+    const searchValue = searchInput.value.toLowerCase();
+    const rows = table.querySelectorAll('tbody tr');
+    let visibleRowCount = 0;
+
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        let match = false;
+
+        cells.forEach((cell, index) => {
+            // Skip actions column (assuming it's index 4)
+            if (index !== 4 && cell.textContent.toLowerCase().includes(searchValue)) {
+                match = true;
+            }
+        });
+
+        if (match) {
+            row.style.display = '';
+            row.classList.add('search-match');
+            visibleRowCount++;
+        } else {
+            row.style.display = 'none';
+            row.classList.remove('search-match');
+        }
+    });
+
+    // Show/hide no results message if you have one
+    const noResultsDiv = document.getElementById('noResults');
+    if (noResultsDiv) {
+        noResultsDiv.style.display = visibleRowCount === 0 ? 'block' : 'none';
+    }
+}
     // Previous sortTable function remains the same
     function sortTable(columnIndex) {
         const table = document.getElementById('recordsTable');

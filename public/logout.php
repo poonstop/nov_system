@@ -14,6 +14,15 @@ if ($conn->connect_error) {
 
 // Start the session
 session_start();
+$timeout = isset($_GET['timeout']) ? true : false;
+session_unset();
+session_destroy();
+if ($timeout) {
+    header("Location: login.php?timeout=1");
+} else {
+    header("Location: login.php");
+}
+exit();
 
 // Log logout action (optional, but good for audit trails)
 if (isset($_SESSION['user_id'])) {

@@ -640,9 +640,9 @@ include '../templates/header.php';
     }
 
     </script>
+    <?php include '../templates/footer.php'; ?>
 </body>
 </html>
 <?php
 ob_end_flush();
 ?>
-<?php include '../templates/footer.php'; ?>

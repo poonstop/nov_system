@@ -5,8 +5,6 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-include '../templates/header.php';
-
 // Example data (replace with actual database queries)
 $data = [
     "San Fernando" => 15,
@@ -17,27 +15,19 @@ $data = [
 ];
 $labels = array_keys($data);
 $values = array_values($data);
+
+// Set page title for the header
+$pageTitle = "Dashboard - Violations Chart";
+
+// Include header after session check but before content
+include '../templates/header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Violations Chart</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-         background: linear-gradient(to bottom, #ffffff 0%, #10346C 100%);
-        }
-        </Style>
-</head>
-<body>
+<!-- Main content starts here - no need for HTML, HEAD or BODY tags as they should be in header.php -->
 <div class="container mt-5">
     <h1>Dashboard</h1>
     <span class="navbar-text me-3">
-    Welcome, <?php echo htmlspecialchars(ucfirst($_SESSION['username'] ?? 'User')); ?>!
+        Welcome, <?php echo htmlspecialchars(ucfirst($_SESSION['username'] ?? 'User')); ?>!
     </span>
     <div class="card mt-4">
         <div class="card-body">
@@ -46,7 +36,17 @@ $values = array_values($data);
         </div>
     </div>
 </div>
+<?php include '../templates/footer.php'; ?>
 
+<!-- Custom styles specific to this page -->
+<style>
+    body {
+        background: linear-gradient(to bottom, #ffffff 0%, #10346C 100%);
+    }
+</style>
+
+<!-- Chart.js script -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     // Data for the chart
     const labels = <?= json_encode($labels); ?>;
@@ -91,7 +91,3 @@ $values = array_values($data);
     new Chart(ctx, config);
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-<?php include '../templates/footer.php'; ?>

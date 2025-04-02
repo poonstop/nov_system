@@ -14,6 +14,9 @@ if (isset($_SESSION['logout_message'])) {
     </script>';
     unset($_SESSION['logout_message']);
 }
+if (isset($_GET['timeout'])) {
+    $timeout_message = "Your session has expired due to inactivity. Please log in again.";
+}
 
 // Redirect if already logged in
 if (isset($_SESSION['username'])) {
@@ -184,6 +187,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
             <?= htmlspecialchars($login_error) ?>
         </div>
     <?php endif; ?>
+    <?php if (!empty($timeout_message)): ?>
+<div class="alert alert-warning">
+    <?= htmlspecialchars($timeout_message) ?>
+</div>
+<?php endif; ?>
     <form method="POST" action="">
         <div class="mb-3">
             <label for="username" class="form-label">Username</label>
