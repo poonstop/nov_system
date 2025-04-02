@@ -230,10 +230,18 @@ $result = $conn->query($query);
     <?php 
     if (!empty($row['date_updated']) && $row['date_updated'] != '0000-00-00 00:00:00') {
         try {
-            $date = new DateTime($row['date_updated']);
+            // Create DateTime object (database stores UTC)
+            $date = new DateTime($row['date_updated'], new DateTimeZone('UTC'));
+            // Convert to Manila time
+            $date->setTimezone(new DateTimeZone('Asia/Manila'));
+            // Format for display
             echo $date->format('M d, Y h:i A');
+            
+            /* Debug output */
+            error_log("Time Conversion - UTC: {$row['date_updated']} → Manila: ".$date->format('Y-m-d H:i:s'));
         } catch (Exception $e) {
             echo 'Invalid date';
+            error_log("Date Error: ".$e->getMessage());
         }
     } else {
         echo 'No date';
@@ -322,6 +330,11 @@ $result = $conn->query($query);
    function openEditModal(id) {
     const row = document.querySelector(`tr[data-id="${id}"]`);
     if (!row) return;
+
+     //// Get current Manila time (UTC+8)
+     const now = new Date();
+    const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    const manilaDateStr = manilaTime.toISOString().slice(0, 16); // Define BEFORE using it
     
     const editModal = document.getElementById('editModal');
     const editModalContent = document.getElementById('editModalContent');
@@ -376,16 +389,13 @@ $result = $conn->query($query);
                 <div class="form-group mb-3">
                     <label>Number of Violations</label>
                     <input type="number" class="form-control" name="num_violations" 
-                       id="numViolationsInput" value="${currentViolationsCount}" >
+                       id="numViolationsInput" value="${currentViolationsCount}" readonly>
+                </div>
             </div>
-            </div>
-            <div class="col-md-6">
-                <div class="form-group mb-3">
-                    <label>Last Updated</label>
-                    <input type="datetime-local" class="form-control" name="date_updated" 
-                           value="${formatDateForInput(lastUpdatedCell)}"
-                           min="2000-01-01T00:00" 
-                           max="${new Date().toISOString().slice(0, 16)}">
+         <div class="col-md-6">
+            <div class="form-group mb-3">
+                <label>Last Updated</label>
+                <input type="datetime-local" class="form-control" name="date_updated" value="${manilaDateStr}"readonly>
                 </div>
             </div>
         </div>
@@ -486,6 +496,21 @@ $result = $conn->query($query);
         });
         return;
     }
+
+     // Get current Manila time (UTC+8)
+     const now = new Date();
+     const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+     
+    // Format for MySQL (YYYY-MM-DD HH:MM:SS)
+    const year = manilaTime.getUTCFullYear();
+    const month = String(manilaTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(manilaTime.getUTCDate()).padStart(2, '0');
+    const hours = String(manilaTime.getUTCHours()).padStart(2, '0');
+    const minutes = String(manilaTime.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(manilaTime.getUTCSeconds()).padStart(2, '0');
+    
+    const mysqlDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
     // Prepare form data with validation
     const formData = {
         id: editForm.querySelector('[name="id"]').value,
@@ -496,13 +521,12 @@ $result = $conn->query($query);
                       .map(opt => opt.value)
                       .join(', '),
         num_violations: parseInt(numViolationsInput.value) || 0,
-        date_updated: new Date().toISOString().slice(0, 19).replace('T', ' ')
+        date_updated: mysqlDateTime // Always use current date/time
     };
 
-     // Override with selected date if available
     const dateUpdatedInput = editForm.querySelector('[name="date_updated"]');
-    if (dateUpdatedInput?.value) {
-        formData.date_updated = dateUpdatedInput.value.replace('T', ' ') + ':00';
+     if (dateUpdatedInput?.value) {
+         formData.date_updated = dateUpdatedInput.value.replace('T', ' ') + ':00';
     }
 
     // Debug output

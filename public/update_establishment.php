@@ -6,6 +6,9 @@ include __DIR__ . '/../connection.php';
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// Set default timezone to match your application needs
+date_default_timezone_set('Asia/Manila'); // Adjust to your preferred timezone
+
 try {
     // Get and validate JSON input
     $json = file_get_contents('php://input');
@@ -47,14 +50,18 @@ try {
         throw new Exception('Invalid number of violations');
     }
 
-    // Validate and format date
-    $dateUpdated = date('Y-m-d H:i:s');
+    // Improved date handling with timezone support
+    $dateUpdated = new DateTime('now');
     if (!empty($data['date_updated'])) {
-        $inputDate = DateTime::createFromFormat('Y-m-d H:i:s', $data['date_updated']);
-        if ($inputDate !== false) {
-            $dateUpdated = $inputDate->format('Y-m-d H:i:s');
+        try {
+            $inputDate = new DateTime($data['date_updated']);
+            $dateUpdated = $inputDate;
+        } catch (Exception $e) {
+            // Log the error but continue with current time
+            error_log("Date parsing error: " . $e->getMessage());
         }
     }
+    $dateUpdatedStr = $dateUpdated->format('Y-m-d H:i:s');
 
     // Prepare and execute SQL
     $stmt = $conn->prepare("
@@ -74,13 +81,13 @@ try {
     }
 
     $stmt->bind_param(
-        "ssssisi", // s = string, i = integer
+        "ssssisi",
         $name,
         $address,
         $ownerRep,
         $violations,
         $numViolations,
-        $dateUpdated,
+        $dateUpdatedStr,
         $id
     );
 
@@ -93,11 +100,13 @@ try {
         throw new Exception('No records updated - ID may not exist');
     }
 
-    // Success response
+    // Success response with updated timestamp
     echo json_encode([
         'success' => true,
         'message' => 'Record updated successfully',
-        'updated_id' => $id
+        'updated_id' => $id,
+        'date_updated' => $dateUpdatedStr,
+        'formatted_date' => $dateUpdated->format('F j, Y, g:i a') // Human-readable format
     ]);
 
 } catch (Exception $e) {

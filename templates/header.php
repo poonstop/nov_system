@@ -10,7 +10,9 @@ if (isset($_SESSION['timeout'])) {
     if ($session_life > $inactive) {
         session_unset();
         session_destroy();
-        header("Location: login.php?timeout=1");
+        if (!headers_sent()) {
+            header("Location: login.php?timeout=1");
+        }
         exit();
     }
 }
@@ -27,12 +29,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Tracking System for Monitoring and Enforcement Non – Compliance</title>
+    <title><?php echo isset($pageTitle) ? $pageTitle : 'Tracking System'; ?></title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Favicon (tab logo) -->
     <link rel="icon" href="../images/dti-logo.ico" type="../images/dti-logo.ico">
     <link rel="shortcut icon" href="../images/dti-logo.ico" type="../images/dti-logo.ico">
@@ -54,7 +58,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             display: flex;
             min-height: 100vh;
             overflow-x: hidden;
-            background-color: #f8f9fa;
+            background: linear-gradient(to bottom, #ffffff 0%, #10346C 100%);
         }
         
         #wrapper {
@@ -64,32 +68,31 @@ $current_page = basename($_SERVER['PHP_SELF']);
         }
         
         #sidebar {
-        width: var(--sidebar-collapsed-width); /* Collapsed width */
-        background-color: var(--sidebar-bg);
-        color: #fff;
-        transition: all var(--transition-speed) ease;
-        position: fixed;
-        height: 100vh;
-        z-index: 999;
-        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-        overflow: hidden; /* Prevent overflow when collapsed */
+            width: var(--sidebar-collapsed-width);
+            background-color: var(--sidebar-bg);
+            color: #fff;
+            transition: all var(--transition-speed) ease;
+            position: fixed;
+            height: 100vh;
+            z-index: 999;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
         
         #sidebar:hover {
-        width: var(--sidebar-expanded-width); /* Expanded width */
-        overflow: visible; /* Show content on hover */
-        
+            width: var(--sidebar-expanded-width);
+            overflow: visible;
         }
         
         #sidebar .sidebar-header {
             padding: 15px 10px;
-            background: #212529;
+            background: #343a40;
             text-align: center;
             white-space: nowrap;
             overflow: hidden;
             display: flex;
             align-items: center;
-            height: 85px; /* Fixed height for header */
+            height: 85px;
         }
         
         #sidebar .sidebar-logo {
@@ -104,28 +107,28 @@ $current_page = basename($_SERVER['PHP_SELF']);
         }
         
         #sidebar .sidebar-header .title-container {
-        opacity: 0; /* Hide text initially */
-        width: 0; /* Collapse text container */
-        transition: all var(--transition-speed);
-        white-space: normal; /* Allow text to wrap */
-        text-overflow: clip; /* Don't truncate text */
+            opacity: 0;
+            width: 0;
+            transition: all var(--transition-speed);
+            white-space: normal;
+            text-overflow: clip;
         }
         
         #sidebar:hover .sidebar-header .title-container {
-        width: auto;
-        opacity: 1;
-        white-space: normal; /* Ensure text wraps when visible */
+            width: auto;
+            opacity: 1;
+            white-space: normal;
         }
         
         #sidebar .sidebar-title {
-        font-size: 0.95rem;
-        line-height: 1.2;
-        text-align: left;
-        margin: 0;
-        white-space: normal; /* Allow text to wrap */
-        overflow: visible; /* Show all text */
-        text-overflow: clip; /* Don't truncate text */
-        word-break: break-word; /* Break long words if needed */
+            font-size: 0.95rem;
+            line-height: 1.2;
+            text-align: left;
+            margin: 0;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            word-break: break-word;
         }
         
         #sidebar .logo-small {
@@ -140,22 +143,22 @@ $current_page = basename($_SERVER['PHP_SELF']);
         #sidebar:hover .logo-small {
             opacity: 0;
         }
+        
         #sidebar .nav-text {
-        opacity: 0;
-        transition: opacity var(--transition-speed);
-        white-space: nowrap;
-        margin-left: 10px; /* Add spacing between icon and text */
-        font-size: 0.9rem; /* Slightly smaller font size */
-        font-weight: 500; /* Medium weight for better readability */
-        letter-spacing: 0.3px; /* Slight letter spacing */
-        color: rgba(255, 255, 255, 0.9); /* Brighter text color */
-        text-transform: capitalize; /* Capitalize first letters */
-        flex-grow: 1; /* Allow text to take available space */
-        overflow: hidden;
-        text-overflow: ellipsis; /* Show ellipsis if text is too long */
-        max-width: calc(var(--sidebar-expanded-width) - 70px); /* Limit width */
+            opacity: 0;
+            transition: opacity var(--transition-speed);
+            white-space: nowrap;
+            margin-left: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            color: rgba(255, 255, 255, 0.9);
+            text-transform: capitalize;
+            flex-grow: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: calc(var(--sidebar-expanded-width) - 70px);
         }
-
         
         #sidebar .nav-text, 
         #sidebar .user-info, 
@@ -219,21 +222,28 @@ $current_page = basename($_SERVER['PHP_SELF']);
         }
         
         #sidebar .icon-container {
-        width: 30px;
-        text-align: center;
-        margin-right: 5px; /* Reduced margin */
-        flex-shrink: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+            width: 30px;
+            text-align: center;
+            margin-right: 5px;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         
+        /* This is the key change - content now transitions with the sidebar */
         #content {
             width: calc(100% - var(--sidebar-collapsed-width));
             min-height: 100vh;
             transition: all var(--transition-speed);
             margin-left: var(--sidebar-collapsed-width);
             padding: 20px;
+        }
+        
+        /* When sidebar is hovered, adjust the content margin */
+        #sidebar:hover ~ #content {
+            margin-left: var(--sidebar-expanded-width);
+            width: calc(100% - var(--sidebar-expanded-width));
         }
         
         .user-profile {
@@ -244,8 +254,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
             overflow: hidden;
             transition: all var(--transition-speed);
         }
+        
         .user-profile .d-flex {
-            min-height: auto; /* Ensure consistent height */
+            min-height: auto;
         }
         
         .logout-section {
@@ -261,27 +272,32 @@ $current_page = basename($_SERVER['PHP_SELF']);
         @media (max-width: 768px) {
             #sidebar {
                 width: 0;
-                overflow: hidden;
+                transform: translateX(-100%);
             }
             
             #sidebar.mobile-active {
                 width: var(--sidebar-expanded-width);
+                transform: translateX(0);
             }
             
-            #sidebar.mobile-active .sidebar-header .title-container {
-                width: auto;
-                opacity: 1;
-            }
-            
+            #sidebar.mobile-active .sidebar-header .title-container,
             #sidebar.mobile-active .nav-text, 
             #sidebar.mobile-active .user-info, 
             #sidebar.mobile-active .btn-text {
                 opacity: 1;
+                width: auto;
             }
             
             #content {
                 width: 100%;
                 margin-left: 0;
+                transition: all var(--transition-speed);
+            }
+            
+            /* When mobile sidebar is active, push content */
+            #sidebar.mobile-active ~ #content {
+                margin-left: var(--sidebar-expanded-width);
+                transform: translateX(0);
             }
             
             #mobile-toggle {
@@ -336,22 +352,64 @@ $current_page = basename($_SERVER['PHP_SELF']);
         #mobile-toggle {
             display: none;
         }
-
-        /* Add smooth animation for mobile sidebar */
-        @media (max-width: 768px) {
-            #sidebar {
-                transform: translateX(-100%);
-                width: var(--sidebar-expanded-width);
-                transition: transform var(--transition-speed) ease;
-            }
-            
-            #sidebar.mobile-active {
-                transform: translateX(0);
-            }
-        }
     </style>
 </head>
 <body>
+    <script>
+        / Session timeout handling
+let timeoutWarning;
+const sessionTimeout = <?php echo $inactive; ?> * 1000; // Convert to milliseconds
+const warningTime = 60000; // 1 minute before timeout
+
+function startSessionTimer() {
+    // Clear any existing timers
+    if (timeoutWarning) clearTimeout(timeoutWarning);
+    
+    // Set warning timer (1 minute before timeout)
+    timeoutWarning = setTimeout(() => {
+        Swal.fire({
+            title: 'Session About to Expire',
+            text: `Your session will expire in 1 minute. Would you like to continue?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Continue Session',
+            cancelButtonText: 'Logout Now',
+            timer: 60000, // Auto-close after 1 minute
+            timerProgressBar: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Extend session via AJAX
+                fetch('extend_session.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            startSessionTimer(); // Reset the timer
+                            Swal.fire('Session Extended', 'Your session has been extended.', 'success');
+                        }
+                    });
+            } else if (result.dismiss === Swal.DismissReason.timer) {
+                // Timer expired - session ended
+                Swal.fire({
+                    title: 'Session Expired',
+                    text: 'Your session has ended due to inactivity.',
+                    icon: 'info'
+                }).then(() => {
+                    window.location.href = 'login.php?timeout=1';
+                });
+            }
+        });
+    }, sessionTimeout - warningTime);
+}
+
+// Start the timer when page loads
+startSessionTimer();
+
+// Reset timer on user activity
+['click', 'mousemove', 'keypress'].forEach(event => {
+    document.addEventListener(event, startSessionTimer);
+});
+</script>
+
     <div id="wrapper">
         <!-- Mobile Toggle Button -->
         <button id="mobile-toggle" class="d-none">
@@ -361,125 +419,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <!-- Overlay for mobile -->
         <div class="overlay"></div>
         
-        <!-- Sidebar -->
-        <nav id="sidebar">
-            <div class="sidebar-header">
-                <img src="../images/dti-logo1.png" alt="DTI Logo" class="sidebar-logo">
-                <div class="title-container">
-                    <h5 class="sidebar-title mb-0">Tracking System for Monitoring and Enforcement System Non - Compliance</h5>
-                </div>
-            </div>
-
-
-            <?php if ($is_logged_in): ?>
-            <div class="user-profile">
-                <div class="d-flex align-items-center">
-                    <div class="icon-container">
-                        <i class="fas fa-user-circle fa-lg"></i>
-                    </div>
-                    <div class="user-info">
-                        <strong>Welcome,</strong>
-                        <?php echo htmlspecialchars(ucfirst($_SESSION['username'] ?? 'User')); ?>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
-
-            <ul class="list-unstyled components">
-                <li>
-                    <a href="index.php" class="<?php echo ($current_page == 'index.php') ? 'active' : ''; ?>">
-                        <div class="icon-container">
-                            <i class="fas fa-home"></i>
-                        </div>
-                        <span class="nav-text">Home</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="establishments.php" class="<?php echo ($current_page == 'establishments.php') ? 'active' : ''; ?>">
-                        <div class="icon-container">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <span class="nav-text">Notice Management</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="nov_form.php" class="<?php echo ($current_page == 'nov_form.php') ? 'active' : ''; ?>">
-                        <div class="icon-container">
-                            <i class="fas fa-building"></i>
-                        </div>
-                        <span class="nav-text">Establishments Management</span>
-                    </a>
-                </li>
-            </ul>
-            <?php if ($is_logged_in): ?>
-            <div class="logout-section">
-                <button id="logoutBtn" class="btn btn-danger w-100 d-flex align-items-center">
-                    <div class="icon-container">
-                        <i class="fas fa-sign-out-alt"></i>
-                    </div>
-                    <span class="btn-text">Logout</span>
-                </button>
-            </div>
-            <?php else: ?>
-            <div class="logout-section">
-                <a href="login.php" class="btn btn-primary w-100 d-flex align-items-center">
-                    <div class="icon-container">
-                        <i class="fas fa-sign-in-alt"></i>
-                    </div>
-                    <span class="btn-text">Login</span>
-                </a>
-            </div>
-            <?php endif; ?>
-        </nav>
-
+        <?php include 'sidebar.php'; ?>
+        
         <!-- Page Content -->
         <div id="content">
-            <!-- Main content goes here -->
-            <div class="container-fluid">
-            
-            <!-- JavaScript for Mobile Toggle -->
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    // Mobile sidebar toggle
-                    const mobileToggle = document.getElementById('mobile-toggle');
-                    const sidebar = document.getElementById('sidebar');
-                    const overlay = document.querySelector('.overlay');
-                    
-                    if (mobileToggle) {
-                        mobileToggle.addEventListener('click', function() {
-                            sidebar.classList.toggle('mobile-active');
-                            overlay.classList.toggle('active');
-                        });
-                    }
-                    
-                    if (overlay) {
-                        overlay.addEventListener('click', function() {
-                            sidebar.classList.remove('mobile-active');
-                            overlay.classList.remove('active');
-                        });
-                    }
-                    
-                    // Make mobile toggle visible
-                    mobileToggle.classList.remove('d-none');
-                    
-                    // Logout button functionality
-                    const logoutBtn = document.getElementById('logoutBtn');
-                    if (logoutBtn) {
-                        logoutBtn.addEventListener('click', function() {
-                            Swal.fire({
-                                title: 'Logout',
-                                text: 'Are you sure you want to logout?',
-                                icon: 'question',
-                                showCancelButton: true,
-                                confirmButtonColor: '#d33',
-                                cancelButtonColor: '#3085d6',
-                                confirmButtonText: 'Yes, logout'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    window.location.href = 'logout.php';
-                                }
-                            });
-                        });
-                    }
-                });
-            </script>
