@@ -27,7 +27,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>NOVM System</title>
+    <title>Tracking System for Monitoring and Enforcement Non – Compliance</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -64,19 +64,21 @@ $current_page = basename($_SERVER['PHP_SELF']);
         }
         
         #sidebar {
-            width: var(--sidebar-collapsed-width);
-            background-color: var(--sidebar-bg);
-            color: #fff;
-            transition: all var(--transition-speed) ease;
-            position: fixed;
-            height: 100vh;
-            z-index: 999;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
+        width: var(--sidebar-collapsed-width); /* Collapsed width */
+        background-color: var(--sidebar-bg);
+        color: #fff;
+        transition: all var(--transition-speed) ease;
+        position: fixed;
+        height: 100vh;
+        z-index: 999;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        overflow: hidden; /* Prevent overflow when collapsed */
         }
         
         #sidebar:hover {
-            width: var(--sidebar-expanded-width);
+        width: var(--sidebar-expanded-width); /* Expanded width */
+        overflow: visible; /* Show content on hover */
+        
         }
         
         #sidebar .sidebar-header {
@@ -85,22 +87,51 @@ $current_page = basename($_SERVER['PHP_SELF']);
             text-align: center;
             white-space: nowrap;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            height: 85px; /* Fixed height for header */
         }
         
-        #sidebar .sidebar-header h4 {
-            opacity: 0;
-            transition: opacity var(--transition-speed);
-            margin-left: 30px;
+        #sidebar .sidebar-logo {
+            height: 35px;
+            width: 35px;
+            min-width: 35px;
+            object-fit: contain;
+            margin-right: 10px;
+            transition: all var(--transition-speed);
+            flex-shrink: 0;
+            display: block;
         }
         
-        #sidebar:hover .sidebar-header h4 {
-            opacity: 1;
+        #sidebar .sidebar-header .title-container {
+        opacity: 0; /* Hide text initially */
+        width: 0; /* Collapse text container */
+        transition: all var(--transition-speed);
+        white-space: normal; /* Allow text to wrap */
+        text-overflow: clip; /* Don't truncate text */
+        }
+        
+        #sidebar:hover .sidebar-header .title-container {
+        width: auto;
+        opacity: 1;
+        white-space: normal; /* Ensure text wraps when visible */
+        }
+        
+        #sidebar .sidebar-title {
+        font-size: 0.95rem;
+        line-height: 1.2;
+        text-align: left;
+        margin: 0;
+        white-space: normal; /* Allow text to wrap */
+        overflow: visible; /* Show all text */
+        text-overflow: clip; /* Don't truncate text */
+        word-break: break-word; /* Break long words if needed */
         }
         
         #sidebar .logo-small {
             position: absolute;
             top: 15px;
-            left: 15px;
+            left: 50px;
             font-size: 1.5rem;
             font-weight: bold;
             transition: all var(--transition-speed);
@@ -109,6 +140,22 @@ $current_page = basename($_SERVER['PHP_SELF']);
         #sidebar:hover .logo-small {
             opacity: 0;
         }
+        #sidebar .nav-text {
+        opacity: 0;
+        transition: opacity var(--transition-speed);
+        white-space: nowrap;
+        margin-left: 10px; /* Add spacing between icon and text */
+        font-size: 0.9rem; /* Slightly smaller font size */
+        font-weight: 500; /* Medium weight for better readability */
+        letter-spacing: 0.3px; /* Slight letter spacing */
+        color: rgba(255, 255, 255, 0.9); /* Brighter text color */
+        text-transform: capitalize; /* Capitalize first letters */
+        flex-grow: 1; /* Allow text to take available space */
+        overflow: hidden;
+        text-overflow: ellipsis; /* Show ellipsis if text is too long */
+        max-width: calc(var(--sidebar-expanded-width) - 70px); /* Limit width */
+        }
+
         
         #sidebar .nav-text, 
         #sidebar .user-info, 
@@ -172,10 +219,13 @@ $current_page = basename($_SERVER['PHP_SELF']);
         }
         
         #sidebar .icon-container {
-            width: 30px;
-            text-align: center;
-            margin-right: 10px;
-            flex-shrink: 0;
+        width: 30px;
+        text-align: center;
+        margin-right: 5px; /* Reduced margin */
+        flex-shrink: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
         }
         
         #content {
@@ -192,6 +242,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             white-space: nowrap;
             overflow: hidden;
+            transition: all var(--transition-speed);
+        }
+        .user-profile .d-flex {
+            min-height: auto; /* Ensure consistent height */
         }
         
         .logout-section {
@@ -212,6 +266,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
             
             #sidebar.mobile-active {
                 width: var(--sidebar-expanded-width);
+            }
+            
+            #sidebar.mobile-active .sidebar-header .title-container {
+                width: auto;
+                opacity: 1;
+            }
+            
+            #sidebar.mobile-active .nav-text, 
+            #sidebar.mobile-active .user-info, 
+            #sidebar.mobile-active .btn-text {
+                opacity: 1;
             }
             
             #content {
@@ -250,8 +315,39 @@ $current_page = basename($_SERVER['PHP_SELF']);
             }
         }
         
+        /* Small screen adjustments */
+        @media (min-width: 769px) and (max-width: 992px) {
+            #sidebar .sidebar-title {
+                font-size: 0.85rem;
+            }
+        }
+        
+        /* Large screens */
+        @media (min-width: 993px) {
+            #sidebar:hover .sidebar-header {
+                padding: 15px 10px;
+            }
+            
+            #sidebar:hover .sidebar-title {
+                font-size: 0.95rem;
+            }
+        }
+        
         #mobile-toggle {
             display: none;
+        }
+
+        /* Add smooth animation for mobile sidebar */
+        @media (max-width: 768px) {
+            #sidebar {
+                transform: translateX(-100%);
+                width: var(--sidebar-expanded-width);
+                transition: transform var(--transition-speed) ease;
+            }
+            
+            #sidebar.mobile-active {
+                transform: translateX(0);
+            }
         }
     </style>
 </head>
@@ -267,10 +363,13 @@ $current_page = basename($_SERVER['PHP_SELF']);
         
         <!-- Sidebar -->
         <nav id="sidebar">
-            <div class="sidebar-header d-flex align-items-center">
-                <div class="logo-small">N</div>
-                <h4 class="mb-0">NOVM System</h4>
+            <div class="sidebar-header">
+                <img src="../images/dti-logo1.png" alt="DTI Logo" class="sidebar-logo">
+                <div class="title-container">
+                    <h5 class="sidebar-title mb-0">Tracking System for Monitoring and Enforcement System Non - Compliance</h5>
+                </div>
             </div>
+
 
             <?php if ($is_logged_in): ?>
             <div class="user-profile">
@@ -280,7 +379,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     </div>
                     <div class="user-info">
                         <strong>Welcome,</strong>
-                        <div><?php echo htmlspecialchars(ucfirst($_SESSION['username'] ?? 'User')); ?></div>
+                        <?php echo htmlspecialchars(ucfirst($_SESSION['username'] ?? 'User')); ?>
                     </div>
                 </div>
             </div>
@@ -296,14 +395,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     </a>
                 </li>
                 <li>
-                    <a href="dashboard.php" class="<?php echo ($current_page == 'dashboard.php') ? 'active' : ''; ?>">
-                        <div class="icon-container">
-                            <i class="fas fa-chart-bar"></i>
-                        </div>
-                        <span class="nav-text">Dashboard</span>
-                    </a>
-                </li>
-                <li>
                     <a href="establishments.php" class="<?php echo ($current_page == 'establishments.php') ? 'active' : ''; ?>">
                         <div class="icon-container">
                             <i class="fas fa-exclamation-triangle"></i>
@@ -316,7 +407,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         <div class="icon-container">
                             <i class="fas fa-building"></i>
                         </div>
-                        <span class="nav-text">Establishments</span>
+                        <span class="nav-text">Establishments Management</span>
                     </a>
                 </li>
             </ul>
@@ -345,3 +436,50 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <div id="content">
             <!-- Main content goes here -->
             <div class="container-fluid">
+            
+            <!-- JavaScript for Mobile Toggle -->
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Mobile sidebar toggle
+                    const mobileToggle = document.getElementById('mobile-toggle');
+                    const sidebar = document.getElementById('sidebar');
+                    const overlay = document.querySelector('.overlay');
+                    
+                    if (mobileToggle) {
+                        mobileToggle.addEventListener('click', function() {
+                            sidebar.classList.toggle('mobile-active');
+                            overlay.classList.toggle('active');
+                        });
+                    }
+                    
+                    if (overlay) {
+                        overlay.addEventListener('click', function() {
+                            sidebar.classList.remove('mobile-active');
+                            overlay.classList.remove('active');
+                        });
+                    }
+                    
+                    // Make mobile toggle visible
+                    mobileToggle.classList.remove('d-none');
+                    
+                    // Logout button functionality
+                    const logoutBtn = document.getElementById('logoutBtn');
+                    if (logoutBtn) {
+                        logoutBtn.addEventListener('click', function() {
+                            Swal.fire({
+                                title: 'Logout',
+                                text: 'Are you sure you want to logout?',
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonColor: '#d33',
+                                cancelButtonColor: '#3085d6',
+                                confirmButtonText: 'Yes, logout'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    window.location.href = 'logout.php';
+                                }
+                            });
+                        });
+                    }
+                });
+            </script>

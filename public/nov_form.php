@@ -145,7 +145,7 @@ $result = $conn->query($query);
 </style>
 
 <div class="container">
-    <h4 class="mb-3 text-center">Existing Records</h4>
+    <h4 class="mb-3 text-center">Establishment Management</h4>
 
     <!-- Search Bar with Icon -->
     <div class="input-group mb-3">
