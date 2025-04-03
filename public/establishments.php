@@ -57,6 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['submit_issuer'])) {
             'remarks' => $remarks
         ];
 
+        // Take a snapshot of form data before redirecting
+        $_SESSION['form_snapshot'] = $_POST;
+
         // Redirect to the same page to show the issuer modal
         header("Location: establishments.php?show_issuer_modal=1");
         ob_end_flush();
@@ -113,6 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_issuer'])) {
             // Clear the session
             unset($_SESSION['nov_details']);
             unset($_SESSION['form_data']);
+            unset($_SESSION['form_snapshot']); // Clear the snapshot too
             
             // Redirect to establishments page
             header("Location: establishments.php");
@@ -238,6 +242,38 @@ include '../templates/header.php';
             padding-bottom: 0.5rem;
             font-weight: 600;
         }
+        
+        /* Form data snapshot styles */
+        .form-snapshot {
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 2px solid #10346C;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .snapshot-title {
+            color: #10346C;
+            font-weight: 600;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 8px;
+        }
+        
+        .snapshot-item {
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .snapshot-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .snapshot-value {
+            color: #212529;
+        }
     </style>
 </head>
 <body>
@@ -286,9 +322,9 @@ include '../templates/header.php';
                                 <select name="nature_select" id="natureSelect" class="form-select" required>
                                     <option value="">Select Nature</option>
                                     <option value="Retail Trade" <?= isset($_SESSION['nov_details']['nature_select']) && $_SESSION['nov_details']['nature_select'] === 'Retail Trade' ? 'selected' : '' ?>>Retailer/Wholesaler</option>
-                                    <option value="Manufacturing" <?= isset($_SESSION['nov_details']['nature_select']) && $_SESSION['nov_details']['nature_select'] === 'Manufacturing' ? 'selected' : '' ?>>Supermarket/Grocery/Convenience Store</option>
-                                    <option value="Manufacturing" <?= isset($_SESSION['nov_details']['nature_select']) && $_SESSION['nov_details']['nature_select'] === 'Manufacturing' ? 'selected' : '' ?>>Service and Repair</option>
-                                    <option value="Food Service" <?= isset($_SESSION['nov_details']['nature_select']) && $_SESSION['nov_details']['nature_select'] === 'Food Service' ? 'selected' : '' ?>>Hardware</option>
+                                    <option value="Supermarket/Grocery/Convenience Store" <?= isset($_SESSION['nov_details']['nature_select']) && $_SESSION['nov_details']['nature_select'] === 'Supermarket/Grocery/Convenience Store' ? 'selected' : '' ?>>Supermarket/Grocery/Convenience Store</option>
+                                    <option value="Service and Repair" <?= isset($_SESSION['nov_details']['nature_select']) && $_SESSION['nov_details']['nature_select'] === 'Service and Repair' ? 'selected' : '' ?>>Service and Repair</option>
+                                    <option value="Hardware" <?= isset($_SESSION['nov_details']['nature_select']) && $_SESSION['nov_details']['nature_select'] === 'Hardware' ? 'selected' : '' ?>>Hardware</option>
                                     <option value="Manufacturing" <?= isset($_SESSION['nov_details']['nature_select']) && $_SESSION['nov_details']['nature_select'] === 'Manufacturing' ? 'selected' : '' ?>>Manufacturing</option>
                                     <option value="Others" <?= isset($_SESSION['nov_details']['nature_select']) && $_SESSION['nov_details']['nature_select'] === 'Others' ? 'selected' : '' ?>>Others</option>
                                 </select>
@@ -355,7 +391,7 @@ include '../templates/header.php';
                 </div>
                 
                 <div class="mt-4 text-center">
-                    <button type="submit" class="btn btn-primary btn-lg">
+                    <button type="submit" class="btn btn-primary btn-lg" id="submitFormBtn">
                         <i class="fas fa-file-contract me-2"></i>Submit Form
                     </button>
                 </div>
@@ -372,6 +408,51 @@ include '../templates/header.php';
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">Issuer Details</h5>
                 </div>
+                
+                <!-- Show Form Snapshot Summary -->
+                <?php if(isset($_SESSION['form_snapshot'])): ?>
+                <div class="form-snapshot mx-3 mt-3">
+                    <h6 class="snapshot-title">Form Details Summary</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="snapshot-item">
+                                <span class="snapshot-label">Establishment:</span> 
+                                <span class="snapshot-value"><?= htmlspecialchars($_SESSION['form_snapshot']['establishment'] ?? '') ?></span>
+                            </div>
+                            <div class="snapshot-item">
+                                <span class="snapshot-label">Representative:</span> 
+                                <span class="snapshot-value"><?= htmlspecialchars($_SESSION['form_snapshot']['owner_representative'] ?? '') ?></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="snapshot-item">
+                                <span class="snapshot-label">Nature:</span> 
+                                <span class="snapshot-value">
+                                    <?php 
+                                    $nature = ($_SESSION['form_snapshot']['nature_select'] ?? '') === 'Others' 
+                                        ? htmlspecialchars($_SESSION['form_snapshot']['nature_custom'] ?? '') 
+                                        : htmlspecialchars($_SESSION['form_snapshot']['nature_select'] ?? '');
+                                    echo $nature;
+                                    ?>
+                                </span>
+                            </div>
+                            <div class="snapshot-item">
+                                <span class="snapshot-label">Violations:</span> 
+                                <span class="snapshot-value">
+                                    <?php 
+                                    if(isset($_SESSION['form_snapshot']['violations']) && is_array($_SESSION['form_snapshot']['violations'])) {
+                                        echo count($_SESSION['form_snapshot']['violations']);
+                                    } else {
+                                        echo "0";
+                                    }
+                                    ?> found
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
                 <form method="POST">
                     <div class="modal-body">
                         <div class="mb-3">
@@ -381,12 +462,12 @@ include '../templates/header.php';
                         </div>
                         <div class="mb-3">
                             <label for="issued_datetime" class="form-label">Date and Time of Issuance</label>
-                            <input type="text" class="form-control" id="issued_datetime" name="issued_datetime" required
+                            <input type="text" class="form-control datepicker" id="issued_datetime" name="issued_datetime" 
                                    placeholder="Select date and time">
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <a href="establishments.php" class="btn btn-secondary me-2">
+                        <a href="establishments.php" class="btn btn-secondary me-2" id="backToFormBtn">
                             <i class="fas fa-arrow-left me-1"></i> Back to Form
                         </a>
                         <button type="submit" name="submit_issuer" class="btn btn-primary">
@@ -402,64 +483,42 @@ include '../templates/header.php';
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
     
     <script>
-        <?php if (isset($_GET['show_confirmation']) && $_GET['show_confirmation'] == 1): ?>
         document.addEventListener('DOMContentLoaded', function() {
-    const confirmationData = <?= json_encode($_SESSION['issuer_confirmation']) ?>;
-    
-    Swal.fire({
-        title: 'Confirm Issuer Details',
-        html: `
-            <div class="text-start">
-                <p><strong>Issuer Name:</strong> ${confirmationData.issuer_name}</p>
-                <p><strong>Issuance Date:</strong> ${confirmationData.issued_datetime}</p>
-                <p><strong>For Establishment:</strong> ${confirmationData.nov_details.establishment}</p>
-            </div>
-        `,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#10346C',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, save details',
-        cancelButtonText: 'Review details'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Submit form to save to database
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = 'save_issuer.php';
+            // Form data capture before navigation
+            const formElement = document.getElementById('novForm');
+            const submitBtn = document.getElementById('submitFormBtn');
             
-            const issuerName = document.createElement('input');
-            issuerName.type = 'hidden';
-            issuerName.name = 'issuer_name';
-            issuerName.value = confirmationData.issuer_name;
+            if (submitBtn) {
+                submitBtn.addEventListener('click', function(e) {
+                    // Capture form data before submission
+                    captureFormData();
+                });
+            }
             
-            const issuedDatetime = document.createElement('input');
-            issuedDatetime.type = 'hidden';
-            issuedDatetime.name = 'issued_datetime';
-            issuedDatetime.value = confirmationData.issued_datetime;
+            // Function to capture form data
+            function captureFormData() {
+                const formData = new FormData(formElement);
+                sessionStorage.setItem('novFormBackup', JSON.stringify(Object.fromEntries(formData)));
+                
+                // Optional: Take screenshot of form
+                takeFormSnapshot();
+            }
             
-            const submitBtn = document.createElement('input');
-            submitBtn.type = 'hidden';
-            submitBtn.name = 'confirmed_submit';
-            submitBtn.value = '1';
+            // Function to take a visual snapshot of the form
+            function takeFormSnapshot() {
+                html2canvas(formElement).then(canvas => {
+                    const dataURL = canvas.toDataURL('image/png');
+                    sessionStorage.setItem('formSnapshot', dataURL);
+                }).catch(err => {
+                    console.error('Error taking form snapshot:', err);
+                });
+            }
             
-            form.appendChild(issuerName);
-            form.appendChild(issuedDatetime);
-            form.appendChild(submitBtn);
-            document.body.appendChild(form);
-            form.submit();
-        } else {
-            // Go back to issuer details form
-            window.location.href = 'establishments.php?show_issuer_modal=1';
-        }
-    });
-});
-<?php endif; ?>
-    document.addEventListener('DOMContentLoaded', function() {
-          // Nature of Business Custom Input Toggle
-          const natureSelect = document.getElementById('natureSelect');
+            // Nature of Business Custom Input Toggle
+            const natureSelect = document.getElementById('natureSelect');
             const customInput = document.getElementById('natureCustom');
             
             if (natureSelect) {
@@ -478,18 +537,55 @@ include '../templates/header.php';
 
             // Initialize date picker for issuer modal
             <?php if (isset($_GET['show_issuer_modal']) && $_GET['show_issuer_modal'] == 1): ?>
-                flatpickr("#issued_datetime", {
-                    enableTime: true,
-                    dateFormat: "Y-m-d H:i",
-                    defaultDate: new Date(),
-                    maxDate: new Date() // Prevent future dates
-                });
-                
-                // Auto-focus on issuer name field when modal appears
-                const issuerNameField = document.getElementById('issuer_name');
-                if (issuerNameField) {
-                    issuerNameField.focus();
+            flatpickr("#issued_datetime", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                defaultDate: new Date(),
+                maxDate: new Date(), // Prevent future dates
+                time_24hr: true,
+                minuteIncrement: 1,
+                allowInput: true,
+                disableMobile: true, // Better experience on mobile
+                // Ensure the time is always valid and not in the future
+                onClose: function(selectedDates, dateStr, instance) {
+                    const now = new Date();
+                    const selected = selectedDates[0];
+                    // If selected date is today, ensure time is not in the future
+                    if (selected && selected.toDateString() === now.toDateString() && selected > now) {
+                        // Reset to current time if future time on today was selected
+                        instance.setDate(now);
+                    }
                 }
+            });
+            
+            // Auto-focus on issuer name field when modal appears
+            const issuerNameField = document.getElementById('issuer_name');
+            if (issuerNameField) {
+                issuerNameField.focus();
+            }
+                
+            // Confirm before returning to form
+            const backToFormBtn = document.getElementById('backToFormBtn');
+            if (backToFormBtn) {
+                backToFormBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    Swal.fire({
+                        title: 'Return to Form?',
+                        text: 'Your current progress will be preserved.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#10346C',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Yes, go back',
+                        cancelButtonText: 'Stay here'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = 'establishments.php';
+                        }
+                    });
+                });
+            }
             <?php endif; ?>
 
             // Show success message
@@ -512,14 +608,16 @@ include '../templates/header.php';
                 }).then((result) => {
                     // Clear sessionStorage on success
                     sessionStorage.removeItem('novFormData');
+                    sessionStorage.removeItem('novFormBackup');
+                    sessionStorage.removeItem('formSnapshot');
                     
                     if (result.isConfirmed) {
                         window.location.href = 'nov_form.php';
                     } else {
-            // Optional: Reset the form if user stays on page
-            document.getElementById('novForm').reset();
-        }
-    });
+                        // Optional: Reset the form if user stays on page
+                        document.getElementById('novForm').reset();
+                    }
+                });
                 <?php unset($_SESSION['success']); ?>
             <?php endif; ?>
 
@@ -533,116 +631,27 @@ include '../templates/header.php';
                 });
                 <?php unset($_SESSION['error']); ?>
             <?php endif; ?>
-        });
-
-        function resetForm() {
-    const form = document.getElementById('novForm');
-    if (form) {
-        form.reset();
-
-           // Reset custom nature field visibility
-           const natureSelect = document.getElementById('natureSelect');
-        const customInput = document.getElementById('natureCustom');
-        if (natureSelect && customInput) {
-            customInput.style.display = 'none';
-            customInput.required = false;
-            customInput.value = '';
-        }
-        
-        // Uncheck all checkboxes
-        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = false;
-        });
-    }
-}
-          // Function to clear session data
-    function clearSessionData() {
-        // Client-side session clearing
-        sessionStorage.removeItem('novFormData');
-
-        // Server-side session clearing via AJAX
-        fetch('clear_session.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            }
-        });
-    }
-     // Create a new clear_session.php file
-     const menuItems = document.querySelectorAll('.nav-link, .navbar-brand, .sidebar-link');
-    menuItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            // Check if the clicked link is not the current page
-            if (!this.classList.contains('active')) {
-                clearSessionData();
-            }
-        });
-    });
-
-    // Save form data to sessionStorage
-    const novForm = document.getElementById('novForm');
-    if (novForm) {
-        novForm.addEventListener('input', function() {
-            const formData = {};
-            const formElements = novForm.elements;
             
-            for (let i = 0; i < formElements.length; i++) {
-                const element = formElements[i];
-                
-                if (element.name) {
-                    if (element.type === 'checkbox') {
-                        if (!formData[element.name]) {
-                            formData[element.name] = [];
+            // Restore form data on page load from session backup
+            const backupData = sessionStorage.getItem('novFormBackup');
+            if (backupData && formElement) {
+                try {
+                    const parsedData = JSON.parse(backupData);
+                    
+                    // Populate regular inputs
+                    for (const [key, value] of Object.entries(parsedData)) {
+                        const field = formElement.elements[key];
+                        if (field && field.type !== 'checkbox' && field.type !== 'radio') {
+                            field.value = value;
+                        } else if (field && field.type === 'checkbox') {
+                            field.checked = parsedData[key] === 'on';
                         }
-                        if (element.checked) {
-                            formData[element.name].push(element.value);
-                        }
-                    } else if (element.type !== 'submit') {
-                        formData[element.name] = element.value;
                     }
+                } catch (error) {
+                    console.error('Error restoring form data:', error);
                 }
             }
-            
-            sessionStorage.setItem('novFormData', JSON.stringify(formData));
-        });
-
-        // Restore form data on page load
-        const savedFormData = sessionStorage.getItem('novFormData');
-        if (savedFormData) {
-            const parsedData = JSON.parse(savedFormData);
-            
-            Object.keys(parsedData).forEach(key => {
-                const field = novForm.elements[key];
-                
-                if (field) {
-                    if (field.length && field.type === 'radio') {
-                        // Handle radio buttons
-                        Array.from(field).forEach(radio => {
-                            if (radio.value === parsedData[key]) {
-                                radio.checked = true;
-                            }
-                        });
-                    } else if (field.type === 'checkbox') {
-                        // Handle checkboxes
-                        if (Array.isArray(parsedData[key])) {
-                            parsedData[key].forEach(value => {
-                                const checkbox = novForm.querySelector(`input[name="${key}[]"][value="${value}"]`);
-                                if (checkbox) checkbox.checked = true;
-                            });
-                        }
-                    } else {
-                        // Handle other input types
-                        field.value = parsedData[key];
-                    }
-                }
-            });
-        }
-    }
-
+        }); // Close the DOMContentLoaded event listener properly
     </script>
-    <?php include '../templates/footer.php'; ?>
 </body>
 </html>
-<?php
-ob_end_flush();
-?>

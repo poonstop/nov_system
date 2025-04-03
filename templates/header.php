@@ -23,6 +23,7 @@ $is_logged_in = isset($_SESSION['username']) ? true : false;
 
 // Get current page name
 $current_page = basename($_SERVER['PHP_SELF']);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">

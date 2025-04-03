@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notice of Violation System</title>
+    <title>Tracking System for Monitoring and Enforcement System Non - Compliance</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Favicon (tab logo) -->
     <link rel="icon" href="../images/dti-logo.ico" type="../images/dti-logo.ico">
@@ -179,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
         <img src="../images/dti-logo.png" alt="DTI Logo" class="logo-img">
         <img src="../images/Bagong-Pilipinas-Logo-1200x1250.png" alt="Bagong Pilipinas Logo" class="logo-img">
     </div>
-    <div class="header-title">Notice of Violation Monitoring System</div>
+    <div class="header-title">Tracking System for Monitoring and Enforcement System Non - Compliance</div>
     <div class="time-display" id="current-time">Loading time...</div>
     <h1 class="text-center">Login</h1>
     <?php if ($login_error): ?>

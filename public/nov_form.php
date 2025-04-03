@@ -289,55 +289,101 @@ $result = $conn->query($query);
 
 
 <script>
-     function openViewModal(id) {
-        // Find the row with the matching data-id
-        const row = document.querySelector(`tr[data-id="${id}"]`);
-         // Check if row exists
-        if (!row) {
-            console.error('Row not found for ID:', id);
-            return;
-        }
+    console.log('Script loaded');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded');
+    
+    // Add event listeners to all edit and view buttons
+    const viewButtons = document.querySelectorAll('.btn-primary');
+    const editButtons = document.querySelectorAll('.btn-secondary');
+    
+    console.log('View buttons found:', viewButtons.length);
+    console.log('Edit buttons found:', editButtons.length);
+});
+    function openViewModal(id) {
+    console.log('Opening view modal for ID:', id);
+    
+    // Find the row with the matching data-id
+    const row = document.querySelector(`tr[data-id="${id}"]`);
+    
+    // Check if row exists
+    if (!row) {
+        console.error('Row not found for ID:', id);
+        return;
+    }
 
-        const viewModal = document.getElementById('viewModal');
-        const viewModalContent = document.getElementById('viewModalContent');
+    const viewModal = document.getElementById('viewModal');
+    if (!viewModal) {
+        console.error('View modal element not found');
+        return;
+    }
+    
+    const viewModalContent = document.getElementById('viewModalContent');
+    if (!viewModalContent) {
+        console.error('View modal content element not found');
+        return;
+    }
         
         // Construct detailed view content
         viewModalContent.innerHTML = `
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h5>Establishment Details</h5>
-                        <p><strong>Name:</strong> ${row.cells[0].innerText}</p>
-                        <p><strong>Address:</strong> ${row.cells[1].innerText}</p>
-                        <p><strong>Owner/Representative:</strong> ${row.cells[2].innerText}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <h5>Violation Information</h5>
-                        <p><strong>Violations:</strong> ${row.cells[3].innerText}</p>
-                        <p><strong>Number of Violations:</strong> ${row.cells[5].innerText}</p>
-                        <p><strong>Date Created:</strong> ${row.cells[6].innerText}</p>
-                        <p><strong>Last Updated:</strong> ${row.cells[7].innerText}</p>
-                    </div>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Establishment Details</h5>
+                    <p><strong>Name:</strong> ${row.cells[0].innerText}</p>
+                    <p><strong>Address:</strong> ${row.cells[1].innerText}</p>
+                    <p><strong>Owner/Representative:</strong> ${row.cells[2].innerText}</p>
+                </div>
+                <div class="col-md-6">
+                    <h5>Violation Information</h5>
+                    <p><strong>Violations:</strong> ${row.cells[3].innerText}</p>
+                    <p><strong>Number of Violations:</strong> ${row.cells[5].innerText}</p>
+                    <p><strong>Date Created:</strong> ${row.cells[6].innerText}</p>
+                    <p><strong>Last Updated:</strong> ${row.cells[7].innerText}</p>
                 </div>
             </div>
-        `;
+        </div>
+    `;
         
         // Display the modal
         viewModal.style.display = 'block';
-    }
+        console.log('View modal should be displayed now');
+}
 
    // Edit Modal Function
    function openEditModal(id) {
-    const row = document.querySelector(`tr[data-id="${id}"]`);
-    if (!row) return;
-
-     //// Get current Manila time (UTC+8)
-     const now = new Date();
-    const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
-    const manilaDateStr = manilaTime.toISOString().slice(0, 16); // Define BEFORE using it
+   console.log('Opening edit modal for ID:', id);
     
+    const row = document.querySelector(`tr[data-id="${id}"]`);
+    if (!row) {
+        console.error('Row not found for ID:', id);
+        return;
+    }
+
     const editModal = document.getElementById('editModal');
+    if (!editModal) {
+        console.error('Edit modal element not found');
+        return;
+    }
+    
     const editModalContent = document.getElementById('editModalContent');
+    if (!editModalContent) {
+        console.error('Edit modal content element not found');
+        return;
+    }
+
+     // Get current Manila time (UTC+8)
+     const now = new Date();
+    const manilaOffset = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+    const manilaTime = new Date(now.getTime() + manilaOffset);
+     // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+    const year = manilaTime.getUTCFullYear();
+    const month = String(manilaTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(manilaTime.getUTCDate()).padStart(2, '0');
+    const hours = String(manilaTime.getUTCHours()).padStart(2, '0');
+    const minutes = String(manilaTime.getUTCMinutes()).padStart(2, '0');
+    
+    const currentDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
     
     // Get current violations from the row
     const violations = row.cells[3].innerText.split(', ');
@@ -351,11 +397,8 @@ $result = $conn->query($query);
         return `<option value="${option}" ${violations.includes(option) ? 'selected' : ''}>${option}</option>`;
     }).join('');
     
-    // Get current violations count - fixed this line
+    // Get current violations count
     const currentViolationsCount = parseInt(row.cells[5].innerText) || 0;
-    
-    // Get last updated value
-    const lastUpdatedCell = row.cells[7].innerText;
     
     editModalContent.innerHTML = `
     <form id="editForm">
@@ -381,6 +424,7 @@ $result = $conn->query($query);
                     <select class="form-control" name="violations[]" multiple id="violationsSelect" onchange="updateViolationCount()">
                         ${violationOptions}
                     </select>
+                    <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple violations</small>
                 </div>
             </div>
         </div>
@@ -392,125 +436,174 @@ $result = $conn->query($query);
                        id="numViolationsInput" value="${currentViolationsCount}" readonly>
                 </div>
             </div>
-         <div class="col-md-6">
-            <div class="form-group mb-3">
-                <label>Last Updated</label>
-                <input type="datetime-local" class="form-control" name="date_updated" value="${manilaDateStr}"readonly>
+            <div class="col-md-6">
+                <div class="form-group mb-3">
+                    <label>Last Updated</label>
+                    <input type="datetime-local" class="form-control" name="date_updated" value="${currentDateTime}" readonly>
                 </div>
             </div>
         </div>
     </form>`;
-     // Initialize the select element change handler
-     const select = editModalContent.querySelector('#violationsSelect');
-    select.addEventListener('change', function() {
-        const count = this.selectedOptions.length;
-        document.getElementById('numViolationsInput').value = count;
-    });
+     
+    const select = editModalContent.querySelector('#violationsSelect');
+    if (select) {
+        select.addEventListener('change', function() {
+            const count = this.selectedOptions.length;
+            const numViolationsInput = document.getElementById('numViolationsInput');
+            if (numViolationsInput) {
+                numViolationsInput.value = count;
+            }
+        });
+    }
     
+    // Display the modal
     editModal.style.display = 'block';
+    console.log('Edit modal should be displayed now');
 }
    
 // New function to update violation count when selection changes
-    function updateViolationCount() {
+function updateViolationCount() {
     const select = document.getElementById('violationsSelect');
     const numViolationsInput = document.getElementById('numViolationsInput');
+    
+    if (!select || !numViolationsInput) {
+        console.error('Could not find select or input elements');
+        return;
+    }
+    
     const selectedCount = select.selectedOptions.length;
     numViolationsInput.value = selectedCount;
+    console.log('Updated violation count to:', selectedCount);
 }
 
-    function formatDateForInput(displayDate) {
+function formatDateForInput(displayDate) {
+    console.log('Formatting date:', displayDate);
+    
     if (!displayDate || displayDate.includes('Invalid date') || displayDate.includes('No date')) {
-        return new Date().toISOString().slice(0, 16);
+        // Default to current time if date is invalid
+        const now = new Date();
+        return now.toISOString().slice(0, 16);
     }
     
     try {
-        // Try parsing from displayed format (Mar 31, 2025 01:13 PM)
+        // Parse date format like "Mar 31, 2025 01:13 PM"
         const months = {
-            Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',
-            Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12'
+            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+            'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
         };
         
-        const parts = displayDate.split(/[\s,:]+/);
-        if (parts.length >= 6) {
-            const month = months[parts[0]];
-            const day = parts[1].padStart(2, '0');
-            const year = parts[2];
-            let hour = parseInt(parts[3]);
-            const minute = parts[4];
-            const ampm = parts[5].toUpperCase();
+        // Split the date string into components
+        const parts = displayDate.match(/(\w+)\s+(\d+),\s+(\d+)\s+(\d+):(\d+)\s+(\w+)/);
+        if (parts) {
+            const month = months[parts[1]];
+            const day = parts[2].padStart(2, '0');
+            const year = parts[3];
+            let hour = parseInt(parts[4]);
+            const minute = parts[5];
+            const ampm = parts[6].toUpperCase();
             
+            // Convert 12-hour to 24-hour format
             if (ampm === 'PM' && hour < 12) hour += 12;
             if (ampm === 'AM' && hour === 12) hour = 0;
             
+            // Format for datetime-local input
             return `${year}-${month}-${day}T${hour.toString().padStart(2, '0')}:${minute}`;
         }
         
-        return new Date(displayDate).toISOString().slice(0, 16);
+        // If parsing fails, use current time
+        const now = new Date();
+        return now.toISOString().slice(0, 16);
     } catch (e) {
         console.error('Date parsing error:', e);
-        return new Date().toISOString().slice(0, 16);
+        const now = new Date();
+        return now.toISOString().slice(0, 16);
     }
 }
 
     // Close Modal Function
     function closeModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        console.log(`Closed modal: ${modalId}`);
+    } else {
+        console.error(`Modal not found: ${modalId}`);
+    }
+}
+
+// Add click event to close modal when clicking outside of modal content
+window.addEventListener('click', function(event) {
+    const viewModal = document.getElementById('viewModal');
+    const editModal = document.getElementById('editModal');
+    
+    if (viewModal && event.target == viewModal) {
+        viewModal.style.display = 'none';
     }
     
-    // Add click event to close modal when clicking outside of modal content
-    window.addEventListener('click', function(event) {
-        const viewModal = document.getElementById('viewModal');
-        const editModal = document.getElementById('editModal');
-        
-        if (event.target == viewModal) {
-            viewModal.style.display = 'none';
-        }
-        
-        if (event.target == editModal) {
-            editModal.style.display = 'none';
-        }
-    });
-   
+    if (editModal && event.target == editModal) {
+        editModal.style.display = 'none';
+    }
+});
+
     function saveChanges() {
+    console.log('Saving changes...');
+    
     const editForm = document.getElementById('editForm');
     if (!editForm) {
         console.error('Edit form not found!');
-        Swal.fire({
-            title: 'Error!',
-            text: 'Cannot find the form to save changes',
-            icon: 'error'
-        });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Cannot find the form to save changes',
+                icon: 'error'
+            });
+        } else {
+            alert('Error: Cannot find the form to save changes');
+        }
         return;
     }
 
-     // Get all form elements
-     const violationsSelect = document.getElementById('violationsSelect');
+    // Get all form elements
+    const violationsSelect = document.getElementById('violationsSelect');
     const numViolationsInput = document.getElementById('numViolationsInput');
     
     if (!violationsSelect || !numViolationsInput) {
         console.error('Form elements not found!');
-        Swal.fire({
-            title: 'Error!',
-            text: 'Cannot find required form elements',
-            icon: 'error'
-        });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Cannot find required form elements',
+                icon: 'error'
+            });
+        } else {
+            alert('Error: Cannot find required form elements');
+        }
         return;
     }
 
-     // Get current Manila time (UTC+8)
-     const now = new Date();
-     const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
-     
-    // Format for MySQL (YYYY-MM-DD HH:MM:SS)
-    const year = manilaTime.getUTCFullYear();
-    const month = String(manilaTime.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(manilaTime.getUTCDate()).padStart(2, '0');
-    const hours = String(manilaTime.getUTCHours()).padStart(2, '0');
-    const minutes = String(manilaTime.getUTCMinutes()).padStart(2, '0');
-    const seconds = String(manilaTime.getUTCSeconds()).padStart(2, '0');
+   
+    // Get current date and time in Manila timezone (UTC+8)
+    const now = new Date();
+    const manilaOffset = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+    const manilaTime = new Date(now.getTime() + manilaOffset);
     
-    const mysqlDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        // Fallback to current time if needed
+        const year = manilaTime.getUTCFullYear();
+        const month = String(manilaTime.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(manilaTime.getUTCDate()).padStart(2, '0');
+        const hours = String(manilaTime.getUTCHours()).padStart(2, '0');
+        const minutes = String(manilaTime.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(manilaTime.getUTCSeconds()).padStart(2, '0');
+    
+        const formattedDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 
+        // Update the date_updated input field to show the current time
+        const dateUpdatedInput = editForm.querySelector('[name="date_updated"]');
+        if (dateUpdatedInput) {
+        const localDateTimeFormat = `${year}-${month}-${day}T${hours}:${minutes}`;
+        dateUpdatedInput.value = localDateTimeFormat;
+    }
+    
     // Prepare form data with validation
     const formData = {
         id: editForm.querySelector('[name="id"]').value,
@@ -521,13 +614,8 @@ $result = $conn->query($query);
                       .map(opt => opt.value)
                       .join(', '),
         num_violations: parseInt(numViolationsInput.value) || 0,
-        date_updated: mysqlDateTime // Always use current date/time
+        date_updated: formattedDateTime
     };
-
-    const dateUpdatedInput = editForm.querySelector('[name="date_updated"]');
-     if (dateUpdatedInput?.value) {
-         formData.date_updated = dateUpdatedInput.value.replace('T', ' ') + ':00';
-    }
 
     // Debug output
     console.log('Form data being submitted:', formData);
@@ -563,15 +651,21 @@ $result = $conn->query($query);
             throw new Error(data.message || 'Update failed without error message');
         }
         
-        Swal.fire({
-            title: 'Success!',
-            text: 'Changes saved successfully',
-            icon: 'success',
-            confirmButtonText: 'OK'
-        }).then(() => {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Success!',
+                text: 'Changes saved successfully',
+                icon: 'success',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                closeModal('editModal');
+                location.reload(); // Refresh to show updated data
+            });
+        } else {
+            alert('Success: Changes saved successfully');
             closeModal('editModal');
             location.reload(); // Refresh to show updated data
-        });
+        }
     })
     .catch(error => {
         clearTimeout(timeoutId);
@@ -584,17 +678,21 @@ $result = $conn->query($query);
             errorMessage = 'Network connection failed. Please check your internet connection.';
         }
 
-        Swal.fire({
-            title: 'Error!',
-            text: `Failed to save changes: ${errorMessage}`,
-            icon: 'error',
-            confirmButtonText: 'OK'
-        });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Error!',
+                text: `Failed to save changes: ${errorMessage}`,
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+        } else {
+            alert(`Error: Failed to save changes: ${errorMessage}`);
+        }
     });
 }
 
     function filterTable() {
-        const searchInput = document.getElementById('searchInput');
+    const searchInput = document.getElementById('searchInput');
     const table = document.getElementById('recordsTable');
     if (!table) {
         console.error('Table not found');
@@ -632,37 +730,37 @@ $result = $conn->query($query);
         noResultsDiv.style.display = visibleRowCount === 0 ? 'block' : 'none';
     }
 }
-    // Previous sortTable function remains the same
-    function sortTable(columnIndex) {
-        const table = document.getElementById('recordsTable');
-        const rows = Array.from(table.rows).slice(1);
-        const isAscending = table.getAttribute('data-sort') !== 'asc';
-        const multiplier = isAscending ? 1 : -1;
 
-        // Previous sorting logic remains the same
-        if (columnIndex === 5) {
-            rows.sort((a, b) => {
-                const aNum = parseInt(a.cells[columnIndex].innerText);
-                const bNum = parseInt(b.cells[columnIndex].innerText);
-                return (aNum - bNum) * multiplier;
-            });
-        } 
-        else if (columnIndex === 6) {
-            rows.sort((a, b) => {
-                const aDate = new Date(a.cells[columnIndex].innerText);
-                const bDate = new Date(b.cells[columnIndex].innerText);
-                return (aDate - bDate) * multiplier;
-            });
-        } 
-        else {
-            rows.sort((a, b) => {
-                const aText = a.cells[columnIndex].innerText.toLowerCase();
-                const bText = b.cells[columnIndex].innerText.toLowerCase();
-                return aText.localeCompare(bText) * multiplier;
-            });
-        }
+function sortTable(columnIndex) {
+    const table = document.getElementById('recordsTable');
+    const rows = Array.from(table.rows).slice(1);
+    const isAscending = table.getAttribute('data-sort') !== 'asc';
+    const multiplier = isAscending ? 1 : -1;
 
-        rows.forEach(row => table.appendChild(row));
-        table.setAttribute('data-sort', isAscending ? 'asc' : 'desc');
+    // Previous sorting logic remains the same
+    if (columnIndex === 5) {
+        rows.sort((a, b) => {
+            const aNum = parseInt(a.cells[columnIndex].innerText);
+            const bNum = parseInt(b.cells[columnIndex].innerText);
+            return (aNum - bNum) * multiplier;
+        });
+    } 
+    else if (columnIndex === 6 || columnIndex === 7) {
+        rows.sort((a, b) => {
+            const aDate = new Date(a.cells[columnIndex].innerText);
+            const bDate = new Date(b.cells[columnIndex].innerText);
+            return (aDate - bDate) * multiplier;
+        });
+    } 
+    else {
+        rows.sort((a, b) => {
+            const aText = a.cells[columnIndex].innerText.toLowerCase();
+            const bText = b.cells[columnIndex].innerText.toLowerCase();
+            return aText.localeCompare(bText) * multiplier;
+        });
     }
+
+    rows.forEach(row => table.appendChild(row));
+    table.setAttribute('data-sort', isAscending ? 'asc' : 'desc');
+}
 </script>
