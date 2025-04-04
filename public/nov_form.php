@@ -142,6 +142,26 @@ $result = $conn->query($query);
         background-color: #f8f9fa;
         border-radius: 8px;
     }
+    .sort-header:hover {
+    background-color: rgba(16, 52, 108, 0.1);
+    transition: background-color 0.2s ease;
+}
+
+.sort-icon {
+    margin-left: 8px;
+    font-size: 0.8em;
+    color: #10346C;
+}
+
+.sort-asc {
+    color: #10346C;
+    background-color: rgba(16, 52, 108, 0.1);
+}
+
+.sort-desc {
+    color: #10346C;
+    background-color: rgba(16, 52, 108, 0.1);
+}
 </style>
 
 <div class="container">
@@ -166,17 +186,18 @@ $result = $conn->query($query);
             <table class="table table-striped table-bordered" id="recordsTable">
                 <!-- Previous table structure remains the same -->
                 <thead>
-                    <tr>
-                        <th onclick="sortTable(0)" style="cursor: pointer;">Establishment</th>
-                        <th onclick="sortTable(1)" style="cursor: pointer;">Address</th>
-                        <th onclick="sortTable(2)" style="cursor: pointer;">Owner/Representative</th>  
-                        <th onclick="sortTable(3)" style="cursor: pointer;">Violations</th>
-                        <th>Actions</th>
-                        <th onclick="sortTable(4)" style="cursor: pointer;">No. of Violations</th>
-                        <th onclick="sortTable(5)" style="cursor: pointer;">Date Created</th>
-                         <th onclick="sortTable(6)" style="cursor: pointer;">Last Updated</th>
-                    </tr>
-                </thead>
+    <tr>
+     <th class="sort-header" data-column="0">Establishment <i class="sort-icon fa-solid fa-sort"></i></th>
+        <th class="sort-header" data-column="1">Address <i class="sort-icon fa-solid fa-sort"></i></th>
+        <th class="sort-header" data-column="2">Owner/Representative <i class="sort-icon fa-solid fa-sort"></i></th>  
+        <th class="sort-header" data-column="3">Violations <i class="sort-icon fa-solid fa-sort"></i></th>
+        <th>Actions</th>
+        <th class="sort-header" data-column="4">No. of Violations <i class="sort-icon fa-solid fa-sort"></i></th>
+        <th class="sort-header" data-column="5">Date Created <i class="sort-icon fa-solid fa-sort"></i></th>
+        <th class="sort-header" data-column="6">Last Updated <i class="sort-icon fa-solid fa-sort"></i></th>
+    </tr>
+</thead>
+
                 <tbody>
                     <?php while ($row = $result->fetch_assoc()): ?>
                         <tr data-id="<?= $row['id'] ?>">
@@ -228,25 +249,18 @@ $result = $conn->query($query);
 </td>
     <td>
     <?php 
-    if (!empty($row['date_updated']) && $row['date_updated'] != '0000-00-00 00:00:00') {
-        try {
-            // Create DateTime object (database stores UTC)
-            $date = new DateTime($row['date_updated'], new DateTimeZone('UTC'));
-            // Convert to Manila time
-            $date->setTimezone(new DateTimeZone('Asia/Manila'));
-            // Format for display
-            echo $date->format('M d, Y h:i A');
-            
-            /* Debug output */
-            error_log("Time Conversion - UTC: {$row['date_updated']} → Manila: ".$date->format('Y-m-d H:i:s'));
-        } catch (Exception $e) {
-            echo 'Invalid date';
-            error_log("Date Error: ".$e->getMessage());
-        }
-    } else {
-        echo 'No date';
+if (!empty($row['date_updated']) && $row['date_updated'] != '0000-00-00 00:00:00') {
+    try {
+        $date = new DateTime($row['date_updated'], new DateTimeZone('UTC'));
+        $date->setTimezone(new DateTimeZone('Asia/Manila'));
+        echo $date->format('M d, Y h:i A');
+    } catch (Exception $e) {
+        echo 'Invalid date';
     }
-    ?>
+} else {
+    echo 'No date';
+}
+?>
 </td>
 </tr>
     <?php endwhile; ?>
@@ -439,7 +453,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="col-md-6">
                 <div class="form-group mb-3">
                     <label>Last Updated</label>
-                    <input type="datetime-local" class="form-control" name="date_updated" value="${currentDateTime}" readonly>
+                    <input type="datetime-local" class="form-control" name="" value="${currentDateTime}" readonly>
                 </div>
             </div>
         </div>
@@ -545,7 +559,7 @@ window.addEventListener('click', function(event) {
     }
 });
 
-    function saveChanges() {
+function saveChanges() {
     console.log('Saving changes...');
     
     const editForm = document.getElementById('editForm');
@@ -563,7 +577,7 @@ window.addEventListener('click', function(event) {
         return;
     }
 
-    // Get all form elements
+    // Get form elements
     const violationsSelect = document.getElementById('violationsSelect');
     const numViolationsInput = document.getElementById('numViolationsInput');
     
@@ -581,29 +595,30 @@ window.addEventListener('click', function(event) {
         return;
     }
 
-   
     // Get current date and time in Manila timezone (UTC+8)
     const now = new Date();
     const manilaOffset = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
     const manilaTime = new Date(now.getTime() + manilaOffset);
     
-        // Fallback to current time if needed
-        const year = manilaTime.getUTCFullYear();
-        const month = String(manilaTime.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(manilaTime.getUTCDate()).padStart(2, '0');
-        const hours = String(manilaTime.getUTCHours()).padStart(2, '0');
-        const minutes = String(manilaTime.getUTCMinutes()).padStart(2, '0');
-        const seconds = String(manilaTime.getUTCSeconds()).padStart(2, '0');
-    
-        const formattedDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    const year = manilaTime.getUTCFullYear();
+    const month = String(manilaTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(manilaTime.getUTCDate()).padStart(2, '0');
+    const hours = String(manilaTime.getUTCHours()).padStart(2, '0');
+    const minutes = String(manilaTime.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(manilaTime.getUTCSeconds()).padStart(2, '0');
 
-        // Update the date_updated input field to show the current time
-        const dateUpdatedInput = editForm.querySelector('[name="date_updated"]');
-        if (dateUpdatedInput) {
-        const localDateTimeFormat = `${year}-${month}-${day}T${hours}:${minutes}`;
-        dateUpdatedInput.value = localDateTimeFormat;
-    }
+    const formattedDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     
+    // Format for display in the table (e.g., "Apr 04, 2025 12:30 PM")
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    let displayHours = manilaTime.getUTCHours();
+    const ampm = displayHours >= 12 ? 'PM' : 'AM';
+    displayHours = displayHours % 12;
+    displayHours = displayHours ? displayHours : 12; // Convert 0 to 12
+    const displayMinutes = String(manilaTime.getUTCMinutes()).padStart(2, '0');
+    
+    const displayDateTime = `${monthNames[manilaTime.getUTCMonth()]} ${manilaTime.getUTCDate()}, ${year} ${displayHours}:${displayMinutes} ${ampm}`;
+
     // Prepare form data with validation
     const formData = {
         id: editForm.querySelector('[name="id"]').value,
@@ -614,7 +629,7 @@ window.addEventListener('click', function(event) {
                       .map(opt => opt.value)
                       .join(', '),
         num_violations: parseInt(numViolationsInput.value) || 0,
-        date_updated: formattedDateTime
+        date_updated: formattedDateTime  // Use date_updated as in the database
     };
 
     // Debug output
@@ -633,22 +648,44 @@ window.addEventListener('click', function(event) {
         body: JSON.stringify(formData),
         signal: controller.signal
     })
-    .then(async response => {
+    .then(response => {
         clearTimeout(timeoutId);
         
+        // First check if response is ok
         if (!response.ok) {
-            // Try to get error details from response
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(
-                errorData.message || 
-                `Server responded with status ${response.status}: ${response.statusText}`
-            );
+            return response.text().then(text => {
+                console.error('Server response:', text);
+                throw new Error(`Server responded with status ${response.status}: ${response.statusText}`);
+            });
         }
-        return response.json();
+        
+        // Try to parse as JSON
+        return response.text().then(text => {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('Failed to parse JSON:', text);
+                throw new Error('Invalid JSON response from server');
+            }
+        });
     })
     .then(data => {
         if (!data.success) {
             throw new Error(data.message || 'Update failed without error message');
+        }
+        
+        // Find and update the table row instead of reloading the page
+        const row = document.querySelector(`tr[data-id="${formData.id}"]`);
+        if (row) {
+            // Update table cells with new data
+            row.cells[0].innerText = capitalizeWords(formData.name);
+            row.cells[1].innerText = capitalizeWords(formData.address);
+            row.cells[2].innerText = capitalizeWords(formData.owner_rep);
+            row.cells[3].innerText = formData.violations;
+            row.cells[5].innerText = formData.num_violations;
+            row.cells[7].innerText = displayDateTime; // The "Last Updated" cell
+            
+            console.log('Updated row with new date_updated timestamp:', displayDateTime);
         }
         
         if (typeof Swal !== 'undefined') {
@@ -659,12 +696,10 @@ window.addEventListener('click', function(event) {
                 confirmButtonText: 'OK'
             }).then(() => {
                 closeModal('editModal');
-                location.reload(); // Refresh to show updated data
             });
         } else {
             alert('Success: Changes saved successfully');
             closeModal('editModal');
-            location.reload(); // Refresh to show updated data
         }
     })
     .catch(error => {
@@ -689,6 +724,13 @@ window.addEventListener('click', function(event) {
             alert(`Error: Failed to save changes: ${errorMessage}`);
         }
     });
+}
+
+// Helper function to capitalize first letter of each word
+function capitalizeWords(string) {
+    return string.toLowerCase().split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
 }
 
     function filterTable() {
@@ -730,37 +772,61 @@ window.addEventListener('click', function(event) {
         noResultsDiv.style.display = visibleRowCount === 0 ? 'block' : 'none';
     }
 }
+    // Add click handlers to sort headers
+    document.querySelectorAll('.sort-header').forEach(header => {
+        header.style.cursor = 'pointer';
+        header.addEventListener('click', () => {
+            const columnIndex = header.getAttribute('data-column');
+            sortTable(columnIndex);
+        });
+    });
 
-function sortTable(columnIndex) {
+    function sortTable(columnIndex) {
     const table = document.getElementById('recordsTable');
-    const rows = Array.from(table.rows).slice(1);
-    const isAscending = table.getAttribute('data-sort') !== 'asc';
-    const multiplier = isAscending ? 1 : -1;
+    const headers = document.querySelectorAll('.sort-header');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
 
-    // Previous sorting logic remains the same
-    if (columnIndex === 5) {
-        rows.sort((a, b) => {
-            const aNum = parseInt(a.cells[columnIndex].innerText);
-            const bNum = parseInt(b.cells[columnIndex].innerText);
-            return (aNum - bNum) * multiplier;
-        });
-    } 
-    else if (columnIndex === 6 || columnIndex === 7) {
-        rows.sort((a, b) => {
-            const aDate = new Date(a.cells[columnIndex].innerText);
-            const bDate = new Date(b.cells[columnIndex].innerText);
-            return (aDate - bDate) * multiplier;
-        });
-    } 
-    else {
-        rows.sort((a, b) => {
-            const aText = a.cells[columnIndex].innerText.toLowerCase();
-            const bText = b.cells[columnIndex].innerText.toLowerCase();
-            return aText.localeCompare(bText) * multiplier;
-        });
-    }
+    // Determine new sort direction
+    const currentHeader = headers[columnIndex];
+    const currentSort = currentHeader.getAttribute('data-sort') || 'none';
+    const newSort = currentSort === 'asc' ? 'desc' : 'asc';
 
-    rows.forEach(row => table.appendChild(row));
-    table.setAttribute('data-sort', isAscending ? 'asc' : 'desc');
+    // Reset all headers
+    headers.forEach(header => {
+        header.setAttribute('data-sort', 'none');
+        const icon = header.querySelector('.sort-icon');
+        icon.className = 'sort-icon fa-solid fa-sort';
+        header.classList.remove('sort-asc', 'sort-desc');
+    });
+
+    // Update current header
+    currentHeader.setAttribute('data-sort', newSort);
+    const sortIcon = currentHeader.querySelector('.sort-icon');
+    sortIcon.className = `sort-icon fa-solid ${newSort === 'asc' ? 'fa-sort-up' : 'fa-sort-down'}`;
+    currentHeader.classList.add(`sort-${newSort}`);
+
+    // Sort the rows array
+    rows.sort((a, b) => {
+        const aText = a.cells[columnIndex].textContent.trim();
+        const bText = b.cells[columnIndex].textContent.trim();
+
+        // Try parsing as float to support number sorting
+        const aNum = parseFloat(aText);
+        const bNum = parseFloat(bText);
+        const isNumeric = !isNaN(aNum) && !isNaN(bNum);
+
+        if (isNumeric) {
+            return newSort === 'asc' ? aNum - bNum : bNum - aNum;
+        } else {
+            return newSort === 'asc'
+                ? aText.localeCompare(bText)
+                : bText.localeCompare(aText);
+        }
+    });
+
+    // Clear existing rows and append sorted ones
+    tbody.innerHTML = '';
+    rows.forEach(row => tbody.appendChild(row));
 }
 </script>

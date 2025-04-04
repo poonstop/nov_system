@@ -1,13 +1,9 @@
 <?php
 header('Content-Type: application/json');
-include __DIR__ . '/../connection.php';
+error_reporting(0); // Disable error display
+ob_start(); // Start output buffering
 
-// Enable error reporting for debugging (remove in production)
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Set default timezone to match your application needs
-date_default_timezone_set('Asia/Manila'); // Adjust to your preferred timezone
+$response = ['success' => false, 'message' => 'An unknown error occurred']; // Default response
 
 try {
     // Get and validate JSON input
@@ -28,6 +24,7 @@ try {
             throw new Exception("Missing required field: $field");
         }
     }
+    require_once __DIR__ . '/../connection.php';
 
     // Sanitize and validate data
     $id = filter_var($data['id'], FILTER_VALIDATE_INT);
@@ -51,19 +48,11 @@ try {
     }
 
     // Improved date handling with timezone support
-    $dateUpdated = new DateTime('now');
-    if (!empty($data['date_updated'])) {
-        try {
-            $inputDate = new DateTime($data['date_updated']);
-            $dateUpdated = $inputDate;
-        } catch (Exception $e) {
-            // Log the error but continue with current time
-            error_log("Date parsing error: " . $e->getMessage());
-        }
-    }
+    date_default_timezone_set('Asia/Manila');
+    $dateUpdated = new DateTime('now', new DateTimeZone('Asia/Manila'));
     $dateUpdatedStr = $dateUpdated->format('Y-m-d H:i:s');
 
-    // Prepare and execute SQL
+    // Prepare and execute SQL - FIXED bind_param order and parameter count
     $stmt = $conn->prepare("
         UPDATE establishments 
         SET 
@@ -71,22 +60,21 @@ try {
             address = ?,
             owner_representative = ?,
             violations = ?,
-            num_violations = ?,
             date_updated = ?
-        WHERE id = ?
+            WHERE id = ?
     ");
 
     if (!$stmt) {
         throw new Exception('Database prepare error: ' . $conn->error);
     }
 
+    // Fixed bind_param types and parameters
     $stmt->bind_param(
-        "ssssisi",
+        "sssssi", // String, String, String, String, String, Integer
         $name,
-        $address,
+        $address,   
         $ownerRep,
         $violations,
-        $numViolations,
         $dateUpdatedStr,
         $id
     );
@@ -101,21 +89,20 @@ try {
     }
 
     // Success response with updated timestamp
-    echo json_encode([
+    $response = [
         'success' => true,
         'message' => 'Record updated successfully',
         'updated_id' => $id,
         'date_updated' => $dateUpdatedStr,
         'formatted_date' => $dateUpdated->format('F j, Y, g:i a') // Human-readable format
-    ]);
+    ];
 
-} catch (Exception $e) {
-    http_response_code(400);
-    echo json_encode([
+} catch(Exception $e) {
+    http_response_code(500);
+    $response = [
         'success' => false,
-        'message' => $e->getMessage(),
-        'error_details' => $e->getFile() . ':' . $e->getLine()
-    ]);
+        'message' => 'Error: ' . $e->getMessage()
+    ];
 } finally {
     // Clean up resources
     if (isset($stmt) && $stmt) {
@@ -124,5 +111,10 @@ try {
     if (isset($conn) && $conn) {
         $conn->close();
     }
+    
+    // End output buffering and send the response
+    ob_end_clean();
+    echo json_encode($response);
+    exit();
 }
 ?>
