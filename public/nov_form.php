@@ -13,13 +13,12 @@ $query = "
         name, 
         address, 
         IFNULL(owner_representative, 'Not specified') AS owner_rep,
-        GROUP_CONCAT(violations SEPARATOR ', ') AS all_violations,
-        COUNT(violations) AS num_violations,
+        violations AS all_violations,
+        1 AS num_violations,
         date_created,
         date_updated,
         nov_files 
     FROM establishments 
-    GROUP BY name, address, owner_representative
     ORDER BY date_updated DESC
 ";
 $result = $conn->query($query);
@@ -629,7 +628,7 @@ function saveChanges() {
                       .map(opt => opt.value)
                       .join(', '),
         num_violations: parseInt(numViolationsInput.value) || 0,
-        date_updated: formattedDateTime  // Use date_updated as in the database
+        date_updated: formattedDateTime  // Make sure this matches your PHP field name
     };
 
     // Debug output
