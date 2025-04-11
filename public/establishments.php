@@ -1,4 +1,4 @@
-    <?php
+<?php
     // Start output buffering at the VERY TOP
     ob_start();
     session_start();
@@ -220,133 +220,7 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-        <style>
-            body {
-                background: linear-gradient(to bottom, #ffffff 0%, #10346C 100%);
-            }
-            .nov-form { 
-                background: #f8f9fa; 
-                padding: 20px; 
-                border-radius: 8px; 
-            }
-            
-            /* Enhanced Placeholder Styles */
-            .form-control, .form-select {
-                position: relative;
-                transition: all 0.3s ease;
-            }
-            
-            .form-control::placeholder, .form-select {
-                color: #6c757d;
-                opacity: 0.7;
-                transition: all 0.3s ease;
-            }
-            
-            .form-control:focus, .form-select:focus {
-                box-shadow: 0 0 0 0.25rem rgba(16, 52, 108, 0.25);
-                border-color: #10346C;
-            }
-            
-            /* Placeholder Animation */
-            @keyframes placeholderAnimation {
-                0% { transform: translateX(0); }
-                25% { transform: translateX(-5px); }
-                75% { transform: translateX(5px); }
-                100% { transform: translateX(0); }
-            }
-            
-            .form-control:focus::placeholder, .form-select:focus {
-                animation: placeholderAnimation 0.3s ease;
-                color: #10346C;
-                opacity: 0.8;
-            }
-            
-            /* Floating Label Effect */
-            .form-floating label {
-                transition: all 0.3s ease;
-                color: #6c757d;
-            }
-            
-            .form-control:focus + label,
-            .form-control:not(:placeholder-shown) + label {
-                color: #10346C;
-                transform: scale(0.85) translateY(-1.5rem) translateX(-0.15rem);
-            }
-            
-            /* Responsive Design for Placeholders */
-            @media (max-width: 768px) {
-                .form-control::placeholder, .form-select {
-                    font-size: 0.9rem;
-                }
-            }
-            
-            /* Additional existing styles */
-            .violation-list { list-style: none; padding-left: 0; }
-            .file-link { color: #0d6efd; text-decoration: underline; }
-            .custom-nature { 
-                display: none; 
-                margin-top: 0.5rem;
-                animation: fadeIn 0.3s ease;
-            }
-            
-            @keyframes fadeIn {
-                from { opacity: 0; transform: translateY(-10px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-            
-            .form-section {
-                padding: 1.5rem;
-                border: 1px solid #dee2e6;
-                border-radius: 0.5rem;
-                margin-bottom: 1.5rem;
-                background: white;
-                transition: all 0.3s ease;
-            }
-            
-            .form-section:hover {
-                box-shadow: 0 4px 6px rgba(16, 52, 108, 0.1);
-                transform: translateY(-5px);
-            }
-            
-            .section-title {
-                color: #10346C;
-                border-bottom: 2px solid #10346C;
-                padding-bottom: 0.5rem;
-                font-weight: 600;
-            }
-            
-            /* Form data snapshot styles */
-            .form-snapshot {
-                background-color: rgba(255, 255, 255, 0.95);
-                border: 2px solid #10346C;
-                border-radius: 8px;
-                padding: 15px;
-                margin-bottom: 15px;
-                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            }
-            
-            .snapshot-title {
-                color: #10346C;
-                font-weight: 600;
-                margin-bottom: 10px;
-                border-bottom: 1px solid #dee2e6;
-                padding-bottom: 8px;
-            }
-            
-            .snapshot-item {
-                margin-bottom: 5px;
-                font-size: 0.9rem;
-            }
-            
-            .snapshot-label {
-                font-weight: 600;
-                color: #495057;
-            }
-            
-            .snapshot-value {
-                color: #212529;
-            }
-        </style>
+        <link rel="stylesheet" href="css/nov-styles.css">
     </head>
     <body>
         <div class="container py-5">
@@ -575,24 +449,17 @@
                                     </div>
                                 </div>
                             </div>
-                            
-                            <button type="button" class="btn btn-secondary" id="addProductBtn">Add Product</button>
-                        </div>
-                        
-                        <!-- Hidden fields to carry over all previous form data -->
-                        <input type="hidden" id="allFormData" name="all_form_data">
-                        
-                        <div class="text-end mt-4">
-                            <button type="button" class="btn btn-secondary" id="backToStatusBtn">Back</button>
-                            <button type="button" class="btn btn-primary" id="submitInventoryBtn">Submit</button>
-                        </div>
-                    </form>
-                </div>
+                            </div>
+                    
+                    <!-- Hidden fields to carry over all previous form data -->
+                    <input type="hidden" id="allFormData" name="all_form_data">
+                    
+                    <!-- Removed Back and Submit buttons -->
+                </form>
             </div>
         </div>
     </div>
-
-
+</div>
 
         <!-- Violations Modal -->
     <div class="modal fade" id="violationsModal" tabindex="-1" aria-labelledby="violationsModalLabel" aria-hidden="true">
@@ -811,9 +678,15 @@
             }
         });
     }
-                const proceedBtn = document.getElementById('proceedToViolationsBtn');
-                if (proceedBtn) {
-                proceedBtn.addEventListener('click', function(e) {
+
+    // Ensure the button exists
+    const proceedBtn = document.getElementById('proceedToViolationsBtn');
+    if (proceedBtn) {
+        console.log('Proceed button found');
+        
+        proceedBtn.addEventListener('click', function(e) {
+            console.log('Proceed button clicked');
+            
             // Validate required fields before proceeding
             const formElement = document.getElementById('novForm');
             const requiredFields = formElement.querySelectorAll('[required]');
@@ -831,19 +704,21 @@
             if (isValid) {
                 // Capture form data
                 const formData = new FormData(formElement);
+                console.log('Form valid, opening violations modal');
                 
-                    // Populate the violations modal with form data
+                // Populate the violations modal with form data
                 document.getElementById('hiddenEstablishment').value = formData.get('establishment');
                 document.getElementById('hiddenOwnerRep').value = formData.get('owner_representative');
-                document.getElementById('hiddenAddress').value = formData.get('address');
+                document.getElementById('hiddenAddress').value = formData.get('address'); 
                 document.getElementById('hiddenNatureSelect').value = formData.get('nature_select');
                 document.getElementById('hiddenNatureCustom').value = formData.get('nature_custom') || '';
                 document.getElementById('hiddenProducts').value = formData.get('products');
-                    
-                    // Show the modal
-                    const violationsModal = new bootstrap.Modal(document.getElementById('violationsModal'));
-                    violationsModal.show();
-                } else {
+                
+                // Show the modal
+                const violationsModal = new bootstrap.Modal(document.getElementById('violationsModal'));
+                violationsModal.show();
+            } else {
+                console.log('Form validation failed');
                 Swal.fire({
                     title: 'Missing Information',
                     text: 'Please fill in all required fields before proceeding.',
@@ -852,7 +727,10 @@
                 });
             }
         });
+    } else {
+        console.error('Proceed button not found in DOM');
     }
+});
 
                 
                 // Handle the violations form submission
@@ -977,86 +855,6 @@
         });
     }
 
-    // Add Product Button Functionality
-    let productCounter = 1;
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const addProductBtn = document.getElementById('addProductBtn');
-        if (addProductBtn) {
-            addProductBtn.addEventListener('click', function() {
-                const container = document.getElementById('productsContainer');
-                const newProductItem = document.createElement('div');
-                newProductItem.className = 'product-item border p-3 mb-3 rounded';
-                newProductItem.innerHTML = `
-                    <div class="d-flex justify-content-between mb-2">
-                        <h6>Product Item #${productCounter + 1}</h6>
-                        <button type="button" class="btn btn-sm btn-danger remove-product">
-                            <i class="fas fa-times"></i> Remove
-                        </button>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-8">
-                            <label for="product_name">Product:</label>
-                            <input type="text" class="form-control" name="products[${productCounter}][name]" required>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="d-flex mt-4">
-                                <div class="form-check me-4">
-                                    <input class="form-check-input" type="checkbox" name="products[${productCounter}][sealed]" value="1">
-                                    <label class="form-check-label">Sealed</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="products[${productCounter}][withdrawn]" value="1">
-                                    <label class="form-check-label">Withdrawn</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-2">
-                        <label for="brand_description">Brand Description:</label>
-                        <textarea class="form-control" name="products[${productCounter}][description]" rows="3"></textarea>
-                    </div>
-                    
-                    <div class="row mb-2">
-                        <div class="col-md-4">
-                            <label for="price">Price:</label>
-                            <input type="number" class="form-control" name="products[${productCounter}][price]" step="0.01">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="pieces">No. of Pieces:</label>
-                            <input type="number" class="form-control" name="products[${productCounter}][pieces]">
-                        </div>
-                        <div class="col-md-4">
-                            <div class="d-flex mt-4">
-                                <div class="form-check me-4">
-                                    <input class="form-check-input" type="checkbox" name="products[${productCounter}][dao_violation]" value="1">
-                                    <label class="form-check-label">Violation of DAO</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="products[${productCounter}][other_violation]" value="1">
-                                    <label class="form-check-label">Other Violation</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-2">
-                        <label for="remarks">Product Remarks:</label>
-                        <input type="text" class="form-control" name="products[${productCounter}][remarks]">
-                    </div>
-                `;
-                
-                container.appendChild(newProductItem);
-                productCounter++;
-                
-                // Add event listener to remove button
-                const removeBtn = newProductItem.querySelector('.remove-product');
-                removeBtn.addEventListener('click', function() {
-                    container.removeChild(newProductItem);
-                });
-            });
-        }
         
         // Inventory form submission
         const submitInventoryBtn = document.getElementById('submitInventoryBtn');
@@ -1149,7 +947,7 @@
                 statusModal.show();
             });
         }
-    });
+    
                 // Form data capture before navigation
                 const formElement = document.getElementById('novForm');
                 const submitBtn = document.getElementById('submitFormBtn');
@@ -1217,7 +1015,7 @@
                         console.error('Error restoring form data:', error);
                     }
                 }
-            }); // Close the DOMContentLoaded event listener properly
+    
             function getCurrentDateTime() {
     const now = new Date();
     const year = now.getFullYear();
