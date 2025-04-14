@@ -2,6 +2,7 @@
 session_start();
 include __DIR__ . '/../connection.php';
 
+// Check for logout message
 if (isset($_SESSION['logout_message'])) {
     echo '<script>
     Swal.fire({
@@ -14,48 +15,67 @@ if (isset($_SESSION['logout_message'])) {
     </script>';
     unset($_SESSION['logout_message']);
 }
+
+// Check for session timeout
 if (isset($_GET['timeout'])) {
     $timeout_message = "Your session has expired due to inactivity. Please log in again.";
 }
 
 // Redirect if already logged in
-if (isset($_SESSION['username'])) {
-    header("Location: index.php");
+if (isset($_SESSION['user_id'])) {
+    // Redirect based on existing session level
+    if ($_SESSION['user_level'] === 'inspector') {
+        header("Location: inspector.php");
+    } else {
+        header("Location: index.php");
+    }
     exit();
 }
 
-$login_error = "";
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
+$error_message = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username']);
     $password = trim($_POST['password']);
 
-    // Validate inputs
     if (empty($username) || empty($password)) {
-        $login_error = "Please fill in all fields";
+        $error_message = "Username and password are required";
     } else {
-        $stmt = $conn->prepare("SELECT id, username, password, fullname FROM users WHERE username = ?");
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        try {
+            // Check if user exists and is active
+            $stmt = $pdo->prepare("SELECT id, username, password, ulvl, status, fullname FROM users WHERE username = ?");
+            $stmt->execute([$username]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($result->num_rows == 1) {
-            $user = $result->fetch_assoc();
-            if (password_verify($password, $user['password'])) {
-                // Set session variables
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                $_SESSION['fullname'] = $user['fullname'];
-                
-                header("Location: index.php");
-                exit();
+            if ($user) {
+                if ($user['status'] !== 'active') {
+                    $error_message = "Your account is inactive. Please contact administrator.";
+                } elseif (password_verify($password, $user['password'])) {
+                    // Login successful
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['user_level'] = $user['ulvl'];
+                    $_SESSION['fullname'] = $user['fullname'];
+                    
+                    // Regenerate session ID to prevent session fixation
+                    session_regenerate_id(true);
+                    
+                    // Redirect based on user level
+                    if ($user['ulvl'] === 'inspector') {
+                        header("Location: inspector.php");
+                    } else {
+                        header("Location: index.php");
+                    }
+                    exit;
+                } else {
+                    $error_message = "Invalid username or password";
+                }
             } else {
-                $login_error = "Invalid password";
+                $error_message = "Invalid username or password";
             }
-        } else {
-            $login_error = "User not found";
+        } catch (PDOException $e) {
+            $error_message = "Database error: " . $e->getMessage();
         }
     }
-    $stmt->close();
 }
 ?>
 
@@ -69,11 +89,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
     <!-- Favicon (tab logo) -->
     <link rel="icon" href="../images/dti-logo.ico" type="../images/dti-logo.ico">
     <link rel="shortcut icon" href="../images/dti-logo.ico" type="../images/dti-logo.ico">
-
     <!-- For modern browsers (PNG format) -->
     <link rel="icon" type="../images/dti-logo1.png" href="../images/dti-logo1.png">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        /* Keep your existing CSS styles */
         body {
             background: linear-gradient(to bottom, #ffffff 0%, #10346C 100%);
             color: #333;
@@ -155,9 +177,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
             box-shadow: 0 0 5px rgba(16, 52, 108, 0.5);
             outline: none;
         }
+        
         .password-container {
             position: relative;
         }
+        
         .toggle-password {
             position: absolute;
             right: 10px;
@@ -168,7 +192,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
             border: none;
             color: #6c757d;
         }
+        
         .toggle-password:hover {
+            color: #10346C;
+        }
+        
+        .form-label {
+            font-weight: 500;
             color: #10346C;
         }
     </style>
@@ -182,16 +212,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
     <div class="header-title">Tracking System for Monitoring and Enforcement System Non - Compliance</div>
     <div class="time-display" id="current-time">Loading time...</div>
     <h1 class="text-center">Login</h1>
-    <?php if ($login_error): ?>
+    
+    <?php if ($error_message): ?>
         <div class="alert alert-danger text-center">
-            <?= htmlspecialchars($login_error) ?>
+            <?= htmlspecialchars($error_message) ?>
         </div>
     <?php endif; ?>
+    
     <?php if (!empty($timeout_message)): ?>
-<div class="alert alert-warning">
-    <?= htmlspecialchars($timeout_message) ?>
-</div>
-<?php endif; ?>
+        <div class="alert alert-warning text-center">
+            <?= htmlspecialchars($timeout_message) ?>
+        </div>
+    <?php endif; ?>
+    
     <form method="POST" action="">
         <div class="mb-3">
             <label for="username" class="form-label">Username</label>
@@ -199,40 +232,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
                    placeholder="Enter your username" required autocomplete="username">
         </div>
         <div class="mb-3">
-        <label for="password" class="form-label">Password</label>
-        <div class="password-container">
-            <input type="password" class="form-control" id="password" name="password" 
-                   placeholder="Enter your password" required autocomplete="current-password">
-            <button type="button" class="toggle-password" aria-label="Show password">
-                <i class="fas fa-eye"></i>
-            </button>
+            <label for="password" class="form-label">Password</label>
+            <div class="password-container">
+                <input type="password" class="form-control" id="password" name="password" 
+                       placeholder="Enter your password" required autocomplete="current-password">
+                <button type="button" class="toggle-password" aria-label="Show password">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
         </div>
-    </div>
-        <button type="submit" name="login" class="btn btn-primary w-100">Login</button>
+        <button type="submit" class="btn btn-primary w-100">Login</button>
     </form>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-<!-- Registration link for users who don't have an account -->
-<!--<div class="mt-3 text-center">
-        Don't have an account? <a href="register.php">Register here</a>    
 </div>
-</div>-->
 
 <script>
-     // Password toggle functionality
-     document.querySelector('.toggle-password').addEventListener('click', function() {
-            const passwordInput = document.getElementById('password');
-            const icon = this.querySelector('i');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
-        });
+    // Password toggle functionality
+    document.querySelector('.toggle-password').addEventListener('click', function() {
+        const passwordInput = document.getElementById('password');
+        const icon = this.querySelector('i');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    });
+    
     // Time display script
     function updateTime() {
         const now = new Date();

@@ -672,23 +672,51 @@ $(document).ready(function() {
     });
     
     // Toggle Status buttons
-    $('button[data-bs-target="#toggleStatusModal"]').on('click', function() {
-        const userId = $(this).data('id');
-        const username = $(this).data('username');
-        const newStatus = $(this).data('status');
-        const action = newStatus === 'active' ? 'activate' : 'deactivate';
+    // $('button[data-bs-target="#toggleStatusModal"]').on('click', function() {
+    //     const userId = $(this).data('id');
+    //     const username = $(this).data('username');
+    //     const newStatus = $(this).data('status');
+    //     const action = newStatus === 'active' ? 'activate' : 'deactivate';
         
-        $('#statusUserId').val(userId);
-        $('#statusUserName').text(username);
-        $('#newStatus').val(newStatus);
-        $('#statusAction').text(action);
+    //     $('#statusUserId').val(userId);
+    //     $('#statusUserName').text(username);
+    //     $('#newStatus').val(newStatus);
+    //     $('#statusAction').text(action);
         
-        const confirmBtn = $('#confirmStatusBtn');
-        confirmBtn.attr('class', `btn btn-${newStatus === 'active' ? 'success' : 'warning'}`);
-        confirmBtn.text(newStatus === 'active' ? 'Activate' : 'Deactivate');
+    //     const confirmBtn = $('#confirmStatusBtn');
+    //     confirmBtn.attr('class', `btn btn-${newStatus === 'active' ? 'success' : 'warning'}`);
+    //     confirmBtn.text(newStatus === 'active' ? 'Activate' : 'Deactivate');
         
-        $('#toggleStatusModal').modal('show');
+    //     $('#toggleStatusModal').modal('show');
+    // });
+
+    // Improve the event listener for toggle status buttons
+document.addEventListener('DOMContentLoaded', function() {
+    // Setup for toggle status buttons
+    const toggleButtons = document.querySelectorAll('button[data-bs-target="#toggleStatusModal"]');
+    toggleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.getAttribute('data-id');
+            const username = this.getAttribute('data-username');
+            const newStatus = this.getAttribute('data-status');
+            const action = newStatus === 'active' ? 'activate' : 'deactivate';
+            
+            // Update the modal elements
+            document.getElementById('statusUserId').value = userId;
+            document.getElementById('statusUserName').textContent = username;
+            document.getElementById('newStatus').value = newStatus;
+            document.getElementById('statusAction').textContent = action;
+            
+            // Update the confirm button style
+            const confirmBtn = document.getElementById('confirmStatusBtn');
+            confirmBtn.className = `btn btn-${newStatus === 'active' ? 'success' : 'warning'}`;
+            confirmBtn.textContent = newStatus === 'active' ? 'Activate' : 'Deactivate';
+        });
     });
+});
+
+
+
 });
             
             // Initialize all modals
