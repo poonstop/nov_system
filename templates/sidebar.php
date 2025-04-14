@@ -48,6 +48,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <span class="nav-text">Establishments Management</span>
             </a>
         </li>
+        <li>
+            <a href="user.php" class="<?php echo ($current_page == 'user.php') ? 'active' : ''; ?>">
+                <div class="icon-container">
+                    <i class="fas fa-users"></i>
+                </div>
+                <span class="nav-text">User Management</span>
+            </a>
+        </li>
     </ul>
     
     <div class="logout-section">
