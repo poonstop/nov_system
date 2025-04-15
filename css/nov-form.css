@@ -1,0 +1,136 @@
+body {
+    background: linear-gradient(to bottom, #ffffff 0%, #10346C 100%);
+}
+.container {
+    margin-top: 20px;
+}
+.table-container {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.search-bar {
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+.search-bar:focus {
+    box-shadow: 0 0 10px rgba(16, 52, 108, 0.3);
+    border-color: #10346C;
+}
+ /* Modal Styles */
+ .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 600px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 10px;
+}
+.close-btn {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.close-btn:hover {
+    color: #000;
+}
+.btn-primary, .btn-secondary {
+    margin: 5px;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.btn-primary {
+    background-color: #10346C;
+    color: white;
+    border: none;
+}
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+}
+
+/* Responsive Table Styles */
+@media (max-width: 768px) {
+    .table-responsive {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+    }
+    
+    .table td, .table th {
+        white-space: nowrap;
+    }
+}
+
+/* Search Result Animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#recordsTable tbody tr {
+    transition: all 0.3s ease;
+}
+
+#recordsTable tbody tr.search-match {
+    animation: fadeIn 0.5s ease;
+    background-color: rgba(16, 52, 108, 0.05);
+}
+
+#recordsTable tbody tr:hover {
+    background-color: rgba(16, 52, 108, 0.1);
+    transform: scale(1.01);
+}
+
+/* Empty Search Result Styling */
+.no-results {
+    text-align: center;
+    color: #6c757d;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+.sort-header:hover {
+background-color: rgba(16, 52, 108, 0.1);
+transition: background-color 0.2s ease;
+}
+
+.sort-icon {
+margin-left: 8px;
+font-size: 0.8em;
+color: #10346C;
+}
+
+.sort-asc {
+color: #10346C;
+background-color: rgba(16, 52, 108, 0.1);
+}
+
+.sort-desc {
+color: #10346C;
+background-color: rgba(16, 52, 108, 0.1);
+}
