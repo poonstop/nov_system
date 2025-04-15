@@ -140,22 +140,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
     // If there are errors, they will be displayed on the page
 }
 
-// Process delete user
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete'])) {
-    $userId = $_POST['userId'];
-    
-    try {
-        $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        
-        $_SESSION['success_message'] = "User deleted successfully!";
-        header("Location: user.php");
-        exit;
-    } catch (PDOException $e) {
-        $error_message = "Database error: " . $e->getMessage();
-    }
-}
-
 // Process activate/deactivate user
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_status'])) {
     $userId = $_POST['userId'];
@@ -276,30 +260,27 @@ include '../templates/header.php';
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
-                                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#editUserModal" 
+                                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editUserModal" 
                                                     data-id="<?php echo $user['id']; ?>"
                                                     data-username="<?php echo htmlspecialchars($user['username']); ?>"
                                                     data-name="<?php echo htmlspecialchars($user['fullname']); ?>"
                                                     data-role="<?php echo htmlspecialchars($user['ulvl']); ?>"
                                                     data-email="<?php echo htmlspecialchars($user['email'] ?? ''); ?>">
-                                                    Edit
-                                                </button>
-                                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteUserModal" data-id="<?php echo $user['id']; ?>" data-username="<?php echo htmlspecialchars($user['username']); ?>">
-                                                    Delete
+                                                    <i class="fas fa-edit"></i> Edit
                                                 </button>
                                                 <?php if ($user['status'] == 'active'): ?>
                                                     <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#toggleStatusModal" 
                                                         data-id="<?php echo $user['id']; ?>" 
                                                         data-username="<?php echo htmlspecialchars($user['username']); ?>"
                                                         data-status="inactive">
-                                                        Deactivate
+                                                        <i class="fas fa-ban"></i> Deactivate
                                                     </button>
                                                 <?php else: ?>
                                                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#toggleStatusModal" 
                                                         data-id="<?php echo $user['id']; ?>" 
                                                         data-username="<?php echo htmlspecialchars($user['username']); ?>"
                                                         data-status="active">
-                                                        Activate
+                                                        <i class="fas fa-check"></i> Activate
                                                     </button>
                                                 <?php endif; ?>
                                             </div>
@@ -311,7 +292,6 @@ include '../templates/header.php';
                                         <td colspan="6" class="text-center">No users found</td>
                                     </tr>
                                 <?php endif; ?>
-                                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
                             </tbody>
                         </table>
                     </div>
@@ -341,7 +321,7 @@ include '../templates/header.php';
                     </div>
                     <div class="mb-3">
                         <label for="userLevel" class="form-label">User Level:</label>
-                        <select class="form-select" id="userLevel" name="userLevel">
+                        <select class="form-select" id="userLevel" name="userLevel" required>
                             <option value="admin">Admin</option>
                             <option value="inspector">Inspector</option>
                         </select>
@@ -352,7 +332,7 @@ include '../templates/header.php';
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">Password:</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
+                        <input type="password" class="form-control" id="password" name="password" required minlength="6">
                     </div>
                     <div class="mb-3">
                         <label for="confirmPassword" class="form-label">Confirm Password:</label>
@@ -389,7 +369,7 @@ include '../templates/header.php';
                     </div>
                     <div class="mb-3">
                         <label for="editUserLevel" class="form-label">User Level:</label>
-                        <select class="form-select" id="editUserLevel" name="editUserLevel">
+                        <select class="form-select" id="editUserLevel" name="editUserLevel" required>
                             <option value="admin">Admin</option>
                             <option value="inspector">Inspector</option>
                         </select>
@@ -400,7 +380,7 @@ include '../templates/header.php';
                     </div>
                     <div class="mb-3">
                         <label for="newPassword" class="form-label">New Password (leave blank to keep current):</label>
-                        <input type="password" class="form-control" id="newPassword" name="newPassword">
+                        <input type="password" class="form-control" id="newPassword" name="newPassword" minlength="6">
                     </div>
                     <div class="mb-3">
                         <label for="confirmNewPassword" class="form-label">Confirm New Password:</label>
@@ -413,30 +393,6 @@ include '../templates/header.php';
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="submit" form="editUserForm" class="btn btn-primary">Update Changes</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete User Modal -->
-<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteUserModalLabel">Delete User</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete user <strong id="deleteUserName"></strong>?</p>
-                <p class="text-danger">This action cannot be undone.</p>
-                <form id="deleteUserForm" method="POST" action="user.php">
-                    <input type="hidden" name="userId" id="deleteUserId">
-                    <input type="hidden" name="delete" value="1">
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" form="deleteUserForm" class="btn btn-danger">Delete User</button>
             </div>
         </div>
     </div>
@@ -482,35 +438,40 @@ include '../templates/header.php';
         border-radius: 0.5rem;
         border: none;
     }
+    .btn-group-sm > .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Search functionality
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            searchInput.addEventListener('keyup', function() {
-                const filter = this.value.toLowerCase();
-                const tbody = document.querySelector('table tbody');
-                const rows = tbody.querySelectorAll('tr');
+document.addEventListener('DOMContentLoaded', function() {
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function() {
+            const filter = this.value.toLowerCase();
+            const tbody = document.querySelector('table tbody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const username = row.cells[0].textContent.toLowerCase();
+                const name = row.cells[1].textContent.toLowerCase();
+                const role = row.cells[2].textContent.toLowerCase();
+                const email = row.cells[3].textContent.toLowerCase();
                 
-                rows.forEach(row => {
-                    const username = row.cells[0].textContent.toLowerCase();
-                    const name = row.cells[1].textContent.toLowerCase();
-                    const role = row.cells[2].textContent.toLowerCase();
-                    const email = row.cells[3].textContent.toLowerCase();
-                    
-                    if (username.includes(filter) || name.includes(filter) || 
-                        role.includes(filter) || email.includes(filter)) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
+                if (username.includes(filter) || name.includes(filter) || 
+                    role.includes(filter) || email.includes(filter)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
             });
-        }
-        
-        // Password confirmation validation for Add User form - enhanced for better UX
+        });
+    }
+    
+    // Password confirmation validation for Add User form
     const addUserForm = document.getElementById('addUserForm');
     if (addUserForm) {
         const passwordField = document.getElementById('password');
@@ -535,72 +496,90 @@ include '../templates/header.php';
                 confirmPasswordField.setCustomValidity('Passwords do not match');
                 alert('Passwords do not match!');
             }
-            
-            // Additional form validation could be added here
-            // For example, validating that username follows a specific pattern
         });
     }
 
-       // Edit user modal
-const editUserModal = document.getElementById('editUserModal');
-if (editUserModal) {
-    editUserModal.addEventListener('show.bs.modal', function(event) {
-        const button = event.relatedTarget;
-        const userId = button.getAttribute('data-id');
-        const username = button.getAttribute('data-username');
-        const name = button.getAttribute('data-name');
-        const role = button.getAttribute('data-role');
-        const email = button.getAttribute('data-email');
-        
-        document.getElementById('editUserId').value = userId;
-        document.getElementById('editUsername').value = username;
-        document.getElementById('editName').value = name;
-        document.getElementById('editUserLevel').value = role.toLowerCase();
-        document.getElementById('editEmail').value = email;
-        document.getElementById('newPassword').value = '';
-        document.getElementById('confirmNewPassword').value = '';
-    });
-}
-
-// Password confirmation validation for Edit User form
-const editUserForm = document.getElementById('editUserForm');
-if (editUserForm) {
-    const newPasswordField = document.getElementById('newPassword');
-    const confirmNewPasswordField = document.getElementById('confirmNewPassword');
-    
-    // Real-time password validation
-    confirmNewPasswordField.addEventListener('input', function() {
-        if (this.value && this.value !== newPasswordField.value) {
-            this.setCustomValidity('Passwords do not match');
-        } else {
-            this.setCustomValidity('');
-        }
-    });
-    
-    editUserForm.addEventListener('submit', function(event) {
-        const newPassword = newPasswordField.value;
-        const confirmNewPassword = confirmNewPasswordField.value;
-        
-        if (newPassword && newPassword !== confirmNewPassword) {
-            event.preventDefault();
-            confirmNewPasswordField.setCustomValidity('Passwords do not match');
-            alert('New passwords do not match!');
-        }
-    });
-}
-        
-        // Auto hide alerts after 5 seconds
-        const alerts = document.querySelectorAll('.alert');
-        alerts.forEach(alert => {
-            setTimeout(() => {
-                const closeButton = alert.querySelector('.btn-close');
-                if (closeButton) {
-                    closeButton.click();
-                }
-            }, 5000);
+    // Edit user modal
+    const editUserModal = document.getElementById('editUserModal');
+    if (editUserModal) {
+        editUserModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const userId = button.getAttribute('data-id');
+            const username = button.getAttribute('data-username');
+            const name = button.getAttribute('data-name');
+            const role = button.getAttribute('data-role');
+            const email = button.getAttribute('data-email');
+            
+            document.getElementById('editUserId').value = userId;
+            document.getElementById('editUsername').value = username;
+            document.getElementById('editName').value = name;
+            document.getElementById('editUserLevel').value = role.toLowerCase();
+            document.getElementById('editEmail').value = email;
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmNewPassword').value = '';
         });
+    }
 
-         // Add an event listener to clear the form when the modal is closed
+    // Password confirmation validation for Edit User form
+    const editUserForm = document.getElementById('editUserForm');
+    if (editUserForm) {
+        const newPasswordField = document.getElementById('newPassword');
+        const confirmNewPasswordField = document.getElementById('confirmNewPassword');
+        
+        // Real-time password validation
+        confirmNewPasswordField.addEventListener('input', function() {
+            if (this.value && this.value !== newPasswordField.value) {
+                this.setCustomValidity('Passwords do not match');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+        
+        editUserForm.addEventListener('submit', function(event) {
+            const newPassword = newPasswordField.value;
+            const confirmNewPassword = confirmNewPasswordField.value;
+            
+            if (newPassword && newPassword !== confirmNewPassword) {
+                event.preventDefault();
+                confirmNewPasswordField.setCustomValidity('Passwords do not match');
+                alert('New passwords do not match!');
+            }
+        });
+    }
+    
+    // Toggle status modal
+    const toggleStatusModal = document.getElementById('toggleStatusModal');
+    if (toggleStatusModal) {
+        toggleStatusModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const userId = button.getAttribute('data-id');
+            const username = button.getAttribute('data-username');
+            const newStatus = button.getAttribute('data-status');
+            const action = newStatus === 'active' ? 'activate' : 'deactivate';
+            
+            document.getElementById('statusUserId').value = userId;
+            document.getElementById('statusUserName').textContent = username;
+            document.getElementById('newStatus').value = newStatus;
+            document.getElementById('statusAction').textContent = action;
+            
+            const confirmBtn = document.getElementById('confirmStatusBtn');
+            confirmBtn.className = `btn btn-${newStatus === 'active' ? 'success' : 'warning'}`;
+            confirmBtn.textContent = newStatus === 'active' ? 'Activate' : 'Deactivate';
+        });
+    }
+    
+    // Auto hide alerts after 5 seconds
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            const closeButton = alert.querySelector('.btn-close');
+            if (closeButton) {
+                closeButton.click();
+            }
+        }, 5000);
+    });
+
+    // Clear the form when the modal is closed
     const addUserModal = document.getElementById('addUserModal');
     if (addUserModal) {
         addUserModal.addEventListener('hidden.bs.modal', function() {
@@ -610,136 +589,6 @@ if (editUserForm) {
         });
     }
 });
-</script>
-
-<script>
-    // First, check if jQuery is loaded (Bootstrap often uses jQuery)
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM is loaded');
-        
-        // Test if Bootstrap is available
-        if (typeof bootstrap !== 'undefined') {
-            console.log('Bootstrap JS is loaded');
-            
-            // Manually initialize the modals
-            const addUserModalEl = document.getElementById('addUserModal');
-            if (addUserModalEl) {
-                console.log('Found addUserModal element');
-                const addUserModal = new bootstrap.Modal(addUserModalEl);
-                
-                // Add a click event to the button to open the modal
-                const addUserBtn = document.querySelector('button[data-bs-target="#addUserModal"]');
-                if (addUserBtn) {
-                    console.log('Found Add User button');
-                    addUserBtn.addEventListener('click', function() {
-                        console.log('Add User button clicked');
-                        addUserModal.show();
-                    });
-                }
-            }
-
-            // Add this to your script section if jQuery is available
-$(document).ready(function() {
-    // Add User button
-    $('button[data-bs-target="#addUserModal"]').on('click', function() {
-        $('#addUserModal').modal('show');
-    });
-    
-    // Edit User buttons
-    $('button[data-bs-target="#editUserModal"]').on('click', function() {
-        const userId = $(this).data('id');
-        const username = $(this).data('username');
-        const name = $(this).data('name');
-        const role = $(this).data('role');
-        const email = $(this).data('email');
-        
-        $('#editUserId').val(userId);
-        $('#editUsername').val(username);
-        $('#editName').val(name);
-        $('#editUserLevel').val(role.toLowerCase());
-        $('#editEmail').val(email);
-        $('#editUserModal').modal('show');
-    });
-    
-    // Delete User buttons
-    $('button[data-bs-target="#deleteUserModal"]').on('click', function() {
-        const userId = $(this).data('id');
-        const username = $(this).data('username');
-        
-        $('#deleteUserId').val(userId);
-        $('#deleteUserName').text(username);
-        $('#deleteUserModal').modal('show');
-    });
-    
-    // Toggle Status buttons
-    // $('button[data-bs-target="#toggleStatusModal"]').on('click', function() {
-    //     const userId = $(this).data('id');
-    //     const username = $(this).data('username');
-    //     const newStatus = $(this).data('status');
-    //     const action = newStatus === 'active' ? 'activate' : 'deactivate';
-        
-    //     $('#statusUserId').val(userId);
-    //     $('#statusUserName').text(username);
-    //     $('#newStatus').val(newStatus);
-    //     $('#statusAction').text(action);
-        
-    //     const confirmBtn = $('#confirmStatusBtn');
-    //     confirmBtn.attr('class', `btn btn-${newStatus === 'active' ? 'success' : 'warning'}`);
-    //     confirmBtn.text(newStatus === 'active' ? 'Activate' : 'Deactivate');
-        
-    //     $('#toggleStatusModal').modal('show');
-    // });
-
-    // Improve the event listener for toggle status buttons
-document.addEventListener('DOMContentLoaded', function() {
-    // Setup for toggle status buttons
-    const toggleButtons = document.querySelectorAll('button[data-bs-target="#toggleStatusModal"]');
-    toggleButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const userId = this.getAttribute('data-id');
-            const username = this.getAttribute('data-username');
-            const newStatus = this.getAttribute('data-status');
-            const action = newStatus === 'active' ? 'activate' : 'deactivate';
-            
-            // Update the modal elements
-            document.getElementById('statusUserId').value = userId;
-            document.getElementById('statusUserName').textContent = username;
-            document.getElementById('newStatus').value = newStatus;
-            document.getElementById('statusAction').textContent = action;
-            
-            // Update the confirm button style
-            const confirmBtn = document.getElementById('confirmStatusBtn');
-            confirmBtn.className = `btn btn-${newStatus === 'active' ? 'success' : 'warning'}`;
-            confirmBtn.textContent = newStatus === 'active' ? 'Activate' : 'Deactivate';
-        });
-    });
-});
-
-
-
-});
-            
-            // Initialize all modals
-            const modalElements = document.querySelectorAll('.modal');
-            modalElements.forEach(modalEl => {
-                const modal = new bootstrap.Modal(modalEl);
-                const modalId = modalEl.id;
-                
-                // Find buttons that target this modal
-                const buttons = document.querySelectorAll(`button[data-bs-target="#${modalId}"]`);
-                buttons.forEach(button => {
-                    button.addEventListener('click', function() {
-                        console.log(`Button for ${modalId} clicked`);
-                        modal.show();
-                    });
-                });
-            });
-        } else {
-            console.error('Bootstrap JS is not loaded! Add the Bootstrap JS library to your page.');
-            // Add a fallback alert to inform the user
-            alert('The system requires Bootstrap JavaScript to function properly. Please contact the administrator.');
-        }
-    });
 </script>
 
 <?php include '../templates/footer.php'; ?>
