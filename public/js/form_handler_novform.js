@@ -1,4 +1,4 @@
- console.log('Script loaded');
+console.log('Script loaded');
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded');
     
@@ -9,7 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('View buttons found:', viewButtons.length);
     console.log('Edit buttons found:', editButtons.length);
 });
-    function openViewModal(id) {
+
+function openViewModal(id) {
     console.log('Opening view modal for ID:', id);
     
     // Find the row with the matching data-id
@@ -33,66 +34,101 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
         
-        // Construct detailed view content
-        viewModalContent.innerHTML = `
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>Establishment Details</h5>
-                    <p><strong>Name:</strong> ${row.cells[0].innerText}</p>
-                    <p><strong>Address:</strong> ${row.cells[1].innerText}</p>
-                    <p><strong>Owner/Representative:</strong> ${row.cells[2].innerText}</p>
-                </div>
-                <div class="col-md-6">
-                    <h5>Violation Information</h5>
-                    <p><strong>Violations:</strong> ${row.cells[3].innerText}</p>
-                    <p><strong>Number of Violations:</strong> ${row.cells[5].innerText}</p>
-                    <p><strong>Date Created:</strong> ${row.cells[6].innerText}</p>
-                    <p><strong>Last Updated:</strong> ${row.cells[7].innerText}</p>
-                </div>
+    // Construct detailed view content
+    viewModalContent.innerHTML = `
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-6">
+                <h5>Establishment Details</h5>
+                <p><strong>Name:</strong> ${row.cells[0].innerText}</p>
+                <p><strong>Address:</strong> ${row.cells[1].innerText}</p>
+                <p><strong>Owner/Representative:</strong> ${row.cells[2].innerText}</p>
+            </div>
+            <div class="col-md-6">
+                <h5>Violation Information</h5>
+                <p><strong>Violations:</strong> ${row.cells[3].innerText}</p>
+                <p><strong>Number of Violations:</strong> ${row.cells[5].innerText}</p>
+                <p><strong>Date Created:</strong> ${row.cells[6].innerText}</p>
+                <p><strong>Last Updated:</strong> ${row.cells[7].innerText}</p>
             </div>
         </div>
+    </div>
     `;
         
-        // Display the modal
-        viewModal.style.display = 'block';
-        console.log('View modal should be displayed now');
+    // Display the modal
+    viewModal.style.display = 'block';
+    console.log('View modal should be displayed now');
+        
+    fetch('get_inventory.php?id=' + id)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let inventoryHtml = '<h4 class="mt-4">Inventory Products</h4>';
+            if (data.products.length > 0) {
+                inventoryHtml += '<table class="table table-sm"><thead><tr>' +
+                    '<th>Product</th><th>Description</th><th>Price</th><th>Pieces</th>' +
+                    '<th>Status</th></tr></thead><tbody>';
+                
+                data.products.forEach(product => {
+                    let status = [];
+                    if (product.sealed == 1) status.push('Sealed');
+                    if (product.withdrawn == 1) status.push('Withdrawn');
+                    
+                    inventoryHtml += `<tr>
+                        <td>${product.product_name}</td>
+                        <td>${product.description || ''}</td>
+                        <td>${product.price || 0}</td>
+                        <td>${product.pieces || 0}</td>
+                        <td>${status.join(', ') || 'None'}</td>
+                    </tr>`;
+                });
+                
+                inventoryHtml += '</tbody></table>';
+            } else {
+                inventoryHtml += '<p>No inventory products recorded</p>';
+            }
+            
+            document.getElementById('viewModalContent').innerHTML += inventoryHtml;
+        }
+    });
 }
 
-   // Edit Modal Function
-   function openEditModal(id) {
-   console.log('Opening edit modal for ID:', id);
+function openEditModal(id) {
+    console.log('Opening edit modal for ID:', id);
     
     const row = document.querySelector(`tr[data-id="${id}"]`);
     if (!row) {
         console.error('Row not found for ID:', id);
+        alert('Error: Establishment record not found');
         return;
     }
+    
 
     const editModal = document.getElementById('editModal');
     if (!editModal) {
         console.error('Edit modal element not found');
+        alert('Error: Edit modal not found');
         return;
     }
     
     const editModalContent = document.getElementById('editModalContent');
     if (!editModalContent) {
         console.error('Edit modal content element not found');
+        alert('Error: Edit form not found');
         return;
     }
-
-     // Get current Manila time (UTC+8)
-     const now = new Date();
+ 
+    // Get current Manila time (UTC+8)
+    const now = new Date();
     const manilaOffset = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
     const manilaTime = new Date(now.getTime() + manilaOffset);
-     // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+    // Format for datetime-local input (YYYY-MM-DDTHH:MM)
     const year = manilaTime.getUTCFullYear();
     const month = String(manilaTime.getUTCMonth() + 1).padStart(2, '0');
     const day = String(manilaTime.getUTCDate()).padStart(2, '0');
     const hours = String(manilaTime.getUTCHours()).padStart(2, '0');
     const minutes = String(manilaTime.getUTCMinutes()).padStart(2, '0');
-    
-    const currentDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+    currentDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
     
     // Get current violations from the row
     const violations = row.cells[3].innerText.split(', ');
@@ -152,6 +188,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
         </div>
+        <hr>
+        <h5 class="mb-3">Product Inventory</h5>
+        <div id="inventory_items" class="mb-3">
+            <!-- Inventory items will be added here -->
+        </div>
+        <button type="button" class="btn btn-sm btn-success mb-3" onclick="addNewInventoryItem()">
+            <i class="fas fa-plus"></i> Add New Product
+        </button>
     </form>`;
      
     const select = editModalContent.querySelector('#violationsSelect');
@@ -168,8 +212,114 @@ document.addEventListener('DOMContentLoaded', function() {
     // Display the modal
     editModal.style.display = 'block';
     console.log('Edit modal should be displayed now');
+
+    // Fetch establishment data including inventory items
+    fetch(`get_establishment.php?id=${id}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Received data:', data); // Debug log
+            if(data && data.success) {
+                // Clear previous inventory items
+                const inventoryContainer = document.getElementById('inventory_items');
+                inventoryContainer.innerHTML = '';
+                
+                // Add existing inventory items
+                if(data.inventory && data.inventory.length > 0) {
+                    data.inventory.forEach((item, index) => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.innerHTML = getInventoryItemHtml(item, index);
+                        inventoryContainer.appendChild(itemDiv.firstElementChild);
+                    });
+                } else {
+                    // Add an empty placeholder if no inventory exists
+                    const itemDiv = document.createElement('div');
+                    itemDiv.innerHTML = getInventoryItemHtml({}, 0);
+                    inventoryContainer.appendChild(itemDiv.firstElementChild);
+                }
+            } else {
+                // If no data returned, add an empty placeholder
+                const inventoryContainer = document.getElementById('inventory_items');
+                const itemDiv = document.createElement('div');
+                itemDiv.innerHTML = getInventoryItemHtml({}, 0);
+                inventoryContainer.appendChild(itemDiv.firstElementChild);
+                
+                throw new Error(data?.message || 'Invalid data received from server');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(`Error loading establishment details: ${error.message}`);
+        });
 }
-   
+function getInventoryItemHtml(product = {}, index) {
+    return `
+    <div class="inventory-item border p-2 mb-3 rounded">
+        <div class="row">
+            <div class="col-md-6">
+                <input type="hidden" name="inventory[${index}][id]" value="${product.id || ''}">
+                <label>Product Name</label>
+                <input type="text" class="form-control mb-2" name="inventory[${index}][product_name]" 
+                    placeholder="Product Name" value="${product.product_name || ''}">
+            </div>
+            <div class="col-md-3">
+                <label>Price</label>
+                <input type="number" step="0.01" class="form-control mb-2" name="inventory[${index}][price]" 
+                    placeholder="Price" value="${product.price || '0.00'}">
+            </div>
+            <div class="col-md-3">
+                <label>Quantity</label>
+                <input type="number" class="form-control mb-2" name="inventory[${index}][quantity]" 
+                    placeholder="Quantity" value="${product.quantity || '0'}">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-check form-check-inline mt-2">
+                    <input class="form-check-input" type="checkbox" name="inventory[${index}][sealed]" 
+                        ${product.sealed == 1 ? 'checked' : ''}>
+                    <label class="form-check-label">Sealed</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="inventory[${index}][withdrawn]" 
+                        ${product.withdrawn == 1 ? 'checked' : ''}>
+                    <label class="form-check-label">Withdrawn</label>
+                </div>
+            </div>
+            <div class="col-md-6 text-end">
+                <button type="button" class="btn btn-sm btn-danger" 
+                    onclick="removeInventoryItem(this)">Remove Item</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+// Function to add a new inventory item to the form
+function addNewInventoryItem() {
+    const container = document.getElementById('inventory_items');
+    if (!container) {
+        console.error('Inventory container not found');
+        return;
+    }
+    
+    const index = document.querySelectorAll('.inventory-item').length;
+    const itemDiv = document.createElement('div');
+    itemDiv.innerHTML = getInventoryItemHtml({}, index);
+    container.appendChild(itemDiv.firstElementChild);
+}
+
+function removeInventoryItem(button) {
+    const itemDiv = button.closest('.inventory-item');
+    if (itemDiv) {
+        itemDiv.remove();
+    }
+}
+
+
 // New function to update violation count when selection changes
 function updateViolationCount() {
     const select = document.getElementById('violationsSelect');
@@ -189,9 +339,7 @@ function formatDateForInput(displayDate) {
     console.log('Formatting date:', displayDate);
     
     if (!displayDate || displayDate.includes('Invalid date') || displayDate.includes('No date')) {
-        // Default to current time if date is invalid
-        const now = new Date();
-        return now.toISOString().slice(0, 16);
+        return ''; // Return empty string if no valid date
     }
     
     try {
@@ -219,18 +367,16 @@ function formatDateForInput(displayDate) {
             return `${year}-${month}-${day}T${hour.toString().padStart(2, '0')}:${minute}`;
         }
         
-        // If parsing fails, use current time
-        const now = new Date();
-        return now.toISOString().slice(0, 16);
+        // If parsing fails, return empty string
+        return '';
     } catch (e) {
         console.error('Date parsing error:', e);
-        const now = new Date();
-        return now.toISOString().slice(0, 16);
+        return '';
     }
 }
 
-    // Close Modal Function
-    function closeModal(modalId) {
+// Close Modal Function
+function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.style.display = 'none';
@@ -304,7 +450,7 @@ function saveChanges() {
 
     const formattedDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     
-    // Format for display in the table (e.g., "Apr 04, 2025 12:30 PM")
+    // Format for display in the table
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     let displayHours = manilaTime.getUTCHours();
     const ampm = displayHours >= 12 ? 'PM' : 'AM';
@@ -313,6 +459,44 @@ function saveChanges() {
     const displayMinutes = String(manilaTime.getUTCMinutes()).padStart(2, '0');
     
     const displayDateTime = `${monthNames[manilaTime.getUTCMonth()]} ${manilaTime.getUTCDate()}, ${year} ${displayHours}:${displayMinutes} ${ampm}`;
+
+    // Show loading state with SweetAlert if available
+    let loadingAlert;
+    if (typeof Swal !== 'undefined') {
+        loadingAlert = Swal.fire({
+            title: 'Saving changes...',
+            text: 'Please wait',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+    }
+
+    // Collect inventory items
+    const inventoryItems = [];
+    const inventoryDivs = document.querySelectorAll('.inventory-item');
+    
+    inventoryDivs.forEach((div, index) => {
+        const productName = div.querySelector('[name^="inventory"][name$="[product_name]"]')?.value || '';
+        const price = div.querySelector('[name^="inventory"][name$="[price]"]')?.value || '0.00';
+        const quantity = div.querySelector('[name^="inventory"][name$="[quantity]"]')?.value || '0';
+        const sealed = div.querySelector('[name^="inventory"][name$="[sealed]"]')?.checked ? 1 : 0;
+        const withdrawn = div.querySelector('[name^="inventory"][name$="[withdrawn]"]')?.checked ? 1 : 0;
+        const id = div.querySelector('[name^="inventory"][name$="[id]"]')?.value || '';
+        
+        // Only add items that have a product name
+        if (productName.trim() !== '') {
+            inventoryItems.push({
+                id: id,
+                product_name: productName,
+                price: price,
+                quantity: quantity,
+                sealed: sealed,
+                withdrawn: withdrawn
+            });
+        }
+    });
 
     // Prepare form data with validation
     const formData = {
@@ -324,7 +508,8 @@ function saveChanges() {
                       .map(opt => opt.value)
                       .join(', '),
         num_violations: parseInt(numViolationsInput.value) || 0,
-        date_updated: formattedDateTime  // Make sure this matches your PHP field name
+        date_updated: formattedDateTime,
+        inventory: inventoryItems
     };
 
     // Debug output
@@ -369,7 +554,7 @@ function saveChanges() {
             throw new Error(data.message || 'Update failed without error message');
         }
         
-        // Find and update the table row instead of reloading the page
+        // Find and update the table row
         const row = document.querySelector(`tr[data-id="${formData.id}"]`);
         if (row) {
             // Update table cells with new data
@@ -377,20 +562,32 @@ function saveChanges() {
             row.cells[1].innerText = capitalizeWords(formData.address);
             row.cells[2].innerText = capitalizeWords(formData.owner_rep);
             row.cells[3].innerText = formData.violations;
+            
+            // Update inventory products column (cell index 4)
+            if (formData.inventory && formData.inventory.length > 0) {
+                const productNames = formData.inventory.map(item => item.product_name);
+                row.cells[4].innerHTML = productNames.join(', ') + 
+                    ' <span class="badge bg-primary">' + productNames.length + '</span>';
+            } else {
+                row.cells[4].innerHTML = '<span class="text-muted">No inventory</span>';
+            }
+            
             row.cells[5].innerText = formData.num_violations;
             row.cells[7].innerText = displayDateTime; // The "Last Updated" cell
-            
-            console.log('Updated row with new date_updated timestamp:', displayDateTime);
         }
         
+        // Show success message with SweetAlert if available
         if (typeof Swal !== 'undefined') {
             Swal.fire({
                 title: 'Success!',
                 text: 'Changes saved successfully',
                 icon: 'success',
-                confirmButtonText: 'OK'
-            }).then(() => {
-                closeModal('editModal');
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#10346C'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    closeModal('editModal');
+                }
             });
         } else {
             alert('Success: Changes saved successfully');
@@ -408,27 +605,26 @@ function saveChanges() {
             errorMessage = 'Network connection failed. Please check your internet connection.';
         }
 
+        // Show error message with SweetAlert if available
         if (typeof Swal !== 'undefined') {
             Swal.fire({
                 title: 'Error!',
                 text: `Failed to save changes: ${errorMessage}`,
                 icon: 'error',
-                confirmButtonText: 'OK'
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#10346C'
             });
         } else {
             alert(`Error: Failed to save changes: ${errorMessage}`);
         }
     });
 }
-
-// Helper function to capitalize first letter of each word
 function capitalizeWords(string) {
     return string.toLowerCase().split(' ').map(word => 
         word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
 }
-
-    function filterTable() {
+function filterTable() {
     const searchInput = document.getElementById('searchInput');
     const table = document.getElementById('recordsTable');
     if (!table) {
@@ -467,60 +663,35 @@ function capitalizeWords(string) {
         noResultsDiv.style.display = visibleRowCount === 0 ? 'block' : 'none';
     }
 }
-    // Add click handlers to sort headers
-    document.querySelectorAll('.sort-header').forEach(header => {
-        header.style.cursor = 'pointer';
-        header.addEventListener('click', () => {
-            const columnIndex = header.getAttribute('data-column');
-            sortTable(columnIndex);
-        });
-    });
 
-    function sortTable(columnIndex) {
-    const table = document.getElementById('recordsTable');
-    const headers = document.querySelectorAll('.sort-header');
-    const tbody = table.querySelector('tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr'));
+function addInventoryItem(item = null) {
+    const container = document.getElementById('inventory_items');
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'inventory-item mb-3 p-2 border rounded';
+    
+    // Create HTML for inventory item form
+    itemDiv.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <label>Product Name</label>
+                <input type="text" class="form-control" name="product_name[]" value="${item ? item.product_name : ''}">
+            </div>
+            <div class="col-md-3">
+                <label>Quantity</label>
+                <input type="number" class="form-control" name="quantity[]" value="${item ? item.quantity : '0'}">
+            </div>
+            <div class="col-md-3">
+                <label>Price</label>
+                <input type="number" step="0.01" class="form-control" name="price[]" value="${item ? item.price : '0.00'}">
+            </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-danger mt-2" onclick="removeInventoryItem(this)">Remove</button>
+    `;
+    
+    container.appendChild(itemDiv);
+}
 
-    // Determine new sort direction
-    const currentHeader = headers[columnIndex];
-    const currentSort = currentHeader.getAttribute('data-sort') || 'none';
-    const newSort = currentSort === 'asc' ? 'desc' : 'asc';
-
-    // Reset all headers
-    headers.forEach(header => {
-        header.setAttribute('data-sort', 'none');
-        const icon = header.querySelector('.sort-icon');
-        icon.className = 'sort-icon fa-solid fa-sort';
-        header.classList.remove('sort-asc', 'sort-desc');
-    });
-
-    // Update current header
-    currentHeader.setAttribute('data-sort', newSort);
-    const sortIcon = currentHeader.querySelector('.sort-icon');
-    sortIcon.className = `sort-icon fa-solid ${newSort === 'asc' ? 'fa-sort-up' : 'fa-sort-down'}`;
-    currentHeader.classList.add(`sort-${newSort}`);
-
-    // Sort the rows array
-    rows.sort((a, b) => {
-        const aText = a.cells[columnIndex].textContent.trim();
-        const bText = b.cells[columnIndex].textContent.trim();
-
-        // Try parsing as float to support number sorting
-        const aNum = parseFloat(aText);
-        const bNum = parseFloat(bText);
-        const isNumeric = !isNaN(aNum) && !isNaN(bNum);
-
-        if (isNumeric) {
-            return newSort === 'asc' ? aNum - bNum : bNum - aNum;
-        } else {
-            return newSort === 'asc'
-                ? aText.localeCompare(bText)
-                : bText.localeCompare(aText);
-        }
-    });
-
-    // Clear existing rows and append sorted ones
-    tbody.innerHTML = '';
-    rows.forEach(row => tbody.appendChild(row));
+function removeInventoryItem(button) {
+    const itemDiv = button.parentNode;
+    itemDiv.parentNode.removeChild(itemDiv);
 }

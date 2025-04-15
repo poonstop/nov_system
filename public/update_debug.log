@@ -4,3 +4,201 @@
 [2025-04-14 10:24:08] ===== New Update Request =====
 [2025-04-14 15:11:14] ===== New Update Request =====
 [2025-04-14 15:11:56] ===== New Update Request =====
+[2025-04-15 11:28:08] ===== New Update Request =====
+[2025-04-15 11:28:14] ===== New Update Request =====
+[2025-04-15 11:28:19] ===== New Update Request =====
+[2025-04-15 11:43:53] ===== New Update Request =====
+[2025-04-15 13:13:54] ===== New Update Request =====
+[2025-04-15 13:39:27] ===== New Update Request =====
+[2025-04-15 13:39:53] ===== New Update Request =====
+[2025-04-15 13:41:35] ===== New Update Request =====
+[2025-04-15 13:41:43] ===== New Update Request =====
+[2025-04-15 14:15:01] ===== New Update Request =====
+[2025-04-15 14:26:33] ===== New Update Request =====
+[2025-04-15 14:58:32] ===== New Update Request =====
+[2025-04-15 15:01:14] ===== New Update Request =====
+[2025-04-15 15:09:05] ===== New Update Request =====
+[2025-04-15 15:10:58] ===== New Update Request =====
+[2025-04-15 15:11:16] ===== New Update Request =====
+[2025-04-15 15:21:57] ===== New Update Request =====
+[2025-04-15 15:38:32] ===== New Update Request =====
+[2025-04-15 15:50:06] ===== New Update Request =====
+[2025-04-15 15:50:06] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => Steel bars
+            [price] => 2000
+            [quantity] => 10
+            [sealed] => 1
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-15 15:50:06] Updating establishment ID: 42
+[2025-04-15 15:50:06] Violations: Improper Labeling
+[2025-04-15 15:50:06] Number of violations: 1
+[2025-04-15 15:50:06] Date updated: 2025-04-15 15:50:06
+[2025-04-15 15:50:06] Response: {"success":true,"message":"Record updated successfully","updated_id":42,"date_updated":"2025-04-15 15:50:06","formatted_date":"April 15, 2025, 3:50 pm","num_violations":1,"violations":"Improper Labeling"}
+[2025-04-15 15:50:22] ===== New Update Request =====
+[2025-04-15 15:50:22] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => vape
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-15 15:50:22] Updating establishment ID: 43
+[2025-04-15 15:50:22] Violations: Improper Labeling
+[2025-04-15 15:50:22] Number of violations: 0
+[2025-04-15 15:50:22] Date updated: 2025-04-15 15:50:22
+[2025-04-15 15:50:22] Response: {"success":true,"message":"Record updated successfully","updated_id":43,"date_updated":"2025-04-15 15:50:22","formatted_date":"April 15, 2025, 3:50 pm","num_violations":0,"violations":"Improper Labeling"}
+[2025-04-15 15:50:28] ===== New Update Request =====
+[2025-04-15 15:50:28] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => vape
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-15 15:50:28] Updating establishment ID: 43
+[2025-04-15 15:50:28] Violations: Improper Labeling
+[2025-04-15 15:50:28] Number of violations: 1
+[2025-04-15 15:50:28] Date updated: 2025-04-15 15:50:28
+[2025-04-15 15:50:28] Response: {"success":true,"message":"Record updated successfully","updated_id":43,"date_updated":"2025-04-15 15:50:28","formatted_date":"April 15, 2025, 3:50 pm","num_violations":1,"violations":"Improper Labeling"}
+[2025-04-15 16:04:03] ===== New Update Request =====
+[2025-04-15 16:04:03] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => vape
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-15 16:04:03] Updating establishment ID: 43
+[2025-04-15 16:04:03] Violations: Improper Labeling
+[2025-04-15 16:04:03] Number of violations: 1
+[2025-04-15 16:04:03] Date updated: 2025-04-15 16:04:03
+[2025-04-15 16:04:03] Response: {"success":true,"message":"Record updated successfully","updated_id":43,"date_updated":"2025-04-15 16:04:03","formatted_date":"April 15, 2025, 4:04 pm","num_violations":1,"violations":"Improper Labeling"}
+[2025-04-15 16:04:15] ===== New Update Request =====
+[2025-04-15 16:04:15] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => vape
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-15 16:04:15] Updating establishment ID: 43
+[2025-04-15 16:04:15] Violations: Improper Labeling
+[2025-04-15 16:04:15] Number of violations: 1
+[2025-04-15 16:04:15] Date updated: 2025-04-15 16:04:15
+[2025-04-15 16:04:15] Response: {"success":true,"message":"Record updated successfully","updated_id":43,"date_updated":"2025-04-15 16:04:15","formatted_date":"April 15, 2025, 4:04 pm","num_violations":1,"violations":"Improper Labeling"}
+[2025-04-15 16:06:20] ===== New Update Request =====
+[2025-04-15 16:06:20] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => vape
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-15 16:06:20] Updating establishment ID: 43
+[2025-04-15 16:06:20] Violations: Improper Labeling
+[2025-04-15 16:06:20] Number of violations: 1
+[2025-04-15 16:06:20] Date updated: 2025-04-15 16:06:20
+[2025-04-15 16:06:20] Response: {"success":true,"message":"Record updated successfully","updated_id":43,"date_updated":"2025-04-15 16:06:20","formatted_date":"April 15, 2025, 4:06 pm","num_violations":1,"violations":"Improper Labeling"}
+[2025-04-15 16:06:35] ===== New Update Request =====
+[2025-04-15 16:06:35] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => vape
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-15 16:06:35] Updating establishment ID: 43
+[2025-04-15 16:06:35] Violations: Improper Labeling
+[2025-04-15 16:06:35] Number of violations: 1
+[2025-04-15 16:06:35] Date updated: 2025-04-15 16:06:35
+[2025-04-15 16:06:35] Response: {"success":true,"message":"Record updated successfully","updated_id":43,"date_updated":"2025-04-15 16:06:35","formatted_date":"April 15, 2025, 4:06 pm","num_violations":1,"violations":"Improper Labeling"}
+[2025-04-15 16:07:46] ===== New Update Request =====
+[2025-04-15 16:07:46] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => vape
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-15 16:07:46] Updating establishment ID: 43
+[2025-04-15 16:07:46] Violations: Improper Labeling
+[2025-04-15 16:07:46] Number of violations: 1
+[2025-04-15 16:07:46] Date updated: 2025-04-15 16:07:46
+[2025-04-15 16:07:46] Response: {"success":true,"message":"Record updated successfully","updated_id":43,"date_updated":"2025-04-15 16:07:46","formatted_date":"April 15, 2025, 4:07 pm","num_violations":1,"violations":"Improper Labeling"}
+[2025-04-15 16:10:42] ===== New Update Request =====
+[2025-04-15 16:10:42] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => vape
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-15 16:10:42] Updating establishment ID: 43
+[2025-04-15 16:10:42] Violations: Improper Labeling
+[2025-04-15 16:10:42] Number of violations: 1
+[2025-04-15 16:10:42] Date updated: 2025-04-15 16:10:42
+[2025-04-15 16:10:42] Response: {"success":true,"message":"Record updated successfully","updated_id":43,"date_updated":"2025-04-15 16:10:42","formatted_date":"April 15, 2025, 4:10 pm","num_violations":1,"violations":"Improper Labeling"}

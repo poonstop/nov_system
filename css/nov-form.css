@@ -114,23 +114,3 @@ body {
     background-color: #f8f9fa;
     border-radius: 8px;
 }
-.sort-header:hover {
-background-color: rgba(16, 52, 108, 0.1);
-transition: background-color 0.2s ease;
-}
-
-.sort-icon {
-margin-left: 8px;
-font-size: 0.8em;
-color: #10346C;
-}
-
-.sort-asc {
-color: #10346C;
-background-color: rgba(16, 52, 108, 0.1);
-}
-
-.sort-desc {
-color: #10346C;
-background-color: rgba(16, 52, 108, 0.1);
-}

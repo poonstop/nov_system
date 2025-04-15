@@ -1,8 +1,8 @@
 <?php 
 header('Content-Type: application/json'); 
-error_reporting(0); // Disable error display 
-ob_start(); // Start output buffering  
+error_reporting(E_ALL); // Enable error reporting for debugging
 ini_set('display_errors', 1);
+
 // Create debug log
 function debug_log($message) {
     $log_file = __DIR__ . '/update_debug.log';
@@ -76,11 +76,21 @@ try {
         $dateUpdated = new DateTime('now', new DateTimeZone('Asia/Manila'));
         $dateUpdatedStr = $dateUpdated->format('Y-m-d H:i:s');
     }
+
+    // Handle inventory data
+    $productsJson = '';
+    if (isset($data['inventory']) && is_array($data['inventory'])) {
+        $productsJson = json_encode($data['inventory']);
+        debug_log("Inventory data: " . print_r($data['inventory'], true));
+    }
+
+    // Log the data for debugging
+    debug_log("Updating establishment ID: $id");
+    debug_log("Violations: $violations");
+    debug_log("Number of violations: $numViolations");
+    debug_log("Date updated: $dateUpdatedStr");
     
-    // Log the date for debugging
-    error_log("Updating establishment ID: $id with date_updated: $dateUpdatedStr");
-    
-    // Prepare and execute SQL
+    // Prepare and execute 
     $stmt = $conn->prepare("
         UPDATE establishments 
         SET 
@@ -88,9 +98,11 @@ try {
             address = ?,
             owner_representative = ?,
             violations = ?,
+            num_violations = ?,
+            products = ?,
             date_updated = ?
         WHERE id = ?
-    ");      
+    ");  
     
     if (!$stmt) {         
         throw new Exception('Database prepare error: ' . $conn->error);     
@@ -98,11 +110,13 @@ try {
     
     // Bind parameters
     $stmt->bind_param(
-        "sssssi", // String, String, String, String, String, Integer
+        "ssssissi", // String, String, String, String, Integer, String, String, Integer
         $name,
         $address,
         $ownerRep,
         $violations,
+        $numViolations,
+        $productsJson,
         $dateUpdatedStr,
         $id
     );      
@@ -118,7 +132,8 @@ try {
             'success' => true,
             'message' => 'No changes detected or ID may not exist',
             'updated_id' => $id,
-            'date_updated' => $dateUpdatedStr
+            'date_updated' => $dateUpdatedStr,
+            'num_violations' => $numViolations
         ];
     } else {
         // Success response with updated timestamp
@@ -128,7 +143,9 @@ try {
             'message' => 'Record updated successfully',         
             'updated_id' => $id,         
             'date_updated' => $dateUpdatedStr,         
-            'formatted_date' => $dateUpdated->format('F j, Y, g:i a') // Human-readable format     
+            'formatted_date' => $dateUpdated->format('F j, Y, g:i a'), // Human-readable format
+            'num_violations' => $numViolations,
+            'violations' => $violations
         ];
     }
 } catch(Exception $e) {     
@@ -137,6 +154,7 @@ try {
         'success' => false,         
         'message' => 'Error: ' . $e->getMessage()     
     ]; 
+    debug_log("Error: " . $e->getMessage());
 } finally {     
     // Clean up resources     
     if (isset($stmt) && $stmt) {         
@@ -149,6 +167,7 @@ try {
     // End output buffering and send the response     
     ob_end_clean();     
     echo json_encode($response);     
+    debug_log("Response: " . json_encode($response));
     exit(); 
 } 
 ?>

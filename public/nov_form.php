@@ -9,17 +9,18 @@ function capitalizeWords($string) {
 // Previous query remains the same
 $query = "
     SELECT 
-        id,
-        name, 
-        address, 
-        IFNULL(owner_representative, 'Not specified') AS owner_rep,
-        violations AS all_violations,
-        1 AS num_violations,
-        date_created,
-        date_updated,
-        nov_files 
-    FROM establishments 
-    ORDER BY date_updated DESC
+        e.id,
+        e.name, 
+        e.address, 
+        IFNULL(e.owner_representative, 'Not specified') AS owner_rep,
+        e.violations AS all_violations,
+        e.products AS inventory_products,
+        e.num_violations,
+        e.date_created,
+        e.date_updated,
+        e.nov_files
+    FROM establishments e
+    ORDER BY e.date_updated DESC
 ";
 $result = $conn->query($query);
 ?>
@@ -141,26 +142,7 @@ $result = $conn->query($query);
         background-color: #f8f9fa;
         border-radius: 8px;
     }
-    .sort-header:hover {
-    background-color: rgba(16, 52, 108, 0.1);
-    transition: background-color 0.2s ease;
-}
-
-.sort-icon {
-    margin-left: 8px;
-    font-size: 0.8em;
-    color: #10346C;
-}
-
-.sort-asc {
-    color: #10346C;
-    background-color: rgba(16, 52, 108, 0.1);
-}
-
-.sort-desc {
-    color: #10346C;
-    background-color: rgba(16, 52, 108, 0.1);
-}
+  
 </style>
 
 <div class="container">
@@ -186,82 +168,90 @@ $result = $conn->query($query);
                 <!-- Previous table structure remains the same -->
                 <thead>
     <tr>
-     <th class="sort-header" data-column="0">Establishment <i class="sort-icon fa-solid fa-sort"></i></th>
-        <th class="sort-header" data-column="1">Address <i class="sort-icon fa-solid fa-sort"></i></th>
-        <th class="sort-header" data-column="2">Owner/Representative <i class="sort-icon fa-solid fa-sort"></i></th>  
-        <th class="sort-header" data-column="3">Violations <i class="sort-icon fa-solid fa-sort"></i></th>
+        <th>Establishment</th>
+        <th>Address</th>
+        <th>Owner/Representative</th>  
+        <th>Violations</th>
+        <th>Products (Inventory)</th>
+        <th>No. of Violations</th>
+        <th>Date Created</th>
+        <th>Last Updated</th>
         <th>Actions</th>
-        <th class="sort-header" data-column="4">No. of Violations <i class="sort-icon fa-solid fa-sort"></i></th>
-        <th class="sort-header" data-column="5">Date Created <i class="sort-icon fa-solid fa-sort"></i></th>
-        <th class="sort-header" data-column="6">Last Updated <i class="sort-icon fa-solid fa-sort"></i></th>
     </tr>
 </thead>
 
-                <tbody>
-                    <?php while ($row = $result->fetch_assoc()): ?>
-                        <tr data-id="<?= $row['id'] ?>">
-                    <td><?= ucwords(strtolower(htmlspecialchars($row['name']))) ?></td>
-                    <td><?= ucwords(strtolower(htmlspecialchars($row['address']))) ?></td>
-                    <td><?= ucwords(strtolower(htmlspecialchars($row['owner_rep']))) ?></td>
-                    <td>
-                        <?php 
-                              
-                              // Process violations for proper capitalization
-                $violations = array_map('trim', explode(',', $row['all_violations']));
-                $formattedViolations = array_map(function($v) {
-                    // Special case for PS/ICC
-                    if (strpos(strtolower($v), 'ps/icc') !== false) {
-                        return 'No PS/ICC Mark';
-                    }
-                    // Special case for accreditation
-                    if (strpos(strtolower($v), 'invalid/expired') !== false) {
-                        return 'Invalid/Expired Accreditation';
-                    }
-                    // Default capitalization
-                    return ucwords(strtolower($v));
-                }, $violations);
-                echo htmlspecialchars(implode(', ', array_unique($formattedViolations)));
-                     ?>
-                    </td>
-                    <td>
-                    <?php if (!empty($row['nov_files'])): ?>
-                        <button type="button" class="btn btn-sm btn-primary" onclick="openViewModal(<?= $row['id'] ?>)">View NOV</button>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="openEditModal(<?= $row['id'] ?>)">Edit</button>
-                            <?php else: ?>
-                                N/A
-                            <?php endif; ?>
-                        </td>
-                        <td><?= $row['num_violations'] ?></td>
-                        <td>
-                     <?php 
-                     if (!empty($row['date_created']) && $row['date_created'] != '0000-00-00 00:00:00') {
-                     try {
-                     $date = new DateTime($row['date_created']);
-                    echo $date->format('M d, Y h:i A');
-                      } catch (Exception $e) {
-                        echo 'Invalid date';
-                  }
-     } else {
-        echo 'No date';
+<tbody>
+    <?php while ($row = $result->fetch_assoc()): ?>
+        <tr data-id="<?= $row['id'] ?>">
+            <td><?= ucwords(strtolower(htmlspecialchars($row['name']))) ?></td>
+            <td><?= ucwords(strtolower(htmlspecialchars($row['address']))) ?></td>
+            <td><?= ucwords(strtolower(htmlspecialchars($row['owner_rep']))) ?></td>
+            <td>
+            <?php 
+    if (!empty($row['all_violations'])) {
+        $violations = array_map('trim', explode(',', $row['all_violations']));
+        $formattedViolations = array_map(function($v) {
+            if (strpos(strtolower($v), 'ps/icc') !== false) return 'No PS/ICC Mark';
+            if (strpos(strtolower($v), 'invalid/expired') !== false) return 'Invalid/Expired Accreditation';
+            return ucwords(strtolower($v));
+        }, $violations);
+        echo htmlspecialchars(implode(', ', array_unique($formattedViolations)));
+    } else {
+        echo '<span class="text-muted">No violations</span>';
+    }
+                ?>
+            </td>
+            <td>
+            <?php 
+    if (!empty($row['inventory_products'])) {
+        $products = json_decode($row['inventory_products'], true);
+        if (is_array($products)) {
+            $productNames = array_column($products, 'product_name');
+            echo htmlspecialchars(implode(', ', $productNames));
+            echo ' <span class="badge bg-primary">' . count($productNames) . '</span>';
+        } else {
+            echo htmlspecialchars($row['inventory_products']);
+        }
+    } else {
+        echo '<span class="text-muted">No inventory</span>';
     }
     ?>
 </td>
-    <td>
-    <?php 
-if (!empty($row['date_updated']) && $row['date_updated'] != '0000-00-00 00:00:00') {
-    try {
-        $date = new DateTime($row['date_updated'], new DateTimeZone('UTC'));
-        $date->setTimezone(new DateTimeZone('Asia/Manila'));
-        echo $date->format('M d, Y h:i A');
-    } catch (Exception $e) {
-        echo 'Invalid date';
-    }
-} else {
-    echo 'No date';
-}
-?>
-</td>
-</tr>
+            <td><?= $row['num_violations'] ?></td>
+            <td>
+                <?php 
+                if (!empty($row['date_created']) && $row['date_created'] != '0000-00-00 00:00:00') {
+                    try {
+                        $date = new DateTime($row['date_created']);
+                        echo $date->format('M d, Y h:i A');
+                    } catch (Exception $e) {
+                        echo 'Invalid date';
+                    }
+                } else {
+                    echo 'No date';
+                }
+                ?>
+            </td>
+            <td>
+                <?php 
+                if (!empty($row['date_updated']) && $row['date_updated'] != '0000-00-00 00:00:00') {
+                    try {
+                        $date = new DateTime($row['date_updated'], new DateTimeZone('UTC'));
+                        $date->setTimezone(new DateTimeZone('Asia/Manila'));
+                        echo $date->format('M d, Y h:i A');
+                    } catch (Exception $e) {
+                        echo 'Invalid date';
+                    }
+                } else {
+                    echo 'No date';
+                }
+                ?>
+            </td>
+            <td>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="openViewModal(<?= $row['id'] ?>)">View NOV</button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="openEditModal(<?= $row['id'] ?>)">Edit</button>
+            </td>
+        </tr>
     <?php endwhile; ?>
 </tbody>
 </table>
@@ -291,7 +281,36 @@ if (!empty($row['date_updated']) && $row['date_updated'] != '0000-00-00 00:00:00
             <span class="close-btn" onclick="closeModal('editModal')">&times;</span>
         </div>
         <div id="editModalContent">
-            <!-- Form content will be inserted here by JavaScript -->
+            <form id="editForm">
+                <input type="hidden" id="edit_id" name="id">
+                
+                <div class="mb-3">
+                    <label for="edit_name">Establishment Name</label>
+                    <input type="text" class="form-control" id="edit_name" name="name" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="edit_address">Address</label>
+                    <input type="text" class="form-control" id="edit_address" name="address">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="edit_owner_rep">Owner/Representative</label>
+                    <input type="text" class="form-control" id="edit_owner_rep" name="owner_rep">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="edit_violations">Violations</label>
+                    <input type="text" class="form-control" id="edit_violations" name="violations">
+                </div>
+                
+                <h4>Products Inventory</h4>
+                <div id="inventory_items">
+                    <!-- Inventory items will be added here -->
+                </div>
+                
+                <button type="button" class="btn btn-success" onclick="addInventoryItem()">Add Product</button>
+            </form>
         </div>
         <div class="text-center mt-3">
             <button class="btn btn-primary" onclick="saveChanges()">Save Changes</button>
