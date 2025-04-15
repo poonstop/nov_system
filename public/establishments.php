@@ -23,6 +23,13 @@
         $violations = implode(', ', $_POST['violations'] ?? []);
         $remarks = htmlspecialchars($_POST['remarks']);
         $notice_status = htmlspecialchars($_POST['notice_status'] ?? 'Not specified');
+        $region = htmlspecialchars($_POST['region']);
+        $province = htmlspecialchars($_POST['province']);
+        $municipality = htmlspecialchars($_POST['municipality']);
+        $barangay = htmlspecialchars($_POST['barangay']);
+        $street = htmlspecialchars($_POST['street']);
+
+        $address = "$street, Brgy. $barangay, $municipality, $province, $region";
 
         // Validate custom nature input
         if ($_POST['nature_select'] === 'Others' && empty(trim($_POST['nature_custom']))) {
@@ -91,7 +98,7 @@
                 if ($stmt === false) {
                     throw new Exception("Prepare statement failed: " . $conn->error);
                 }
-
+    
                 $violations_str = is_array($novDetails['violations']) ? implode(', ', $novDetails['violations']) : $novDetails['violations'];
                 
                 $stmt->bind_param("sssssssssss", 
@@ -116,8 +123,8 @@
                 $establishment_id = $conn->insert_id;
                 
                 // Insert inventory products if available
-                if (isset($novDetails['products']) && is_array($novDetails['products'])) {
-                    foreach ($novDetails['products'] as $product) {
+                if (isset($_SESSION['inventory_products']) && is_array($_SESSION['inventory_products'])) {
+                    foreach ($_SESSION['inventory_products'] as $product) {
                         $stmt_product = $conn->prepare("INSERT INTO inventory_products 
                             (establishment_id, product_name, sealed, withdrawn, description, price, pieces, 
                             dao_violation, other_violation, remarks)
@@ -132,7 +139,7 @@
                         $dao_violation = isset($product['dao_violation']) ? 1 : 0;
                         $other_violation = isset($product['other_violation']) ? 1 : 0;
                         
-                        $stmt_product->bind_param("issssiiiss", 
+                        $stmt_product->bind_param("isssdiiiss", 
                             $establishment_id,
                             $product['name'],
                             $sealed,
@@ -153,7 +160,7 @@
                 
                 // Commit transaction
                 $conn->commit();
-
+    
                 // Set success message
                 $_SESSION['success'] = json_encode([
                     'title' => 'Notice of Violation Saved',
@@ -167,6 +174,7 @@
                 unset($_SESSION['nov_details']);
                 unset($_SESSION['form_data']);
                 unset($_SESSION['form_snapshot']);
+                unset($_SESSION['inventory_products']);
                 
                 // Redirect to establishments page
                 header("Location: establishments.php");
@@ -188,6 +196,38 @@
             exit();
         }
     }
+    
+    // Add a new section to process the inventory form submission
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_inventory'])) {
+        // Store inventory products in session
+        if (isset($_POST['products']) && is_array($_POST['products'])) {
+            $_SESSION['inventory_products'] = $_POST['products'];
+            
+            // Redirect to violations page or show status modal
+            header("Location: establishments.php?show_status_modal=1");
+            exit();
+        } else {
+            $_SESSION['error'] = "No products were submitted. Please add at least one product.";
+            header("Location: establishments.php");
+            exit();
+        }
+    }
+
+// Add a new section to process the inventory form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_inventory'])) {
+    // Store inventory products in session
+    if (isset($_POST['products']) && is_array($_POST['products'])) {
+        $_SESSION['inventory_products'] = $_POST['products'];
+        
+        // Redirect to violations page or show status modal
+        header("Location: establishments.php?show_status_modal=1");
+        exit();
+    } else {
+        $_SESSION['error'] = "No products were submitted. Please add at least one product.";
+        header("Location: establishments.php");
+        exit();
+    }
+}
     // Add this where you process the form data in establishments.php
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['proceed_to_violations'])) {
         // Store form data in session
@@ -380,81 +420,98 @@
         </div>
     </div>
 
-    <!-- Inventory Modal -->
-    <div class="modal fade" id="inventoryModal" tabindex="-1" aria-labelledby="inventoryModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="inventoryModalLabel">Inventory of Non-Conforming Products</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="inventoryForm" method="POST">
-                        <div class="mb-3">
-                            <h5>Inventory of Non-Conforming Products:</h5>
-                            
-                            <div id="productsContainer">
-                                <!-- Product items will be added here dynamically -->
-                                <div class="product-item border p-3 mb-3 rounded">
-                                    <div class="row mb-2">
-                                        <div class="col-md-8">
-                                            <label for="product_name">Product:</label>
-                                            <input type="text" class="form-control" name="products[0][name]" required>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="d-flex mt-4">
-                                                <div class="form-check me-4">
-                                                    <input class="form-check-input" type="checkbox" name="products[0][sealed]" value="1">
-                                                    <label class="form-check-label">Sealed</label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="products[0][withdrawn]" value="1">
-                                                    <label class="form-check-label">Withdrawn</label>
-                                                </div>
+
+<!-- Inventory Modal -->
+<div class="modal fade" id="inventoryModal" tabindex="-1" aria-labelledby="inventoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="inventoryModalLabel">Inventory of Non-Conforming Products</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="inventoryForm" method="POST">
+                    <!-- Hidden field for establishment data -->
+                    <input type="hidden" name="establishment" value="">
+                    <input type="hidden" name="owner_representative" value="">
+                    <input type="hidden" name="address" value="">
+                    <input type="hidden" name="nature_select" value="">
+                    <input type="hidden" name="nature_custom" value="">
+                    <input type="hidden" name="products" value="">
+                    
+                    <div class="mb-3">
+                        <h5>Inventory of Non-Conforming Products:</h5>
+                        
+                        <div id="productsContainer">
+                            <!-- Product items will be added here dynamically -->
+                            <div class="product-item border p-3 mb-3 rounded">
+                                <div class="row mb-2">
+                                    <div class="col-md-8">
+                                        <label for="product_name">Product:</label>
+                                        <input type="text" class="form-control" name="products[0][name]" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-flex mt-4">
+                                            <div class="form-check me-4">
+                                                <input class="form-check-input" type="checkbox" name="products[0][sealed]" value="1">
+                                                <label class="form-check-label">Sealed</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="products[0][withdrawn]" value="1">
+                                                <label class="form-check-label">Withdrawn</label>
                                             </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div class="mb-2">
-                                        <label for="brand_description">Brand Description:</label>
-                                        <textarea class="form-control" name="products[0][description]" rows="3"></textarea>
-                                    </div>
-                                    
-                                    <div class="row mb-2">
-                                        <div class="col-md-4">
-                                            <label for="price">Price:</label>
-                                            <input type="number" class="form-control" name="products[0][price]" step="0.01">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label for="pieces">No. of Pieces:</label>
-                                            <input type="number" class="form-control" name="products[0][pieces]">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="d-flex mt-4">
-                                                <div class="form-check me-4">
-                                                    <input class="form-check-input" type="checkbox" name="products[0][dao_violation]" value="1">
-                                                    <label class="form-check-label">Violation of DAO</label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="products[0][other_violation]" value="1">
-                                                    <label class="form-check-label">Other Violation</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="mb-2">
-                                        <label for="remarks">Product Remarks:</label>
-                                        <input type="text" class="form-control" name="products[0][remarks]">
                                     </div>
                                 </div>
+                                
+                                <div class="mb-2">
+                                    <label for="brand_description">Brand Description:</label>
+                                    <textarea class="form-control" name="products[0][description]" rows="3"></textarea>
+                                </div>
+                                
+                                <div class="row mb-2">
+                                    <div class="col-md-4">
+                                        <label for="price">Price:</label>
+                                        <input type="number" class="form-control" name="products[0][price]" step="0.01">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="pieces">No. of Pieces:</label>
+                                        <input type="number" class="form-control" name="products[0][pieces]">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-flex mt-4">
+                                            <div class="form-check me-4">
+                                                <input class="form-check-input" type="checkbox" name="products[0][dao_violation]" value="1">
+                                                <label class="form-check-label">Violation of DAO</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="products[0][other_violation]" value="1">
+                                                <label class="form-check-label">Other Violation</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <label for="remarks">Product Remarks:</label>
+                                    <input type="text" class="form-control" name="products[0][remarks]">
+                                </div>
                             </div>
-                            </div>
+                        </div>
+
+                        <!-- Add Button to add more products -->
+                        <div class="text-center mt-3">
+                            <button type="button" class="btn btn-outline-primary" id="addProductBtn">
+                                <i class="bi bi-plus-circle"></i> Add Another Product
+                            </button>
+                        </div>
+                    </div>
                     
-                    <!-- Hidden fields to carry over all previous form data -->
-                    <input type="hidden" id="allFormData" name="all_form_data">
-                    
-                    <!-- Removed Back and Submit buttons -->
+                    <!-- Add Back and Save buttons -->
+                    <div class="text-end mt-4">
+                        <button type="button" class="btn btn-secondary" id="backFromInventoryBtn">Back</button>
+                        <button type="button" class="btn btn-primary" id="saveInventoryBtn">Save Products</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -637,423 +694,6 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
-        
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-        const statusReceived = document.getElementById('statusReceived');
-        const statusRefused = document.getElementById('statusRefused');
-        const receivedByFields = document.getElementById('receivedByFields');
-        const refusedByFields = document.getElementById('refusedByFields');
-
-    if (statusReceived && statusRefused && receivedByFields && refusedByFields) {
-        // Show/hide fields based on selection
-        statusReceived.addEventListener('change', function() {
-            if (this.checked) {
-                receivedByFields.style.display = 'block';
-                refusedByFields.style.display = 'none';
-                
-                // Set required attributes
-                document.getElementById('received_by').setAttribute('required', 'required');
-                document.getElementById('position').setAttribute('required', 'required');
-                document.getElementById('witnessed_by').removeAttribute('required');
-                
-                // Clear refused fields
-                document.getElementById('witnessed_by').value = '';
-            }
-        });
-        
-        statusRefused.addEventListener('change', function() {
-            if (this.checked) {
-                receivedByFields.style.display = 'none';
-                refusedByFields.style.display = 'block';
-                
-                // Set required attributes
-                document.getElementById('received_by').removeAttribute('required');
-                document.getElementById('position').removeAttribute('required');
-                document.getElementById('witnessed_by').setAttribute('required', 'required');
-                
-                // Clear received fields
-                document.getElementById('received_by').value = '';
-                document.getElementById('position').value = '';
-            }
-        });
-    }
-
-    // Ensure the button exists
-    const proceedBtn = document.getElementById('proceedToViolationsBtn');
-    if (proceedBtn) {
-        console.log('Proceed button found');
-        
-        proceedBtn.addEventListener('click', function(e) {
-            console.log('Proceed button clicked');
-            
-            // Validate required fields before proceeding
-            const formElement = document.getElementById('novForm');
-            const requiredFields = formElement.querySelectorAll('[required]');
-            let isValid = true;
-            
-            requiredFields.forEach(field => {
-                if (!field.value.trim()) {
-                    isValid = false;
-                    field.classList.add('is-invalid');
-                } else {
-                    field.classList.remove('is-invalid');
-                }
-            });
-            
-            if (isValid) {
-                // Capture form data
-                const formData = new FormData(formElement);
-                console.log('Form valid, opening violations modal');
-                
-                // Populate the violations modal with form data
-                document.getElementById('hiddenEstablishment').value = formData.get('establishment');
-                document.getElementById('hiddenOwnerRep').value = formData.get('owner_representative');
-                document.getElementById('hiddenAddress').value = formData.get('address'); 
-                document.getElementById('hiddenNatureSelect').value = formData.get('nature_select');
-                document.getElementById('hiddenNatureCustom').value = formData.get('nature_custom') || '';
-                document.getElementById('hiddenProducts').value = formData.get('products');
-                
-                // Show the modal
-                const violationsModal = new bootstrap.Modal(document.getElementById('violationsModal'));
-                violationsModal.show();
-            } else {
-                console.log('Form validation failed');
-                Swal.fire({
-                    title: 'Missing Information',
-                    text: 'Please fill in all required fields before proceeding.',
-                    icon: 'warning',
-                    confirmButtonColor: '#10346C'
-                });
-            }
-        });
-    } else {
-        console.error('Proceed button not found in DOM');
-    }
-});
-
-                
-                // Handle the violations form submission
-    const submitViolationsBtn = document.getElementById('submitViolationsBtn');
-    if (submitViolationsBtn) {
-        submitViolationsBtn.addEventListener('click', function() {
-            // Get form data from the violations modal
-            const violationsForm = document.getElementById('violationsForm');
-            const formData = new FormData(violationsForm);
-            
-            // Check if at least one violation is checked
-            const violations = formData.getAll('violations[]');
-            if (violations.length === 0) {
-                Swal.fire({
-                    title: 'No Violations Selected',
-                    text: 'Please select at least one violation before proceeding.',
-                    icon: 'warning',
-                    confirmButtonColor: '#10346C'
-                });
-                return;
-            }
-            
-            // Store the violations form data in session storage
-            sessionStorage.setItem('violationsFormData', JSON.stringify(Object.fromEntries(formData)));
-            
-            // Hide violations modal and show received/refused modal
-            const violationsModal = bootstrap.Modal.getInstance(document.getElementById('violationsModal'));
-            violationsModal.hide();
-            
-            // Check for product violations
-            const productRelatedViolations = [
-                'No PS/ICC Mark',
-                'Invalid/suspended or cancelled BPS license or permit',
-                'No Manufacturer\'s Name',
-                'No Manufacturer\'s Address',
-                'No Date Manufactured',
-                'No Country of Origin',
-                'No/Inappropriate Price Tag',
-                'Price grossly in excess of its true worth',
-                'Price is beyond the Price Ceiling'
-            ];
-            
-            // Check if any selected violation is product-related
-            const hasProductViolations = Array.isArray(violations) ?
-                violations.some(v => productRelatedViolations.includes(v)) :
-                productRelatedViolations.includes(violations);
-                
-            if (hasProductViolations) {
-                // Show inventory modal if there are product violations
-                const inventoryModal = new bootstrap.Modal(document.getElementById('inventoryModal'));
-                inventoryModal.show();
-            } else {
-                // Show received/refused modal next
-                const receivedRefusedModal = new bootstrap.Modal(document.getElementById('receivedRefusedModal'));
-                receivedRefusedModal.show();
-            }
-        });
-    }
-
-    // Modify the submitStatusBtn event listener to show inventory modal after status modal
-    const submitStatusBtn = document.getElementById('submitStatusBtn');
-    if (submitStatusBtn) {
-        submitStatusBtn.addEventListener('click', function() {
-            // Get form data
-            const statusForm = document.getElementById('noticeStatusForm');
-            const statusData = new FormData(statusForm);
-            
-            // Validate status selection
-            if (!statusData.get('notice_status')) {
-                Swal.fire({
-                    title: 'Status Required',
-                    text: 'Please select whether the notice was received or refused.',
-                    icon: 'warning',
-                    confirmButtonColor: '#10346C'
-                });
-                return;
-            }
-            
-            // Additional validation based on selected status
-            if (statusData.get('notice_status') === 'Received') {
-                if (!statusData.get('received_by').trim()) {
-                    Swal.fire({
-                        title: 'Receiver Name Required',
-                        text: 'Please enter the name of the person who received the notice.',
-                        icon: 'warning',
-                        confirmButtonColor: '#10346C'
-                    });
-                    return;
-                }
-                
-                if (!statusData.get('position').trim()) {
-                    Swal.fire({
-                        title: 'Position Required',
-                        text: 'Please enter the position of the person who received the notice.',
-                        icon: 'warning',
-                        confirmButtonColor: '#10346C'
-                    });
-                    return;
-                }
-            } else if (statusData.get('notice_status') === 'Refused') {
-                if (!statusData.get('witnessed_by').trim()) {
-                    Swal.fire({
-                        title: 'Witness Name Required',
-                        text: 'Please enter the name of the person who witnessed the refusal.',
-                        icon: 'warning',
-                        confirmButtonColor: '#10346C'
-                    });
-                    return;
-                }
-            }
-            
-        // Store status data in session storage
-        const statusFormData = Object.fromEntries(statusData);
-            sessionStorage.setItem('statusFormData', JSON.stringify(statusFormData));
-            
-            // Close status moda
-            const statusModal = bootstrap.Modal.getInstance(document.getElementById('receivedRefusedModal'));
-            statusModal.hide();
-            
-            // Proceed to issuer modal
-            window.location.href = 'establishments.php?show_issuer_modal=1';
-        });
-    }
-
-        
-        // Inventory form submission
-        const submitInventoryBtn = document.getElementById('submitInventoryBtn');
-    if (submitInventoryBtn) {
-        submitInventoryBtn.addEventListener('click', function() {
-            // Get all previous form data
-            const violationsData = JSON.parse(sessionStorage.getItem('violationsFormData'));
-            const statusData = JSON.parse(sessionStorage.getItem('statusFormData'));
-            
-            // Get inventory form data
-            const inventoryForm = document.getElementById('inventoryForm');
-            const inventoryFormData = new FormData(inventoryForm);
-            const inventoryData = {};
-            
-            // Extract product data
-            const products = [];
-            const formEntries = Array.from(inventoryFormData.entries());
-            
-            // Group product entries
-            formEntries.forEach(([key, value]) => {
-                if (key.startsWith('products')) {
-                    const matches = key.match(/products\[(\d+)\]\[([^\]]+)\]/);
-                    if (matches) {
-                        const index = parseInt(matches[1]);
-                        const field = matches[2];
-                        
-                        if (!products[index]) {
-                            products[index] = {};
-                        }
-                        
-                        products[index][field] = value;
-                    }
-                }
-            });
-            
-            // Filter out empty products
-            const validProducts = products.filter(product => product && product.name);
-            
-            // Combine all form data
-            const allData = {
-                ...violationsData,
-                ...statusData,
-                products: validProducts
-            };
-            
-            // Set the combined data to hidden field
-            document.getElementById('allFormData').value = JSON.stringify(allData);
-            
-            // Submit to server
-            fetch('set_inventory_session.php', {
-                method: 'POST',
-                body: new FormData(inventoryForm)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Redirect to show the issuer modal
-                    window.location.href = 'establishments.php?show_issuer_modal=1';
-                } else {
-                    Swal.fire({
-                        title: 'Error',
-                        text: data.message || 'Failed to save inventory data. Please try again.',
-                        icon: 'error',
-                        confirmButtonColor: '#10346C'
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    title: 'Error',
-                    text: 'An unexpected error occurred. Please try again.',
-                    icon: 'error',
-                    confirmButtonColor: '#10346C'
-                });
-            });
-        });
-    }
-        
-        // Back button in inventory modal
-        const backToStatusBtn = document.getElementById('backToStatusBtn');
-        if (backToStatusBtn) {
-            backToStatusBtn.addEventListener('click', function() {
-                // Hide inventory modal
-                const inventoryModal = bootstrap.Modal.getInstance(document.getElementById('inventoryModal'));
-                inventoryModal.hide();
-                
-                // Show status modal again
-                const statusModal = new bootstrap.Modal(document.getElementById('receivedRefusedModal'));
-                statusModal.show();
-            });
-        }
-    
-                // Form data capture before navigation
-                const formElement = document.getElementById('novForm');
-                const submitBtn = document.getElementById('submitFormBtn');
-                
-                if (submitBtn) {
-                    submitBtn.addEventListener('click', function(e) {
-                        // Capture form data before submission
-                        captureFormData();
-                    });
-                }
-                
-                // Function to capture form data
-                function captureFormData() {
-                    const formData = new FormData(formElement);
-                    sessionStorage.setItem('novFormBackup', JSON.stringify(Object.fromEntries(formData)));
-                    
-                    // Optional: Take screenshot of form
-                    takeFormSnapshot();
-                }
-                
-                // Function to take a visual snapshot of the form
-                function takeFormSnapshot() {
-                    html2canvas(formElement).then(canvas => {
-                        const dataURL = canvas.toDataURL('image/png');
-                        sessionStorage.setItem('formSnapshot', dataURL);
-                    }).catch(err => {
-                        console.error('Error taking form snapshot:', err);
-                    });
-                }
-                
-                // Nature of Business Custom Input Toggle
-                const natureSelect = document.getElementById('natureSelect');
-                const customInput = document.getElementById('natureCustom');
-                
-                if (natureSelect) {
-                    natureSelect.addEventListener('change', function() {
-                        if (this.value === 'Others') {
-                            customInput.style.display = 'block';
-                            customInput.required = true;
-                            customInput.focus();
-                        } else {
-                            customInput.style.display = 'none';
-                            customInput.required = false;
-                            customInput.value = '';
-                        }
-                    });
-                }
-                
-                // Restore form data on page load from session backup
-                const backupData = sessionStorage.getItem('novFormBackup');
-                if (backupData && formElement) {
-                    try {
-                        const parsedData = JSON.parse(backupData);
-                        
-                        // Populate regular inputs
-                        for (const [key, value] of Object.entries(parsedData)) {
-                            const field = formElement.elements[key];
-                            if (field && field.type !== 'checkbox' && field.type !== 'radio') {
-                                field.value = value;
-                            } else if (field && field.type === 'checkbox') {
-                                field.checked = parsedData[key] === 'on';
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Error restoring form data:', error);
-                    }
-                }
-    
-            function getCurrentDateTime() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
-}
-
-        // Set the placeholder when the page loads
-        document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('issued_datetime').placeholder = getCurrentDateTime();
-        });
-        if (document.getElementById('issued_datetime')) {
-    flatpickr("#issued_datetime", {
-        enableTime: true,
-        dateFormat: "Y-m-d h:i K", 
-        time_24hr: true,
-        maxDate: new Date(), // Allows today's date & time (up to now)
-        defaultDate: new Date(), // Sets default to current datetime
-        minuteIncrement: 1,
-        disableMobile: true,
-        allowInput: true,
-        onChange: function(selectedDates, dateStr, instance) {
-            if (selectedDates[0] > new Date()) {
-                instance.setDate(new Date());
-                Swal.fire({
-                    title: 'Invalid Date',
-                    text: 'Future dates are not allowed. Date has been reset to current date and time.',
-                    icon: 'warning',
-                    confirmButtonColor: '#10346C'
-                });
-            }
-        }
-    });
-}
-        </script>
+        <script src="js/form_handler_establishments.js"></script>
     </body>
     </html>
