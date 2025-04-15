@@ -548,25 +548,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Toggle status modal
-    const toggleStatusModal = document.getElementById('toggleStatusModal');
-    if (toggleStatusModal) {
-        toggleStatusModal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            const userId = button.getAttribute('data-id');
-            const username = button.getAttribute('data-username');
-            const newStatus = button.getAttribute('data-status');
-            const action = newStatus === 'active' ? 'activate' : 'deactivate';
-            
-            document.getElementById('statusUserId').value = userId;
-            document.getElementById('statusUserName').textContent = username;
-            document.getElementById('newStatus').value = newStatus;
-            document.getElementById('statusAction').textContent = action;
-            
-            const confirmBtn = document.getElementById('confirmStatusBtn');
-            confirmBtn.className = `btn btn-${newStatus === 'active' ? 'success' : 'warning'}`;
-            confirmBtn.textContent = newStatus === 'active' ? 'Activate' : 'Deactivate';
-        });
-    }
+const toggleStatusModal = document.getElementById('toggleStatusModal');
+if (toggleStatusModal) {
+    toggleStatusModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const userId = button.getAttribute('data-id');
+        const username = button.getAttribute('data-username');
+        const newStatus = button.getAttribute('data-status');
+        const action = newStatus === 'active' ? 'activate' : 'deactivate';
+        
+        document.getElementById('statusUserId').value = userId;
+        document.getElementById('statusUserName').textContent = username;
+        document.getElementById('newStatus').value = newStatus;
+        document.getElementById('statusAction').textContent = action;
+        
+        const confirmBtn = document.getElementById('confirmStatusBtn');
+        confirmBtn.className = `btn btn-${newStatus === 'active' ? 'success' : 'warning'}`;
+        confirmBtn.textContent = newStatus === 'active' ? 'Activate' : 'Deactivate';
+    });
+}
     
     // Auto hide alerts after 5 seconds
     const alerts = document.querySelectorAll('.alert');

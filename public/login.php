@@ -4,15 +4,18 @@ include __DIR__ . '/../connection.php';
 
 // Check for logout message
 if (isset($_SESSION['logout_message'])) {
-    echo '<script>
-    Swal.fire({
-        icon: "success",
-        title: "Logged Out",
-        text: "'.$_SESSION['logout_message'].'",
-        showConfirmButton: false,
-        timer: 2000
+    $logout_message = $_SESSION['logout_message'];
+    echo "<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        Swal.fire({
+            icon: 'success',
+            title: 'Logged Out',
+            text: '{$logout_message}',
+            showConfirmButton: false,
+            timer: 2000
+        });
     });
-    </script>';
+    </script>";
     unset($_SESSION['logout_message']);
 }
 
@@ -33,6 +36,8 @@ if (isset($_SESSION['user_id'])) {
 }
 
 $error_message = '';
+$inactive_account = false;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username']);
     $password = trim($_POST['password']);
@@ -48,7 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($user) {
                 if ($user['status'] !== 'active') {
-                    $error_message = "Your account is inactive. Please contact administrator.";
+                    // Set flag for inactive account
+                    $inactive_account = true;
                 } elseif (password_verify($password, $user['password'])) {
                     // Login successful
                     $_SESSION['user_id'] = $user['id'];
@@ -275,6 +281,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     setInterval(updateTime, 1000);
     updateTime();
+
+    <?php if ($inactive_account): ?>
+    // Show inactive account message
+    document.addEventListener('DOMContentLoaded', function() {
+        Swal.fire({
+            icon: 'error',
+            title: 'Account Inactive',
+            text: 'Your account is currently deactivated. Please contact the administrator.',
+            confirmButtonColor: '#10346C'
+        });
+    });
+    <?php endif; ?>
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
