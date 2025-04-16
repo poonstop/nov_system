@@ -202,3 +202,123 @@
 [2025-04-15 16:10:42] Number of violations: 1
 [2025-04-15 16:10:42] Date updated: 2025-04-15 16:10:42
 [2025-04-15 16:10:42] Response: {"success":true,"message":"Record updated successfully","updated_id":43,"date_updated":"2025-04-15 16:10:42","formatted_date":"April 15, 2025, 4:10 pm","num_violations":1,"violations":"Improper Labeling"}
+[2025-04-16 08:14:48] ===== New Update Request =====
+[2025-04-16 08:14:48] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => vape
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-16 08:14:48] Updating establishment ID: 45
+[2025-04-16 08:14:48] Violations: No PS/ICC Mark
+[2025-04-16 08:14:48] Number of violations: 1
+[2025-04-16 08:14:48] Date updated: 2025-04-16 08:14:48
+[2025-04-16 08:14:48] Response: {"success":true,"message":"Record updated successfully","updated_id":45,"date_updated":"2025-04-16 08:14:48","formatted_date":"April 16, 2025, 8:14 am","num_violations":1,"violations":"No PS\/ICC Mark"}
+[2025-04-16 08:14:58] ===== New Update Request =====
+[2025-04-16 08:14:58] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => vape
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-16 08:14:58] Updating establishment ID: 45
+[2025-04-16 08:14:58] Violations: No PS/ICC Mark
+[2025-04-16 08:14:58] Number of violations: 1
+[2025-04-16 08:14:58] Date updated: 2025-04-16 08:14:58
+[2025-04-16 08:14:58] Response: {"success":true,"message":"Record updated successfully","updated_id":45,"date_updated":"2025-04-16 08:14:58","formatted_date":"April 16, 2025, 8:14 am","num_violations":1,"violations":"No PS\/ICC Mark"}
+[2025-04-16 08:15:05] ===== New Update Request =====
+[2025-04-16 08:15:05] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => vape
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-16 08:15:05] Updating establishment ID: 45
+[2025-04-16 08:15:05] Violations: No PS/ICC Mark
+[2025-04-16 08:15:05] Number of violations: 1
+[2025-04-16 08:15:05] Date updated: 2025-04-16 08:15:05
+[2025-04-16 08:15:05] Response: {"success":true,"message":"Record updated successfully","updated_id":45,"date_updated":"2025-04-16 08:15:05","formatted_date":"April 16, 2025, 8:15 am","num_violations":1,"violations":"No PS\/ICC Mark"}
+[2025-04-16 08:15:14] ===== New Update Request =====
+[2025-04-16 08:15:14] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => na
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-16 08:15:14] Updating establishment ID: 45
+[2025-04-16 08:15:14] Violations: No PS/ICC Mark
+[2025-04-16 08:15:14] Number of violations: 1
+[2025-04-16 08:15:14] Date updated: 2025-04-16 08:15:14
+[2025-04-16 08:15:14] Response: {"success":true,"message":"Record updated successfully","updated_id":45,"date_updated":"2025-04-16 08:15:14","formatted_date":"April 16, 2025, 8:15 am","num_violations":1,"violations":"No PS\/ICC Mark"}
+[2025-04-16 08:15:31] ===== New Update Request =====
+[2025-04-16 08:15:31] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => na
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-16 08:15:31] Updating establishment ID: 45
+[2025-04-16 08:15:31] Violations: No PS/ICC Mark
+[2025-04-16 08:15:31] Number of violations: 1
+[2025-04-16 08:15:31] Date updated: 2025-04-16 08:15:31
+[2025-04-16 08:15:31] Response: {"success":true,"message":"Record updated successfully","updated_id":45,"date_updated":"2025-04-16 08:15:31","formatted_date":"April 16, 2025, 8:15 am","num_violations":1,"violations":"No PS\/ICC Mark"}
+[2025-04-16 10:59:46] ===== New Update Request =====
+[2025-04-16 10:59:46] Inventory data: Array
+(
+    [0] => Array
+        (
+            [id] => 
+            [product_name] => na
+            [price] => 0.00
+            [quantity] => 0
+            [sealed] => 0
+            [withdrawn] => 0
+        )
+
+)
+
+[2025-04-16 10:59:46] Updating establishment ID: 45
+[2025-04-16 10:59:46] Violations: No PS/ICC Mark, Invalid/Expired Accreditation
+[2025-04-16 10:59:46] Number of violations: 2
+[2025-04-16 10:59:46] Date updated: 2025-04-16 10:59:46
+[2025-04-16 10:59:46] Response: {"success":true,"message":"Record updated successfully","updated_id":45,"date_updated":"2025-04-16 10:59:46","formatted_date":"April 16, 2025, 10:59 am","num_violations":2,"violations":"No PS\/ICC Mark, Invalid\/Expired Accreditation"}
