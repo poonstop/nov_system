@@ -510,6 +510,7 @@
                         <!-- Add Back and Save buttons -->
                         <div class="text-end mt-4">
                             <button type="button" class="btn btn-secondary" id="backFromInventoryBtn">Back</button>
+                            <button type="button" class="btn btn-outline-primary" id="skipInventoryBtn">Skip</button>
                             <button type="button" class="btn btn-primary" id="saveInventoryBtn">Save Products</button>
                         </div>
                     </form>

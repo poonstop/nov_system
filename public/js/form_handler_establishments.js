@@ -72,52 +72,67 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Violations form submission
-    const submitViolationsBtn = document.getElementById('submitViolationsBtn');
-    if (submitViolationsBtn) {
-        submitViolationsBtn.addEventListener('click', function() {
-            const violationsForm = document.getElementById('violationsForm');
-            const formData = new FormData(violationsForm);
-            const violations = Array.from(formData.getAll('violations[]'));
+    // Violations form submission - modify this part
+const submitViolationsBtn = document.getElementById('submitViolationsBtn');
+if (submitViolationsBtn) {
+    submitViolationsBtn.addEventListener('click', function() {
+        const violationsForm = document.getElementById('violationsForm');
+        const formData = new FormData(violationsForm);
+        const violations = Array.from(formData.getAll('violations[]'));
+        
+        if (violations.length === 0) {
+            Swal.fire({
+                title: 'No Violations Selected',
+                text: 'Please select at least one violation before proceeding.',
+                icon: 'warning',
+                confirmButtonColor: '#10346C'
+            });
+            return;
+        }
+        
+        sessionStorage.setItem('violationsFormData', JSON.stringify(Object.fromEntries(formData)));
+        
+        bootstrap.Modal.getInstance(document.getElementById('violationsModal')).hide();
+        
+        // Always show inventory modal regardless of violation type
+        setTimeout(() => {
+            populateInventoryModal();
+            new bootstrap.Modal(document.getElementById('inventoryModal')).show();
+        }, 300);
+    });
+}
+
+// Add skip inventory button handler
+const skipInventoryBtn = document.getElementById('skipInventoryBtn');
+if (skipInventoryBtn) {
+    skipInventoryBtn.addEventListener('click', function() {
+        // Hide the inventory modal
+        const inventoryModal = document.getElementById('inventoryModal');
+        const bsInventoryModal = bootstrap.Modal.getInstance(inventoryModal);
+        
+        if (bsInventoryModal) {
+            // Use the Bootstrap modal hide method if we found an instance
+            bsInventoryModal.hide();
             
-            if (violations.length === 0) {
-                Swal.fire({
-                    title: 'No Violations Selected',
-                    text: 'Please select at least one violation before proceeding.',
-                    icon: 'warning',
-                    confirmButtonColor: '#10346C'
-                });
-                return;
-            }
+            // Wait for the modal to finish hiding before showing the next one
+            inventoryModal.addEventListener('hidden.bs.modal', function() {
+                // Show the received/refused modal
+                const receivedRefusedModal = document.getElementById('receivedRefusedModal');
+                new bootstrap.Modal(receivedRefusedModal).show();
+            }, { once: true });
+        } else {
+            // Manual hide if we can't find the Bootstrap modal instance
+            inventoryModal.classList.remove('show');
+            document.body.classList.remove('modal-open');
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
             
-            sessionStorage.setItem('violationsFormData', JSON.stringify(Object.fromEntries(formData)));
-            
-            const productRelatedViolations = [
-                'No PS/ICC Mark',
-                'Invalid/suspended or cancelled BPS license or permit',
-                'No Manufacturer\'s Name',
-                'No Manufacturer\'s Address',
-                'No Date Manufactured',
-                'No Country of Origin',
-                'No/Inappropriate Price Tag',
-                'Price grossly in excess of its true worth',
-                'Price is beyond the Price Ceiling'
-            ];
-            
-            const hasProductViolations = violations.some(v => productRelatedViolations.includes(v));
-            
-            bootstrap.Modal.getInstance(document.getElementById('violationsModal')).hide();
-            
+            // Wait a moment then show the next modal
             setTimeout(() => {
-                if (hasProductViolations) {
-                    populateInventoryModal();
-                    new bootstrap.Modal(document.getElementById('inventoryModal')).show();
-                } else {
-                    new bootstrap.Modal(document.getElementById('receivedRefusedModal')).show();
-                }
+                new bootstrap.Modal(document.getElementById('receivedRefusedModal')).show();
             }, 300);
-        });
-    }
+        }
+    });
+}
 
     function populateInventoryModal() {
         const inventoryForm = document.getElementById('inventoryForm');
@@ -334,4 +349,6 @@ document.addEventListener('DOMContentLoaded', function() {
             natureCustom.required = this.value === 'Others';
         });
     }
+
+    
 });
