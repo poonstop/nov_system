@@ -151,48 +151,112 @@ if (skipInventoryBtn) {
     }
 
     // Status form submission
-    const submitStatusBtn = document.getElementById('submitStatusBtn');
-    if (submitStatusBtn) {
-        submitStatusBtn.addEventListener('click', function() {
-            const statusForm = document.getElementById('noticeStatusForm');
-            const statusData = new FormData(statusForm);
-            
-            if (!statusData.get('notice_status')) {
-                Swal.fire({
-                    title: 'Status Required',
-                    text: 'Please select whether the notice was received or refused.',
-                    icon: 'warning',
-                    confirmButtonColor: '#10346C'
-                });
-                return;
-            }
-            
-            const status = statusData.get('notice_status');
-            if (status === 'Received' && (!statusData.get('issued_by') || !statusData.get('position'))) {
-                Swal.fire({
-                    title: 'Information Required',
-                    text: 'Please enter both issuer name and position.',
-                    icon: 'warning',
-                    confirmButtonColor: '#10346C'
-                });
-                return;
-            }
-            
-            if (status === 'Refused' && !statusData.get('witnessed_by')) {
-                Swal.fire({
-                    title: 'Witness Required',
-                    text: 'Please enter the name of the witness.',
-                    icon: 'warning',
-                    confirmButtonColor: '#10346C'
-                });
-                return;
-            }
-            
-            sessionStorage.setItem('statusFormData', JSON.stringify(Object.fromEntries(statusData)));
-            bootstrap.Modal.getInstance(document.getElementById('receivedRefusedModal')).hide();
-            window.location.href = 'establishments.php?show_issuer_modal=1';
-        });
-    }
+    // Status form submission
+        const submitStatusBtn = document.getElementById('submitStatusBtn');
+        if (submitStatusBtn) {
+            submitStatusBtn.addEventListener('click', function() {
+                const statusForm = document.getElementById('noticeStatusForm');
+                const statusData = new FormData(statusForm);
+                
+                if (!statusData.get('notice_status')) {
+                    Swal.fire({
+                        title: 'Status Required',
+                        text: 'Please select whether the notice was received or refused.',
+                        icon: 'warning',
+                        confirmButtonColor: '#10346C'
+                    });
+                    return;
+                }
+                
+                const status = statusData.get('notice_status');
+                let isValid = true;
+                
+                if (status === 'Received') {
+                    const issuedBy = document.getElementById('received_by');
+                    const position = document.getElementById('position');
+                    
+                    if (!issuedBy.value.trim()) {
+                        issuedBy.classList.add('is-invalid');
+                        isValid = false;
+                    } else {
+                        issuedBy.classList.remove('is-invalid');
+                    }
+                    
+                    if (!position.value.trim()) {
+                        position.classList.add('is-invalid');
+                        isValid = false;
+                    } else {
+                        position.classList.remove('is-invalid');
+                    }
+                    
+                    if (!isValid) {
+                        Swal.fire({
+                            title: 'Information Required',
+                            text: 'Please enter both issuer name and position.',
+                            icon: 'warning',
+                            confirmButtonColor: '#10346C'
+                        });
+                        return;
+                    }
+                }
+                
+                if (status === 'Refused') {
+                    const witnessedBy = document.getElementById('witnessed_by');
+                    
+                    if (!witnessedBy.value.trim()) {
+                        witnessedBy.classList.add('is-invalid');
+                        isValid = false;
+                        
+                        Swal.fire({
+                            title: 'Witness Required',
+                            text: 'Please enter the name of the witness.',
+                            icon: 'warning',
+                            confirmButtonColor: '#10346C'
+                        });
+                        return;
+                    } else {
+                        witnessedBy.classList.remove('is-invalid');
+                    }
+                }
+                
+                // Now construct form data to send to the server
+                const formData = new FormData();
+                
+                // Get values from session storage and hidden fields
+                const violationsData = sessionStorage.getItem('violationsFormData') ? 
+                    JSON.parse(sessionStorage.getItem('violationsFormData')) : {};
+                
+                // Add data to formData for final submission
+                formData.append('submit_issuer', '1');
+                formData.append('notice_status', statusData.get('notice_status'));
+                formData.append('issued_datetime', statusData.get('issued_datetime'));
+                
+                if (status === 'Received') {
+                    formData.append('issued_by', statusData.get('issued_by'));
+                    formData.append('position', statusData.get('position'));
+                } else {
+                    formData.append('witnessed_by', statusData.get('witnessed_by'));
+                }
+                
+                // Create hidden form for submission
+                const hiddenForm = document.createElement('form');
+                hiddenForm.method = 'POST';
+                hiddenForm.style.display = 'none';
+                document.body.appendChild(hiddenForm);
+                
+                // Add all form data to hidden form
+                for (const [key, value] of formData.entries()) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    hiddenForm.appendChild(input);
+                }
+                
+                // Submit the form
+                hiddenForm.submit();
+            });
+        }
 
     // Save Inventory Button
     const saveInventoryBtn = document.getElementById('saveInventoryBtn');
@@ -292,30 +356,82 @@ if (skipInventoryBtn) {
     }
 
     // Add Product Button
-    const addProductBtn = document.getElementById('addProductBtn');
-    if (addProductBtn) {
-        addProductBtn.addEventListener('click', function() {
-            const productsContainer = document.getElementById('productsContainer');
-            const productCount = productsContainer.querySelectorAll('.product-item').length;
-            
-            const newProductHtml = `
-                <div class="product-item border p-3 mb-3 rounded">
-                    <!-- Product form fields -->
-                    <button type="button" class="btn btn-danger btn-sm remove-product">
-                        <i class="bi bi-trash"></i> Remove
-                    </button>
-                </div>`;
-            
-            productsContainer.insertAdjacentHTML('beforeend', newProductHtml);
-            
-            const lastRemoveButton = productsContainer.querySelector('.product-item:last-child .remove-product');
-            if (lastRemoveButton) {
-                lastRemoveButton.addEventListener('click', function() {
-                    this.closest('.product-item').remove();
-                });
-            }
-        });
-    }
+    // Add Product Button
+        const addProductBtn = document.getElementById('addProductBtn');
+        if (addProductBtn) {
+            addProductBtn.addEventListener('click', function() {
+                const productsContainer = document.getElementById('productsContainer');
+                const productCount = productsContainer.querySelectorAll('.product-item').length;
+                
+                const newProductHtml = `
+                    <div class="product-item border p-3 mb-3 rounded">
+                        <div class="row mb-2">
+                            <div class="col-md-8">
+                                <label for="product_name">Product:</label>
+                                <input type="text" class="form-control" name="products[${productCount}][name]" required>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex mt-4">
+                                    <div class="form-check me-4">
+                                        <input class="form-check-input" type="checkbox" name="products[${productCount}][sealed]" value="1">
+                                        <label class="form-check-label">Sealed</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="products[${productCount}][withdrawn]" value="1">
+                                        <label class="form-check-label">Withdrawn</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label for="brand_description">Brand Description:</label>
+                            <textarea class="form-control" name="products[${productCount}][description]" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="row mb-2">
+                            <div class="col-md-4">
+                                <label for="price">Price:</label>
+                                <input type="number" class="form-control" name="products[${productCount}][price]" step="0.01">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="pieces">No. of Pieces:</label>
+                                <input type="number" class="form-control" name="products[${productCount}][pieces]">
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex mt-4">
+                                    <div class="form-check me-4">
+                                        <input class="form-check-input" type="checkbox" name="products[${productCount}][dao_violation]" value="1">
+                                        <label class="form-check-label">Violation of DAO</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="products[${productCount}][other_violation]" value="1">
+                                        <label class="form-check-label">Other Violation</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label for="remarks">Product Remarks:</label>
+                            <input type="text" class="form-control" name="products[${productCount}][remarks]">
+                        </div>
+                        
+                        <button type="button" class="btn btn-danger btn-sm remove-product">
+                            <i class="bi bi-trash"></i> Remove
+                        </button>
+                    </div>`;
+                
+                productsContainer.insertAdjacentHTML('beforeend', newProductHtml);
+                
+                const lastRemoveButton = productsContainer.querySelector('.product-item:last-child .remove-product');
+                if (lastRemoveButton) {
+                    lastRemoveButton.addEventListener('click', function() {
+                        this.closest('.product-item').remove();
+                    });
+                }
+            });
+        }
     
     // Back from inventory button
     const backFromInventoryBtn = document.getElementById('backFromInventoryBtn');

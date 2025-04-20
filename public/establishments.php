@@ -78,85 +78,119 @@
         }
 
         // In the section where you handle submit_issuer POST request
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_issuer'])) {
-            // Retrieve previously stored NOV details
-            $novDetails = $_SESSION['nov_details'] ?? null;
-            
-            if ($novDetails) {
-                $issuer_name = htmlspecialchars($_POST['issued_by']);
-                $issued_datetime = htmlspecialchars($_POST['issued_datetime']);
-                
-                try {
-                    // Begin transaction
-                    $conn->begin_transaction();
-                    
-                    // Store in establishment table with enhanced error handling
-                    $stmt = $conn->prepare("INSERT INTO establishments 
-                    (name, address, owner_representative, nature, products, violations, notice_status, remarks, nov_files, issued_by, issued_datetime)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                    
-                    if ($stmt === false) {
-                        throw new Exception("Prepare statement failed: " . $conn->error);
-                    }
+        // In the section where you handle submit_issuer POST request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_issuer'])) {
+    // Retrieve previously stored NOV details
+    $novDetails = $_SESSION['nov_details'] ?? null;
+    
+    if ($novDetails) {
+        $issuer_name = htmlspecialchars($_POST['issued_by']);
+        $issued_datetime = htmlspecialchars($_POST['issued_datetime']);
+        $notice_status = htmlspecialchars($_POST['notice_status'] ?? $novDetails['notice_status'] ?? 'Not specified');
+        $position = htmlspecialchars($_POST['position'] ?? '');
+        $witnessed_by = htmlspecialchars($_POST['witnessed_by'] ?? '');
+        $remarks = htmlspecialchars($_POST['remarks'] ?? $novDetails['remarks'] ?? '');
         
-                    $violations_str = is_array($novDetails['violations']) ? implode(', ', $novDetails['violations']) : $novDetails['violations'];
-                    
-                    $stmt->bind_param("sssssssssss", 
-                    $novDetails['establishment'],
-                    $novDetails['address'],
-                    $novDetails['owner_representative'],
-                    $novDetails['nature'],
-                    $novDetails['products'],
-                    $violations_str,
-                    $novDetails['notice_status'],
-                    $novDetails['remarks'],
-                    $novDetails['filename'],
-                    $issuer_name,
-                    $issued_datetime
-                    );
-                    
-                    if (!$stmt->execute()) {
-                        throw new Exception("Execute failed: " . $stmt->error);
-                    }
+        try {
+            // Begin transaction
+            $conn->begin_transaction();
+            
+            // Store in establishment table with enhanced error handling
+            $stmt = $conn->prepare("INSERT INTO establishments 
+            (name, address, owner_representative, nature, products, violations, notice_status, remarks, nov_files, issued_by, issued_datetime)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            
+            if ($stmt === false) {
+                throw new Exception("Prepare statement failed: " . $conn->error);
+            }
+
+            $violations_str = is_array($novDetails['violations']) ? implode(', ', $novDetails['violations']) : $novDetails['violations'];
+            
+            $stmt->bind_param("sssssssssss", 
+                $novDetails['establishment'],
+                $novDetails['address'],
+                $novDetails['owner_representative'],
+                $novDetails['nature'],
+                $novDetails['products'],
+                $violations_str,
+                $notice_status,
+                $novDetails['remarks'],
+                $novDetails['filename'],
+                $issuer_name,
+                $issued_datetime
+            );
+            
+            if (!$stmt->execute()) {
+                throw new Exception("Execute failed: " . $stmt->error);
+            }
+            
+            // Get the inserted establishment ID
+            $establishment_id = $conn->insert_id;
+            
+            // ADDED: Insert notice status details into the notice_status table
+            $stmt_status = $conn->prepare("INSERT INTO notice_stat 
+                (id, status, issued_by, position, issued_datetime, witnessed_by, remarks)
+                VALUES (?, ?, ?, ?, ?, ?, ?)");
+                
+            if ($stmt_status === false) {
+                throw new Exception("Prepare status statement failed: " . $conn->error);
+            }
+            
+            $stmt_status->bind_param("issssss", 
+                $establishment_id,
+                $notice_status,
+                $issuer_name,
+                $position,
+                $issued_datetime,
+                $witnessed_by,
+                $remarks
+            );
+            
+            if (!$stmt_status->execute()) {
+                throw new Exception("Execute status insert failed: " . $stmt_status->error);
+            }
+            
+            // Insert inventory products if available
+            // [Your existing inventory code remains unchanged]
                     
                     // Get the inserted establishment ID
                     $establishment_id = $conn->insert_id;
                     
                     // Insert inventory products if available
-                    if (isset($_SESSION['inventory_products']) && is_array($_SESSION['inventory_products'])) {
-                        foreach ($_SESSION['inventory_products'] as $product) {
-                            $stmt_product = $conn->prepare("INSERT INTO inventory_products 
-                                (establishment_id, product_name, sealed, withdrawn, description, price, pieces, 
-                                dao_violation, other_violation, remarks)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                            
-                            if ($stmt_product === false) {
-                                throw new Exception("Prepare product statement failed: " . $conn->error);
-                            }
-                            
-                            $sealed = isset($product['sealed']) ? 1 : 0;
-                            $withdrawn = isset($product['withdrawn']) ? 1 : 0;
-                            $dao_violation = isset($product['dao_violation']) ? 1 : 0;
-                            $other_violation = isset($product['other_violation']) ? 1 : 0;
-                            
-                            $stmt_product->bind_param("isssdiiiss", 
-                                $establishment_id,
-                                $product['name'],
-                                $sealed,
-                                $withdrawn,
-                                $product['description'],
-                                $product['price'],
-                                $product['pieces'],
-                                $dao_violation,
-                                $other_violation,
-                                $product['remarks']
-                            );
-                            
-                            if (!$stmt_product->execute()) {
-                                throw new Exception("Execute product insert failed: " . $stmt_product->error);
+                        if (isset($_SESSION['inventory']) && is_array($_SESSION['inventory'])) {
+                            foreach ($_SESSION['inventory'] as $product) {
+                                $stmt_product = $conn->prepare("INSERT INTO inventory 
+                                    (id, product_name, sealed, withdrawn, description, price, pieces, 
+                                    dao_violation, other_violation, remarks)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                                
+                                if ($stmt_product === false) {
+                                    throw new Exception("Prepare product statement failed: " . $conn->error);
+                                }
+                                
+                                $sealed = isset($product['sealed']) ? 1 : 0;
+                                $withdrawn = isset($product['withdrawn']) ? 1 : 0;
+                                $dao_violation = isset($product['dao_violation']) ? 1 : 0;
+                                $other_violation = isset($product['other_violation']) ? 1 : 0;
+                                
+                                $stmt_product->bind_param("isssdiiiss", 
+                                    $establishment_id,
+                                    $product['name'],
+                                    $sealed,
+                                    $withdrawn,
+                                    $product['description'],
+                                    $product['price'],
+                                    $product['pieces'],
+                                    $dao_violation,
+                                    $other_violation,
+                                    $product['remarks']
+                                );
+                                
+                                if (!$stmt_product->execute()) {
+                                    throw new Exception("Execute product insert failed: " . $stmt_product->error);
+                                }
                             }
                         }
-                    }
                     
                     // Commit transaction
                     $conn->commit();
@@ -691,10 +725,49 @@
             </div>
         </div>
 
-            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
-            <script src="js/form_handler_establishments.js"></script>
+                <!-- Issuer Modal -->
+<div class="modal fade" id="issuerModal" tabindex="-1" aria-labelledby="issuerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="issuerModalLabel">Notice Issuer</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="issuerForm" method="POST">
+                    <input type="hidden" name="submit_issuer" value="1">
+                    <input type="hidden" name="notice_status" id="issuerNoticeStatus">
+                    <input type="hidden" name="witnessed_by" id="issuerWitnessedBy">
+                    
+                    <div class="mb-3">
+                        <label for="issued_by" class="form-label">Issued By:</label>
+                        <input type="text" class="form-control" id="issued_by" name="issued_by" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="issuer_position" class="form-label">Position:</label>
+                        <input type="text" class="form-control" id="issuer_position" name="position">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="issuer_datetime" class="form-label">Date and Time:</label>
+                        <input type="text" class="form-control" id="issuer_datetime" name="issued_datetime" required>
+                    </div>
+                    
+                    <div class="text-end mt-4">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Notice</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
+        <script src="js/form_handler_establishments.js"></script>
         </body>
         </html>
