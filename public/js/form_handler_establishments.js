@@ -1,30 +1,69 @@
 document.addEventListener('DOMContentLoaded', function() {
+    console.log("Checking for success message...");
+    console.log("URL params:", window.location.search);
+    console.log("Session storage:", sessionStorage.getItem('successMessage'));
+    
     // Initialize status radio buttons and fields
     const statusReceived = document.getElementById('statusReceived');
     const statusRefused = document.getElementById('statusRefused');
     const receivedByFields = document.getElementById('receivedByFields');
     const refusedByFields = document.getElementById('refusedByFields');
 
-    if (statusReceived && statusRefused && receivedByFields && refusedByFields) {
-        statusReceived.addEventListener('change', function() {
-            if (this.checked) {
-                receivedByFields.style.display = 'block';
-                refusedByFields.style.display = 'none';
+    // Instead of using a conditional check that depends on all elements existing:
+if (statusReceived && statusRefused && receivedByFields && refusedByFields) {
+    // event listeners...
+}
+
+// Use individual checks before adding each event listener:
+if (statusReceived) {
+    statusReceived.addEventListener('change', function() {
+        if (this.checked && receivedByFields) {
+            receivedByFields.style.display = 'block';
+            if (refusedByFields) refusedByFields.style.display = 'none';
+            
+            if (document.getElementById('received_by')) {
+                document.getElementById('received_by').setAttribute('required', 'required');
+            }
+            if (document.getElementById('position')) {
+                document.getElementById('position').setAttribute('required', 'required');
+            }
+            if (document.getElementById('witnessed_by')) {
+                document.getElementById('witnessed_by').removeAttribute('required');
+            }
+        }
+    });
+}
+
+if (statusRefused) {
+    statusRefused.addEventListener('change', function() {
+        if (this.checked && refusedByFields) {
+            if (receivedByFields) receivedByFields.style.display = 'none';
+            refusedByFields.style.display = 'block';
+            
+            if (document.getElementById('witnessed_by')) {
                 document.getElementById('witnessed_by').setAttribute('required', 'required');
-                document.getElementById('issued_by').removeAttribute('required');
+            }
+            if (document.getElementById('received_by')) {
+                document.getElementById('received_by').removeAttribute('required');
+            }
+            if (document.getElementById('position')) {
                 document.getElementById('position').removeAttribute('required');
             }
-        });
-        
-        statusRefused.addEventListener('change', function() {
-            if (this.checked) {
-                receivedByFields.style.display = 'none';
-                refusedByFields.style.display = 'block';
-                document.getElementById('witnessed_by').setAttribute('required', 'required');
-                document.getElementById('issued_by').removeAttribute('required');
-                document.getElementById('position').removeAttribute('required');
-            }
-        });
+        }
+    });
+}
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('success')) {
+        const successData = JSON.parse(sessionStorage.getItem('successMessage'));
+        if (successData) {
+            Swal.fire({
+                icon: 'success',
+                title: successData.title || 'Success',
+                text: successData.text || 'Operation completed successfully.',
+                confirmButtonColor: '#10346C'
+            });
+            sessionStorage.removeItem('successMessage');
+        }
     }
 
     // Proceed to violations button handler
@@ -72,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Violations form submission - modify this part
+    //submitViolationsBtn click handler
 const submitViolationsBtn = document.getElementById('submitViolationsBtn');
 if (submitViolationsBtn) {
     submitViolationsBtn.addEventListener('click', function() {
@@ -90,7 +129,20 @@ if (submitViolationsBtn) {
             return;
         }
         
-        sessionStorage.setItem('violationsFormData', JSON.stringify(Object.fromEntries(formData)));
+        // Store ALL form data, not just violations
+        let formDataObj = {};
+        for (const [key, value] of formData.entries()) {
+            if (formDataObj[key]) {
+                if (!Array.isArray(formDataObj[key])) {
+                    formDataObj[key] = [formDataObj[key]];
+                }
+                formDataObj[key].push(value);
+            } else {
+                formDataObj[key] = value;
+            }
+        }
+        
+        sessionStorage.setItem('violationsFormData', JSON.stringify(formDataObj));
         
         bootstrap.Modal.getInstance(document.getElementById('violationsModal')).hide();
         
@@ -150,113 +202,165 @@ if (skipInventoryBtn) {
             document.getElementById('hiddenProducts').value;
     }
 
-    // Status form submission
-    // Status form submission
-        const submitStatusBtn = document.getElementById('submitStatusBtn');
-        if (submitStatusBtn) {
-            submitStatusBtn.addEventListener('click', function() {
-                const statusForm = document.getElementById('noticeStatusForm');
-                const statusData = new FormData(statusForm);
+   // Status Form Submission
+const submitStatusBtn = document.getElementById('submitStatusBtn');
+if (submitStatusBtn) {
+    submitStatusBtn.addEventListener('click', function() {
+        const statusForm = document.getElementById('noticeStatusForm');
+        const statusData = new FormData(statusForm);
+        
+        // Validate status selection
+        if (!statusData.get('notice_status')) {
+            Swal.fire({
+                title: 'Status Required',
+                text: 'Please select whether the notice was received or refused.',
+                icon: 'warning',
+                confirmButtonColor: '#10346C'
+            });
+            return; // Stop the function here
+        }
+
+        // Validate required fields based on selected status
+        if (statusData.get('notice_status') === 'Received') {
+            const issuedBy = document.getElementById('received_by').value.trim();
+            const position = document.getElementById('position').value.trim();
+            
+            if (!issuedBy) {
+                Swal.fire({
+                    title: 'Issuer Required',
+                    text: 'Please enter the name of the issuer.',
+                    icon: 'warning',
+                    confirmButtonColor: '#10346C'
+                });
+                return; // Stop the function here
+            }
+            
+            if (!position) {
+                Swal.fire({
+                    title: 'Position Required',
+                    text: 'Please enter the position of the issuer.',
+                    icon: 'warning',
+                    confirmButtonColor: '#10346C'
+                });
+                return; // Stop the function here
+            }
+        } else if (statusData.get('notice_status') === 'Refused') {
+            const witnessedBy = document.getElementById('witnessed_by').value.trim();
+            
+            if (!witnessedBy) {
+                Swal.fire({
+                    title: 'Witness Required',
+                    text: 'Please enter the name of the witness.',
+                    icon: 'warning',
+                    confirmButtonColor: '#10346C'
+                });
+                return; // Stop the function here
+            }
+        }
+        
+        // Get all the previously collected data from violationsData
+        const violationsData = sessionStorage.getItem('violationsFormData') ? 
+            JSON.parse(sessionStorage.getItem('violationsFormData')) : {};
+        
+        // Create a summary of what's being submitted for confirmation
+        const establishment = document.getElementById('hiddenEstablishment').value;
+        
+        // Show confirmation before submission
+        Swal.fire({
+            title: 'Confirm Submission',
+            html: `
+                <div class="text-start">
+                    <p><strong>Establishment:</strong> ${establishment}</p>
+                    <p><strong>Notice Status:</strong> ${statusData.get('notice_status')}</p>
+                    <p><strong>Date Issued:</strong> ${statusData.get('issued_datetime')}</p>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10346C',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Submit Notice',
+            cancelButtonText: 'Review Information'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Store success message in session storage BEFORE submission
+                sessionStorage.setItem('successMessage', JSON.stringify({
+                    title: 'Notice of Violation Saved',
+                    text: `NOV for ${establishment} has been successfully recorded.`
+                }));
                 
-                if (!statusData.get('notice_status')) {
-                    Swal.fire({
-                        title: 'Status Required',
-                        text: 'Please select whether the notice was received or refused.',
-                        icon: 'warning',
-                        confirmButtonColor: '#10346C'
-                    });
-                    return;
-                }
+                // Create a form that includes ALL necessary data
+                const finalForm = document.createElement('form');
+                finalForm.method = 'POST';
+                finalForm.action = "establishments.php?success=1";
+                finalForm.style.display = 'none';
+                document.body.appendChild(finalForm);
                 
-                const status = statusData.get('notice_status');
-                let isValid = true;
-                
-                if (status === 'Received') {
-                    const issuedBy = document.getElementById('received_by');
-                    const position = document.getElementById('position');
-                    
-                    if (!issuedBy.value.trim()) {
-                        issuedBy.classList.add('is-invalid');
-                        isValid = false;
+                // Add violations data
+                for (const key in violationsData) {
+                    if (Array.isArray(violationsData[key])) {
+                        for (const value of violationsData[key]) {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = key;
+                            input.value = value;
+                            finalForm.appendChild(input);
+                        }
                     } else {
-                        issuedBy.classList.remove('is-invalid');
-                    }
-                    
-                    if (!position.value.trim()) {
-                        position.classList.add('is-invalid');
-                        isValid = false;
-                    } else {
-                        position.classList.remove('is-invalid');
-                    }
-                    
-                    if (!isValid) {
-                        Swal.fire({
-                            title: 'Information Required',
-                            text: 'Please enter both issuer name and position.',
-                            icon: 'warning',
-                            confirmButtonColor: '#10346C'
-                        });
-                        return;
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = key;
+                        input.value = violationsData[key];
+                        finalForm.appendChild(input);
                     }
                 }
                 
-                if (status === 'Refused') {
-                    const witnessedBy = document.getElementById('witnessed_by');
-                    
-                    if (!witnessedBy.value.trim()) {
-                        witnessedBy.classList.add('is-invalid');
-                        isValid = false;
-                        
-                        Swal.fire({
-                            title: 'Witness Required',
-                            text: 'Please enter the name of the witness.',
-                            icon: 'warning',
-                            confirmButtonColor: '#10346C'
-                        });
-                        return;
-                    } else {
-                        witnessedBy.classList.remove('is-invalid');
-                    }
-                }
-                
-                // Now construct form data to send to the server
-                const formData = new FormData();
-                
-                // Get values from session storage and hidden fields
-                const violationsData = sessionStorage.getItem('violationsFormData') ? 
-                    JSON.parse(sessionStorage.getItem('violationsFormData')) : {};
-                
-                // Add data to formData for final submission
-                formData.append('submit_issuer', '1');
-                formData.append('notice_status', statusData.get('notice_status'));
-                formData.append('issued_datetime', statusData.get('issued_datetime'));
-                
-                if (status === 'Received') {
-                    formData.append('issued_by', statusData.get('issued_by'));
-                    formData.append('position', statusData.get('position'));
-                } else {
-                    formData.append('witnessed_by', statusData.get('witnessed_by'));
-                }
-                
-                // Create hidden form for submission
-                const hiddenForm = document.createElement('form');
-                hiddenForm.method = 'POST';
-                hiddenForm.style.display = 'none';
-                document.body.appendChild(hiddenForm);
-                
-                // Add all form data to hidden form
-                for (const [key, value] of formData.entries()) {
+                // Add status data
+                const addHiddenField = (name, value) => {
                     const input = document.createElement('input');
                     input.type = 'hidden';
-                    input.name = key;
+                    input.name = name;
                     input.value = value;
-                    hiddenForm.appendChild(input);
+                    finalForm.appendChild(input);
+                };
+                
+                addHiddenField('notice_status', statusData.get('notice_status'));
+                addHiddenField('issued_datetime', statusData.get('issued_datetime'));
+                
+                // Add the correct fields based on status
+                if (statusData.get('notice_status') === 'Received') {
+                    const issuedBy = document.getElementById('received_by').value;
+                    addHiddenField('issued_by', issuedBy);
+                    addHiddenField('position', statusData.get('position'));
+                    addHiddenField('witnessed_by', ''); // Add empty value to avoid undefined
+                } else {
+                    const witnessedBy = document.getElementById('witnessed_by').value;
+                    addHiddenField('witnessed_by', witnessedBy);
+                    addHiddenField('issued_by', ''); // Add empty value to avoid undefined
+                    addHiddenField('position', ''); // Add empty value to avoid undefined
                 }
                 
+                // Show loading indicator
+                Swal.fire({
+                    title: 'Submitting...',
+                    text: 'Please wait while your notice is being processed.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    allowEnterKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
                 // Submit the form
-                hiddenForm.submit();
-            });
-        }
+                setTimeout(() => {
+                    finalForm.submit();
+                }, 500); // Small delay to ensure loading dialog is displayed
+            }
+        });
+    });
+}
 
     // Save Inventory Button
     const saveInventoryBtn = document.getElementById('saveInventoryBtn');
@@ -466,5 +570,9 @@ if (skipInventoryBtn) {
         });
     }
 
+    //error catch
+    window.addEventListener('error', function(e) {
+        console.error('JavaScript error:', e.message, 'at', e.filename, 'line', e.lineno);
+    });
     
 });
