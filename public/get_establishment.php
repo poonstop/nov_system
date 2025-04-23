@@ -1,66 +1,34 @@
 <?php
-// get_establishment.php
+// get_establishments.php
 header('Content-Type: application/json');
-require_once __DIR__ . '/../connection.php';
 
-$response = ['success' => false];
+// Database connection
+$servername = "127.0.0.1"; // Use the server name from the UI
+$username = "root"; // Default username, adjust as needed
+$password = ""; // Default password, adjust as needed
+$dbname = "nov_system"; // Your database name
 
 try {
-    // Validate ID
-    if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-        throw new Exception('Invalid establishment ID');
-    }
+    $conn = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    $id = (int)$_GET['id'];
-    
-    // Get establishment details
-    $stmt = $conn->prepare("
-        SELECT id, name, address, owner_representative as owner_rep, violations, products
-        FROM establishments 
-        WHERE id = ?
-    ");
-    
-    $stmt->bind_param("i", $id);
+    // Get all establishments
+    $stmt = $conn->prepare("SELECT * FROM establishments ORDER BY created_at DESC");
     $stmt->execute();
-    $result = $stmt->get_result();
+    $establishments = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    if ($result->num_rows === 0) {
-        throw new Exception('Establishment not found');
+    // For each establishment, get its inventory products
+    foreach ($establishments as &$establishment) {
+        $stmt = $conn->prepare("SELECT * FROM inventory WHERE establishment_id = ?");
+        $stmt->execute([$establishment['id']]);
+        $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $establishment['products'] = $products;
     }
     
-    $establishment = $result->fetch_assoc();
-    
-    // Parse inventory from products field
-    $inventory = [];
-    if (!empty($establishment['products'])) {
-        $inventory = json_decode($establishment['products'], true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            // If not valid JSON, try parsing as comma-separated list
-            $products = explode(',', $establishment['products']);
-            foreach ($products as $product) {
-                $inventory[] = [
-                    'product_name' => trim($product),
-                    'quantity' => '0',
-                    'price' => '0.00'
-                ];
-            }
-        }
-    }
-    
-    $response = [
-        'success' => true,
-        'establishment' => $establishment,
-        'inventory' => $inventory
-    ];
-    
-} catch (Exception $e) {
-    $response = [
-        'success' => false,
-        'message' => $e->getMessage()
-    ];
-} finally {
-    if (isset($stmt)) $stmt->close();
-    if (isset($conn)) $conn->close();
-    
-    echo json_encode($response);
+    echo json_encode(['success' => true, 'establishments' => $establishments]);
+} catch(PDOException $e) {
+    echo json_encode(['success' => false, 'message' => "Database error: " . $e->getMessage()]);
 }
+$conn = null;
+?>

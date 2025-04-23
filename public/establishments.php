@@ -1,304 +1,230 @@
 <?php
-    // Start output buffering at the VERY TOP
-    ob_start();
-    session_start();
-    include __DIR__ . '/../connection.php';
+ob_start();
+session_start();
+include __DIR__ . '/../connection.php';
 
-    // Create upload directory if not exists
-    $uploadDir = __DIR__ . '/nov_files/';
-    if (!file_exists($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
-    }
+// Create upload directory if not exists
+$uploadDir = __DIR__ . '/nov_files/';
+if (!file_exists($uploadDir)) {
+    mkdir($uploadDir, 0755, true);
+}
 
-    // Process form submission BEFORE any output
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['submit_issuer'])) {
-        // Handle nature of business
+// Process issuer form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_issuer'])) {
+    try {
+        // Begin transaction
+        $conn->begin_transaction();
+        
+        // Process establishment data
+        $establishment = htmlspecialchars($_POST['establishment']);
+        $address = htmlspecialchars($_POST['address']);
+        $owner_rep = htmlspecialchars($_POST['owner_representative']);
         $nature = ($_POST['nature_select'] === 'Others') 
             ? htmlspecialchars($_POST['nature_custom']) 
             : htmlspecialchars($_POST['nature_select']);
-        $owner_rep = $_POST['owner_representative'] ?? 'Not specified';
-        $establishment = htmlspecialchars($_POST['establishment']);
-        $address = htmlspecialchars($_POST['address']);
         $products = htmlspecialchars($_POST['products']);
-        $violations = implode(', ', $_POST['violations'] ?? []);
-        $remarks = htmlspecialchars($_POST['remarks']);
-        $notice_status = htmlspecialchars($_POST['notice_status'] ?? 'Not specified');
-        $region = htmlspecialchars($_POST['region']);
-        $province = htmlspecialchars($_POST['province']);
-        $municipality = htmlspecialchars($_POST['municipality']);
-        $barangay = htmlspecialchars($_POST['barangay']);
-        $street = htmlspecialchars($_POST['street']);
-
-        $address = "$street, Brgy. $barangay, $municipality, $province, $region";
-
-        // Validate custom nature input
-        if ($_POST['nature_select'] === 'Others' && empty(trim($_POST['nature_custom']))) {
-            $_SESSION['error'] = "Please specify the nature of business";
-            header("Location: establishments.php");
-            ob_end_flush();
-            exit();
+        
+        // Process violations
+        if(isset($_POST['violations']) && is_array($_POST['violations'])) {
+            $violations = implode(', ', array_map('htmlspecialchars', $_POST['violations']));
         } else {
-            // Generate NOV file
-            $filename = preg_replace('/[^A-Za-z0-9\-]/', '', $establishment) . '_' . time() . '.txt';
-            $fileContent = "NOTICE OF VIOLATION\n\n";
-            $fileContent .= "Establishment: $establishment\n";
-            $fileContent .= "Address: $address\n";
-            $fileContent .= "Nature of Business: $nature\n";
-            $fileContent .= "Non-Conforming Products: $products\n";
-            $fileContent .= "Violations: $violations\n";
-            $fileContent .= "Notice Status: $notice_status\n";
-            $fileContent .= "Remarks: $remarks\n";
-            $fileContent .= "\nDate: " . date('Y-m-d H:i:s');
-
-            file_put_contents($uploadDir . $filename, $fileContent);
-
-            // Store details in session
-            $_SESSION['nov_details'] = [
-                'filename' => $filename,
-                'establishment' => $establishment,
-                'address' => $address,
-                'nature' => $nature,
-                'nature_select' => $_POST['nature_select'],
-                'nature_custom' => $_POST['nature_custom'] ?? '',
-                'owner_representative' => $owner_rep,
-                'products' => $products,
-                'violations' => $_POST['violations'] ?? [],
-                'notice_status' => $notice_status, 
-                'remarks' => $remarks
-            ];
-
-            // Take a snapshot of form data before redirecting
-            $_SESSION['form_snapshot'] = $_POST;
-
-            // Redirect to the same page to show the issuer modal
-            header("Location: establishments.php?show_issuer_modal=1");
-            ob_end_flush();
-            exit();
-        }
-    }
-
-    // Process issuer form submission
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_issuer'])) {
-        // Debug logging
-        error_log("Received form data: " . print_r($_POST, true));
-        
-        // Retrieve previously stored NOV details
-        $novDetails = $_SESSION['nov_details'] ?? null;
-        
-        if (!$novDetails) {
-            // If no session data, try to get directly from POST
-            $novDetails = [
-                'establishment' => $_POST['establishment'] ?? '',
-                'address' => $_POST['address'] ?? '',
-                'owner_representative' => $_POST['owner_representative'] ?? '',
-                'nature' => $_POST['nature'] ?? '',
-                'products' => $_POST['products'] ?? '',
-                'violations' => $_POST['violations'] ?? [],
-                'filename' => $_POST['filename'] ?? '' // Add this line
-            ];
-            
-            // If still empty, report error
-            if (empty($novDetails['establishment'])) {
-                $_SESSION['error'] = "Missing establishment data. Please complete the form again.";
-                header("Location: establishments.php");
-                exit();
-            }
+            $violations = htmlspecialchars($_POST['violations'] ?? '');
         }
         
-        // Process and sanitize input data
-        // FIX 1: Check if 'issued_by' exists in $_POST, otherwise use a default value
-        $issuer_name = !empty($_POST['issued_by']) ? htmlspecialchars($_POST['issued_by']) : '';
-        $position = !empty($_POST['position']) ? htmlspecialchars($_POST['position']) : '';
-        $issued_datetime = !empty($_POST['issued_datetime']) ? htmlspecialchars($_POST['issued_datetime']) : date('Y-m-d H:i:s');
-        $notice_status = !empty($_POST['notice_status']) ? htmlspecialchars($_POST['notice_status']) : ($novDetails['notice_status'] ?? 'Not specified');
-        $witnessed_by = !empty($_POST['witnessed_by']) ? htmlspecialchars($_POST['witnessed_by']) : '';
-        $remarks = !empty($_POST['remarks']) ? htmlspecialchars($_POST['remarks']) : ($novDetails['remarks'] ?? '');
-
-        try {
-            // Begin transaction
-            $conn->begin_transaction();
-            
-            // Format violations data
-            $violations_str = is_array($novDetails['violations']) ? implode(', ', $novDetails['violations']) : $novDetails['violations'];
-            
-            // Store in establishment table
-            $stmt = $conn->prepare("INSERT INTO establishments 
-                (name, address, owner_representative, nature, products, violations, notice_status, remarks, nov_files, issued_by, issued_datetime)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            
-            if ($stmt === false) {
-                throw new Exception("Prepare statement failed: " . $conn->error);
-            }
-            
-            // FIX 2: Make sure all variables are properly defined before binding
-            $establishment = $novDetails['establishment'];
-            $address = $novDetails['address'];
-            $owner_rep = $novDetails['owner_representative'];
-            $nature = $novDetails['nature'];
-            $products = $novDetails['products'];
-            $filename = $novDetails['filename'] ?? '';
-            
-            $stmt->bind_param("sssssssssss", 
-                $establishment,
-                $address,
-                $owner_rep,
-                $nature,
-                $products,
-                $violations_str,
-                $notice_status,
-                $remarks,
-                $filename,
-                $issuer_name,
-                $issued_datetime
-            );
-            
-            if (!$stmt->execute()) {
-                throw new Exception("Execute failed: " . $stmt->error);
-            }
-            
-            // Get the inserted establishment ID
-            $establishment_id = $conn->insert_id;
-            
-            // Insert notice status details
-            $stmt_status = $conn->prepare("INSERT INTO notice_stat 
-                (id, status, issued_by, position, issued_datetime, witnessed_by, remarks)
-                VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $notice_status = htmlspecialchars($_POST['notice_status'] ?? 'Not specified');
+        $remarks = htmlspecialchars($_POST['remarks'] ?? '');
+        $issuer_name = htmlspecialchars($_POST['issued_by'] ?? '');
+        $position = htmlspecialchars($_POST['position'] ?? '');
+        $issued_datetime = htmlspecialchars($_POST['issued_datetime'] ?? date('Y-m-d H:i:s'));
+        $witnessed_by = htmlspecialchars($_POST['witnessed_by'] ?? '');
+        
+        // Generate NOV file
+        $filename = preg_replace('/[^A-Za-z0-9\-]/', '', $establishment) . '_' . time() . '.txt';
+        $fileContent = "NOTICE OF VIOLATION\n\n";
+        $fileContent .= "Establishment: $establishment\n";
+        $fileContent .= "Address: $address\n";
+        $fileContent .= "Nature of Business: $nature\n";
+        $fileContent .= "Non-Conforming Products: $products\n";
+        $fileContent .= "Violations: $violations\n";
+        $fileContent .= "Notice Status: $notice_status\n";
+        $fileContent .= "Remarks: $remarks\n";
+        $fileContent .= "\nDate: " . $issued_datetime;
+        
+        if(!file_put_contents($uploadDir . $filename, $fileContent)) {
+            throw new Exception("Failed to write NOV file");
+        }
+        
+        // Insert into establishments table
+        $stmt = $conn->prepare("INSERT INTO establishments 
+            (name, address, owner_representative, nature, products, violations, notice_status, remarks, nov_files, issued_by, issued_datetime)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        
+        if($stmt === false) {
+            throw new Exception("Prepare statement failed: " . $conn->error);
+        }
+        
+        $stmt->bind_param("sssssssssss", 
+            $establishment,
+            $address,
+            $owner_rep,
+            $nature,
+            $products,
+            $violations,
+            $notice_status,
+            $remarks,
+            $filename,
+            $issuer_name,
+            $issued_datetime
+        );
+        
+        if(!$stmt->execute()) {
+            throw new Exception("Execute failed: " . $stmt->error);
+        }
+        
+        $establishment_id = $conn->insert_id;
+        
+        // Insert notice status
+        $stmt_status = $conn->prepare("INSERT INTO notice_status 
+            (id, status, issued_by, position, issued_datetime, witnessed_by, remarks)
+            VALUES (?, ?, ?, ?, ?, ?, ?)");
+        
+        if($stmt_status === false) {
+            throw new Exception("Prepare status statement failed: " . $conn->error);
+        }
+        
+        $stmt_status->bind_param("issssss", 
+            $establishment_id,
+            $notice_status,
+            $issuer_name,
+            $position,
+            $issued_datetime,
+            $witnessed_by,
+            $remarks
+        );
+        
+        if(!$stmt_status->execute()) {
+            throw new Exception("Execute status insert failed: " . $stmt_status->error);
+        }
+        
+        // Insert inventory products if available
+        if (isset($_POST['products']) && is_array($_POST['products'])) {
+            foreach ($_POST['products'] as $index => $product) {
+                if(empty($product['name'])) continue; // Skip empty products
                 
-            if ($stmt_status === false) {
-                throw new Exception("Prepare status statement failed: " . $conn->error);
-            }
-            
-            $stmt_status->bind_param("issssss", 
-                $establishment_id,
-                $notice_status,
-                $issuer_name,
-                $position,
-                $issued_datetime,
-                $witnessed_by,
-                $remarks
-            );
-            
-            if (!$stmt_status->execute()) {
-                throw new Exception("Execute status insert failed: " . $stmt_status->error);
-            }
-            
-            // Insert inventory products if available
-            if (isset($_SESSION['inventory']) && is_array($_SESSION['inventory'])) {
-                foreach ($_SESSION['inventory'] as $product) {
-                    $stmt_product = $conn->prepare("INSERT INTO inventory 
-                        (id, product_name, sealed, withdrawn, description, price, pieces, 
-                        dao_violation, other_violation, remarks)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                    
-                    if ($stmt_product === false) {
-                        throw new Exception("Prepare product statement failed: " . $conn->error);
-                    }
-                    
-                    $sealed = isset($product['sealed']) ? 1 : 0;
-                    $withdrawn = isset($product['withdrawn']) ? 1 : 0;
-                    $dao_violation = isset($product['dao_violation']) ? 1 : 0;
-                    $other_violation = isset($product['other_violation']) ? 1 : 0;
-                    
-                    // FIX 3: Create temporary variables for all values to ensure they can be passed by reference
-                    $product_name = $product['name'] ?? '';
-                    $description = $product['description'] ?? '';
-                    $price = $product['price'] ?? 0;
-                    $pieces = $product['pieces'] ?? 0;
-                    $product_remarks = $product['remarks'] ?? '';
-                    
-                    $stmt_product->bind_param("isssdiiiss", 
-                        $establishment_id,
-                        $product_name,
-                        $sealed,
-                        $withdrawn,
-                        $description,
-                        $price,
-                        $pieces,
-                        $dao_violation,
-                        $other_violation,
-                        $product_remarks
-                    );
-                    
-                    if (!$stmt_product->execute()) {
-                        throw new Exception("Execute product insert failed: " . $stmt_product->error);
-                    }
+                $stmt_product = $conn->prepare("INSERT INTO inventory 
+                    (id, product_name, sealed, withdrawn, description, price, pieces, 
+                    dao_violation, other_violation, remarks)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                
+                if($stmt_product === false) {
+                    throw new Exception("Prepare product statement failed: " . $conn->error);
+                }
+                
+                // Process product data
+                $product_name = htmlspecialchars($product['name'] ?? '');
+                $description = htmlspecialchars($product['description'] ?? '');
+                $price = floatval($product['price'] ?? 0);
+                $pieces = intval($product['pieces'] ?? 0);
+                $product_remarks = htmlspecialchars($product['remarks'] ?? '');
+                
+                // Handle checkboxes properly
+                $sealed = isset($product['sealed']) ? 1 : 0;
+                $withdrawn = isset($product['withdrawn']) ? 1 : 0;
+                $dao_violation = isset($product['dao_violation']) ? 1 : 0;
+                $other_violation = isset($product['other_violation']) ? 1 : 0;
+                
+                $stmt_product->bind_param("isssdiiiss", 
+                    $establishment_id,
+                    $product_name,
+                    $sealed,
+                    $withdrawn,
+                    $description,
+                    $price,
+                    $pieces,
+                    $dao_violation,
+                    $other_violation,
+                    $product_remarks
+                );
+                
+                if(!$stmt_product->execute()) {
+                    throw new Exception("Execute product insert failed: " . $stmt_product->error);
                 }
             }
-            
-            // Commit transaction
-            $conn->commit();
-            
-            // Set success message
-            $_SESSION['success'] = json_encode([
-                'title' => 'Notice of Violation Saved',
-                'text' => "NOV for {$novDetails['establishment']} has been successfully recorded.",
-                'establishment' => $novDetails['establishment'],
-                'issuer' => $issuer_name,
-                'datetime' => $issued_datetime
-            ]);
-            
-            // Clear the session
-            unset($_SESSION['nov_details']);
-            unset($_SESSION['form_data']);
-            unset($_SESSION['form_snapshot']);
-            unset($_SESSION['inventory_products']);
-            unset($_SESSION['inventory']);  // Added this to ensure complete cleanup
-            
-            // Redirect to establishments page
-            header("Location: establishments.php?success=1");
-            ob_end_flush();
-            exit();
-            
-        } catch (Exception $e) {
-            // Roll back transaction on error
-            $conn->rollback();
-            
-            error_log("Database Error: " . $e->getMessage());
-            $_SESSION['error'] = "Failed to save Notice of Violation: " . $e->getMessage();
-            header("Location: establishments.php");
-            exit();
         }
-    }
-
-    // Process inventory form submission 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_inventory'])) {
-        // Store inventory products in session
-        if (isset($_POST['products']) && is_array($_POST['products'])) {
-            $_SESSION['inventory'] = $_POST['products'];
-            
-            // Redirect to violations page or show status modal
-            header("Location: establishments.php?show_status_modal=1");
-            exit();
-        } else {
-            $_SESSION['error'] = "No products were submitted. Please add at least one product.";
-            header("Location: establishments.php");
-            exit();
-        }
-    }
-
-    // Process proceed to violations
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['proceed_to_violations'])) {
-        // Store form data in session
-        $_SESSION['form_data'] = [
-            'establishment' => htmlspecialchars($_POST['establishment']),
-            'owner_representative' => htmlspecialchars($_POST['owner_representative']),
-            'address' => htmlspecialchars($_POST['address']),
-            'nature_select' => htmlspecialchars($_POST['nature_select']),
-            'nature_custom' => htmlspecialchars($_POST['nature_custom'] ?? ''),
-            'nature' => ($_POST['nature_select'] === 'Others') 
-                ? htmlspecialchars($_POST['nature_custom']) 
-                : htmlspecialchars($_POST['nature_select']),
-            'products' => htmlspecialchars($_POST['products'])
-        ];
         
-        // Redirect to violations page
-        header("Location: violations.php");
-        exit();
+        // Commit all changes
+        $conn->commit();
+        
+        // Success message
+        $_SESSION['success'] = json_encode([
+            'title' => 'Notice of Violation Saved',
+            'text' => "NOV for {$establishment} has been successfully recorded.",
+            'establishment' => $establishment,
+            'issuer' => $issuer_name,
+            'datetime' => $issued_datetime
+        ]);
+        
+        // Clear session data
+        unset($_SESSION['nov_details']);
+        unset($_SESSION['form_data']);
+        unset($_SESSION['form_snapshot']);
+        unset($_SESSION['inventory']);
+        unset($_SESSION['inventory_products']);
+        
+        // Redirect
+        header("Location: establishments.php?success=1");
+        ob_end_flush();
+        exit(); // Make sure this stops execution
+        
+    } catch (Exception $e) {
+        // Roll back on error
+        $conn->rollback();
+        error_log("Database Error: " . $e->getMessage());
+        $_SESSION['error'] = "Failed to save Notice of Violation: " . $e->getMessage();
+        header("Location: establishments.php");
+        exit(); // Make sure this stops execution
     }
+}
 
-    // Now include header and output HTML
-    include '../templates/header.php';
-    ?>
+   // Process inventory form submission 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_inventory'])) {
+    // Store inventory products in session
+    if (isset($_POST['products']) && is_array($_POST['products'])) {
+        $_SESSION['inventory'] = $_POST['products'];
+        
+        // Redirect to violations page or show status modal
+        header("Location: establishments.php?show_status_modal=1");
+        exit(); // Make sure this stops execution
+    } else {
+        $_SESSION['error'] = "No products were submitted. Please add at least one product.";
+        header("Location: establishments.php");
+        exit(); // Make sure this stops execution
+    }
+}
+
+// Process proceed to violations
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['proceed_to_violations'])) {
+    // Store form data in session
+    $_SESSION['form_data'] = [
+        'establishment' => htmlspecialchars($_POST['establishment']),
+        'owner_representative' => htmlspecialchars($_POST['owner_representative']),
+        'address' => htmlspecialchars($_POST['address']),
+        'nature_select' => htmlspecialchars($_POST['nature_select']),
+        'nature_custom' => htmlspecialchars($_POST['nature_custom'] ?? ''),
+        'nature' => ($_POST['nature_select'] === 'Others') 
+            ? htmlspecialchars($_POST['nature_custom']) 
+            : htmlspecialchars($_POST['nature_select']),
+        'products' => htmlspecialchars($_POST['products'])
+    ];
+    
+    // Redirect to violations page
+    header("Location: violations.php");
+    exit(); // Make sure this stops execution
+}
+
+// Now include header and output HTML
+include '../templates/header.php';
+?>
 
         <!DOCTYPE html>
         <html lang="en">
@@ -366,7 +292,7 @@
                             </div>
                             
                             <div class="col-12">
-                                <label>Business Address:</label>
+                                <label>Nature of Business:</label>
                                 <div class="input-group">
                                     <select name="nature_select" id="natureSelect" class="form-select bg-light" required>
                                         <option value="">Select Nature of business</option>

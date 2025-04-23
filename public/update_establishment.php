@@ -1,192 +1,153 @@
-<?php 
-header('Content-Type: application/json'); 
+<?php
+// Enable error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Create debug log
-function debug_log($message) {
-    $log_file = __DIR__ . '/update_debug.log';
-    $time = date('Y-m-d H:i:s');
-    file_put_contents($log_file, "[$time] $message\n", FILE_APPEND);
-}
+// Allow from any origin
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Methods: POST");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, X-Requested-With");
 
-debug_log("===== New Update Request =====");
+// Connect to database
+require_once 'connection.php';
 
-$response = ['success' => false, 'message' => 'An unknown error occurred'];
+// Log received data for debugging
+$input = file_get_contents('php://input');
+error_log('Received data: ' . $input);
 
-try {     
-    // Get and validate JSON input     
-    $json = file_get_contents('php://input');     
-    if (empty($json)) {         
-        throw new Exception('No data received');     
-    }      
+try {
+    // Decode JSON input
+    $data = json_decode($input, true);
     
-    $data = json_decode($json, true);     
-    if (json_last_error() !== JSON_ERROR_NONE) {         
-        throw new Exception('Invalid JSON: ' . json_last_error_msg());     
-    }      
-    
-    // Validate required fields     
-    $requiredFields = ['id', 'name', 'address', 'owner_rep'];     
-    foreach ($requiredFields as $field) {         
-        if (!isset($data[$field]) || empty(trim($data[$field]))) {             
-            throw new Exception("Missing required field: $field");         
-        }     
-    }     
-    
-    require_once __DIR__ . '/../connection.php';
-    
-    // Begin transaction
-    $conn->begin_transaction();
-
-    // Sanitize and validate data     
-    $id = filter_var($data['id'], FILTER_VALIDATE_INT);     
-    if ($id === false || $id <= 0) {         
-        throw new Exception('Invalid establishment ID');     
-    }      
-    
-    $name = trim($data['name']);     
-    $address = trim($data['address']);     
-    $ownerRep = trim($data['owner_rep']);     
-    $violations = trim($data['violations'] ?? '');     
-    $numViolations = filter_var($data['num_violations'] ?? 0, FILTER_VALIDATE_INT, [         
-        'options' => ['min_range' => 0]     
-    ]);     
-    
-    if ($numViolations === false) {         
-        throw new Exception('Invalid number of violations');     
-    }      
-    
-    // Handle notice information
-    $noticeStatus = null;
-    if (isset($data['notice_status']) && in_array($data['notice_status'], ['Received', 'Refused'])) {
-        $noticeStatus = $data['notice_status'];
+    if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception("Invalid JSON: " . json_last_error_msg());
     }
     
-    $issuedDateTime = null;
-    if (!empty($data['issued_datetime'])) {
-        try {
-            $dateObj = new DateTime($data['issued_datetime']);
-            $issuedDateTime = $dateObj->format('Y-m-d H:i:s');
-        } catch (Exception $e) {
-            debug_log("Invalid issued_datetime format: " . $data['issued_datetime']);
-        }
+    // Extract data
+    $id = isset($data['id']) ? intval($data['id']) : 0;
+    $name = isset($data['name']) ? mysqli_real_escape_string($conn, $data['name']) : '';
+    $address = isset($data['address']) ? mysqli_real_escape_string($conn, $data['address']) : '';
+    $owner_rep = isset($data['owner_rep']) ? mysqli_real_escape_string($conn, $data['owner_rep']) : '';
+    $violations = isset($data['violations']) ? mysqli_real_escape_string($conn, $data['violations']) : '';
+    $num_violations = isset($data['num_violations']) ? intval($data['num_violations']) : 0;
+    $date_updated = isset($data['date_updated']) ? mysqli_real_escape_string($conn, $data['date_updated']) : date('Y-m-d H:i:s');
+    
+    // Start transaction
+    mysqli_begin_transaction($conn);
+    
+    // Update establishment
+    $update_sql = "UPDATE establishments SET 
+                  establishment_name = '$name',
+                  address = '$address', 
+                  owner_representative = '$owner_rep',
+                  violations = '$violations',
+                  violations_count = $num_violations,
+                  last_updated = '$date_updated'
+                WHERE id = $id";
+    
+    $result = mysqli_query($conn, $update_sql);
+    
+    if (!$result) {
+        throw new Exception("Database error: " . mysqli_error($conn));
     }
     
-    $issuedBy = isset($data['issued_by']) ? trim($data['issued_by']) : null;
-    $position = isset($data['position']) ? trim($data['position']) : null;
-    $witnessedBy = isset($data['witnessed_by']) ? trim($data['witnessed_by']) : null;
-
-    // Update establishment record
-    $stmt = $conn->prepare("
-        UPDATE establishments 
-        SET 
-            name = ?,
-            address = ?,
-            owner_representative = ?,
-            violations = ?,
-            num_violations = ?,
-            notice_status = ?,
-            issued_datetime = ?,
-            issued_by = ?,
-            position = ?,
-            witnessed_by = ?,
-            date_updated = CURRENT_TIMESTAMP
-        WHERE id = ?
-    ");  
-    
-    if (!$stmt) {         
-        throw new Exception('Database prepare error: ' . $conn->error);     
-    }      
-    
-    $stmt->bind_param(
-        "ssssisssssi",
-        $name,
-        $address,
-        $ownerRep,
-        $violations,
-        $numViolations,
-        $noticeStatus,
-        $issuedDateTime,
-        $issuedBy,
-        $position,
-        $witnessedBy,
-        $id
-    );      
-    
-    if (!$stmt->execute()) {         
-        throw new Exception('Database execute error: ' . $stmt->error);     
-    }
-    $stmt->close();
-
-    // Handle inventory data if provided
+    // Handle inventory items if they exist
     if (isset($data['inventory']) && is_array($data['inventory'])) {
-        // First delete existing inventory
-        $deleteStmt = $conn->prepare("DELETE FROM establishment_inventory WHERE establishment_id = ?");
-        $deleteStmt->bind_param("i", $id);
-        if (!$deleteStmt->execute()) {
-            throw new Exception('Failed to clear existing inventory: ' . $deleteStmt->error);
+        // First, get existing inventory items to determine which ones to update vs insert
+        $existing_items = [];
+        $query = "SELECT id FROM inventory WHERE establishment_id = $id";
+        $result = mysqli_query($conn, $query);
+        
+        while ($row = mysqli_fetch_assoc($result)) {
+            $existing_items[] = $row['id'];
         }
-        $deleteStmt->close();
-
-        // Insert new inventory items
-        $insertStmt = $conn->prepare("
-            INSERT INTO establishment_inventory (
-                establishment_id, product_name, sealed, withdrawn, description,
-                price, pieces, dao_violation, other_violation, remarks
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-
+        
         foreach ($data['inventory'] as $item) {
-            $insertStmt->bind_param(
-                "isiiisdiis",
-                $id,
-                $item['name'] ?? '',
-                isset($item['sealed']) ? 1 : 0,
-                isset($item['withdrawn']) ? 1 : 0,
-                $item['description'] ?? '',
-                $item['price'] ?? 0,
-                $item['pieces'] ?? 0,
-                isset($item['dao_violation']) ? 1 : 0,
-                isset($item['other_violation']) ? 1 : 0,
-                $item['remarks'] ?? ''
-            );
-            if (!$insertStmt->execute()) {
-                throw new Exception('Failed to insert inventory item: ' . $insertStmt->error);
+            $item_id = isset($item['id']) && !empty($item['id']) ? intval($item['id']) : 0;
+            $product_name = isset($item['product_name']) ? mysqli_real_escape_string($conn, $item['product_name']) : '';
+            $price = isset($item['price']) ? floatval($item['price']) : 0.00;
+            $quantity = isset($item['quantity']) ? intval($item['quantity']) : 0;
+            $sealed = isset($item['sealed']) ? intval($item['sealed']) : 0;
+            $withdrawn = isset($item['withdrawn']) ? intval($item['withdrawn']) : 0;
+            
+            if ($item_id > 0 && in_array($item_id, $existing_items)) {
+                // Update existing item
+                $update_item_sql = "UPDATE inventory SET 
+                                  product_name = '$product_name',
+                                  price = $price,
+                                  pieces = $quantity,
+                                  sealed = $sealed,
+                                  withdrawn = $withdrawn,
+                                  date_updated = '$date_updated'
+                                WHERE id = $item_id AND establishment_id = $id";
+                                
+                if (!mysqli_query($conn, $update_item_sql)) {
+                    throw new Exception("Failed to update inventory item: " . mysqli_error($conn));
+                }
+                
+                // Remove from existing items array
+                $key = array_search($item_id, $existing_items);
+                if ($key !== false) {
+                    unset($existing_items[$key]);
+                }
+            } else {
+                // Insert new item
+                $insert_item_sql = "INSERT INTO inventory (
+                                  establishment_id,
+                                  product_name,
+                                  price,
+                                  pieces,
+                                  sealed,
+                                  withdrawn,
+                                  date_added
+                              ) VALUES (
+                                  $id,
+                                  '$product_name',
+                                  $price,
+                                  $quantity,
+                                  $sealed,
+                                  $withdrawn,
+                                  '$date_updated'
+                              )";
+                              
+                if (!mysqli_query($conn, $insert_item_sql)) {
+                    throw new Exception("Failed to insert inventory item: " . mysqli_error($conn));
+                }
             }
         }
-        $insertStmt->close();
+        
+        // Delete items that weren't updated or are no longer present
+        if (!empty($existing_items)) {
+            $ids_to_delete = implode(',', $existing_items);
+            $delete_sql = "DELETE FROM inventory WHERE id IN ($ids_to_delete) AND establishment_id = $id";
+            
+            if (!mysqli_query($conn, $delete_sql)) {
+                throw new Exception("Failed to delete old inventory items: " . mysqli_error($conn));
+            }
+        }
     }
-
-    // Commit transaction
-    $conn->commit();
     
-    $response = [
+    // Commit transaction
+    mysqli_commit($conn);
+    
+    // Return success
+    echo json_encode([
         'success' => true,
-        'message' => 'Record updated successfully',
-        'updated_id' => $id,
-        'num_violations' => $numViolations,
-        'violations' => $violations
-    ];
-
-} catch(Exception $e) {
-    // Rollback on error
-    if (isset($conn)) {
-        $conn->rollback();
-    }
-    http_response_code(500);     
-    $response = [         
-        'success' => false,         
-        'message' => 'Error: ' . $e->getMessage()     
-    ]; 
-    debug_log("Error: " . $e->getMessage());
-} finally {     
-    // Clean up resources     
-    if (isset($conn) && $conn) {         
-        $conn->close();     
-    }
-          
-    echo json_encode($response);     
-    debug_log("Response: " . json_encode($response));
-    exit(); 
+        'message' => 'Establishment and inventory updated successfully'
+    ]);
+    
+} catch (Exception $e) {
+    // Roll back transaction on error
+    mysqli_rollback($conn);
+    
+    // Log error
+    error_log("Error in update_establishment.php: " . $e->getMessage());
+    
+    // Return error
+    echo json_encode([
+        'success' => false,
+        'message' => $e->getMessage()
+    ]);
 }
+?>
