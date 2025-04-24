@@ -2,7 +2,7 @@
     // Start output buffering at the VERY TOP
     ob_start();
     session_start();
-    include __DIR__ . '/../connection.php';
+    include __DIR__ . '/../db_config.php';
 
     // Create upload directory if not exists
     $uploadDir = __DIR__ . '/nov_files/';
@@ -130,7 +130,7 @@
                 throw new Exception("Prepare statement failed: " . $conn->error);
             }
             
-            // FIX 2: Make sure all variables are properly defined before binding
+            // Make sure all variables are properly defined before binding
             $establishment = $novDetails['establishment'];
             $address = $novDetails['address'];
             $owner_rep = $novDetails['owner_representative'];

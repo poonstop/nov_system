@@ -2,7 +2,7 @@
 // Start output buffering at the VERY TOP
 ob_start();
 session_start();
-include __DIR__ . '/../connection.php';
+include __DIR__ . '/../config.php';
 
 // If form submission from violations page
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_violations'])) {

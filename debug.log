@@ -1,0 +1,402 @@
+[24-Apr-2025 13:48:15 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 13:48:15 Asia/Manila] PHP Warning:  include(templates/header.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\nov_system\public\index.php on line 58
+[24-Apr-2025 13:48:15 Asia/Manila] PHP Warning:  include(): Failed opening 'templates/header.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\nov_system\public\index.php on line 58
+[24-Apr-2025 13:48:15 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 68
+[24-Apr-2025 13:48:15 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 68
+[24-Apr-2025 13:48:15 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 13:48:15 Asia/Manila] PHP Warning:  include(templates/footer.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\nov_system\public\index.php on line 284
+[24-Apr-2025 13:48:15 Asia/Manila] PHP Warning:  include(): Failed opening 'templates/footer.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\nov_system\public\index.php on line 284
+[24-Apr-2025 13:48:18 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 13:48:18 Asia/Manila] PHP Warning:  include(templates/header.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\nov_system\public\index.php on line 58
+[24-Apr-2025 13:48:18 Asia/Manila] PHP Warning:  include(): Failed opening 'templates/header.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\nov_system\public\index.php on line 58
+[24-Apr-2025 13:48:18 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 68
+[24-Apr-2025 13:48:18 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 68
+[24-Apr-2025 13:48:18 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 13:48:18 Asia/Manila] PHP Warning:  include(templates/footer.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\nov_system\public\index.php on line 284
+[24-Apr-2025 13:48:18 Asia/Manila] PHP Warning:  include(): Failed opening 'templates/footer.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\nov_system\public\index.php on line 284
+[24-Apr-2025 13:52:03 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 13:52:03 Asia/Manila] PHP Warning:  include(templates/header.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\nov_system\public\index.php on line 58
+[24-Apr-2025 13:52:03 Asia/Manila] PHP Warning:  include(): Failed opening 'templates/header.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\nov_system\public\index.php on line 58
+[24-Apr-2025 13:52:03 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 68
+[24-Apr-2025 13:52:03 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 68
+[24-Apr-2025 13:52:03 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 13:52:03 Asia/Manila] PHP Warning:  include(templates/footer.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\nov_system\public\index.php on line 285
+[24-Apr-2025 13:52:03 Asia/Manila] PHP Warning:  include(): Failed opening 'templates/footer.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\nov_system\public\index.php on line 285
+[24-Apr-2025 13:52:03 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 13:52:03 Asia/Manila] PHP Warning:  include(templates/header.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\nov_system\public\index.php on line 58
+[24-Apr-2025 13:52:03 Asia/Manila] PHP Warning:  include(): Failed opening 'templates/header.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\nov_system\public\index.php on line 58
+[24-Apr-2025 13:52:03 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 68
+[24-Apr-2025 13:52:03 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 68
+[24-Apr-2025 13:52:03 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 13:52:03 Asia/Manila] PHP Warning:  include(templates/footer.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\nov_system\public\index.php on line 285
+[24-Apr-2025 13:52:03 Asia/Manila] PHP Warning:  include(): Failed opening 'templates/footer.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\nov_system\public\index.php on line 285
+[24-Apr-2025 13:52:04 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 13:52:04 Asia/Manila] PHP Warning:  include(templates/header.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\nov_system\public\index.php on line 58
+[24-Apr-2025 13:52:04 Asia/Manila] PHP Warning:  include(): Failed opening 'templates/header.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\nov_system\public\index.php on line 58
+[24-Apr-2025 13:52:04 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 68
+[24-Apr-2025 13:52:04 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 68
+[24-Apr-2025 13:52:04 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 13:52:04 Asia/Manila] PHP Warning:  include(templates/footer.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\nov_system\public\index.php on line 285
+[24-Apr-2025 13:52:04 Asia/Manila] PHP Warning:  include(): Failed opening 'templates/footer.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\nov_system\public\index.php on line 285
+[24-Apr-2025 13:52:04 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 13:52:04 Asia/Manila] PHP Warning:  include(templates/header.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\nov_system\public\index.php on line 58
+[24-Apr-2025 13:52:04 Asia/Manila] PHP Warning:  include(): Failed opening 'templates/header.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\nov_system\public\index.php on line 58
+[24-Apr-2025 13:52:04 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 68
+[24-Apr-2025 13:52:04 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 68
+[24-Apr-2025 13:52:04 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 13:52:04 Asia/Manila] PHP Warning:  include(templates/footer.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\nov_system\public\index.php on line 285
+[24-Apr-2025 13:52:04 Asia/Manila] PHP Warning:  include(): Failed opening 'templates/footer.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\nov_system\public\index.php on line 285
+[24-Apr-2025 14:07:08 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 14:07:08 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 14:07:08 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 14:07:08 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 14:09:19 Asia/Manila] PHP Warning:  Undefined variable $configPath in C:\xampp\htdocs\nov_system\public\index.php on line 4
+[24-Apr-2025 14:09:19 Asia/Manila] PHP Deprecated:  file_exists(): Passing null to parameter #1 ($filename) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 4
+[24-Apr-2025 14:09:21 Asia/Manila] PHP Warning:  Undefined variable $configPath in C:\xampp\htdocs\nov_system\public\index.php on line 4
+[24-Apr-2025 14:09:21 Asia/Manila] PHP Deprecated:  file_exists(): Passing null to parameter #1 ($filename) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 4
+[24-Apr-2025 14:14:15 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 14:14:15 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 14:14:15 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 14:14:15 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 14:14:20 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 14:14:20 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 14:14:20 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 14:14:20 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 14:15:06 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 14:15:06 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 14:15:06 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 14:15:06 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 14:15:43 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 14:15:43 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 14:15:43 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 14:15:43 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 14:34:07 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:25
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(25): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 25
+[24-Apr-2025 14:34:07 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:25
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(25): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 25
+[24-Apr-2025 14:34:07 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:25
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(25): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 25
+[24-Apr-2025 14:34:08 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:25
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(25): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 25
+[24-Apr-2025 14:34:08 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:25
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(25): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 25
+[24-Apr-2025 14:34:09 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:25
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(25): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 25
+[24-Apr-2025 14:34:49 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:25
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(25): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 25
+[24-Apr-2025 14:36:34 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:25
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(25): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 25
+[24-Apr-2025 14:36:37 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:25
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(25): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 25
+[24-Apr-2025 14:43:43 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:44 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:44 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:44 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:44 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:45 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:45 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:45 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:45 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:45 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:45 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:45 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:46 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:46 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:46 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:46 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:46 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:48 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:50 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:50 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:53 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:53 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:43:53 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:45:45 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:45:45 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:45:45 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:45:46 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:45:46 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:45:46 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:45:46 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:45:46 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:45:46 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:46:31 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:46:31 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:46:31 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:47:35 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:48:40 Asia/Manila] PHP Warning:  Undefined array key "remarks" in C:\xampp\htdocs\nov_system\public\establishments.php on line 24
+[24-Apr-2025 14:48:40 Asia/Manila] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\establishments.php on line 24
+[24-Apr-2025 14:48:40 Asia/Manila] PHP Warning:  Undefined array key "region" in C:\xampp\htdocs\nov_system\public\establishments.php on line 26
+[24-Apr-2025 14:48:40 Asia/Manila] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\establishments.php on line 26
+[24-Apr-2025 14:48:40 Asia/Manila] PHP Warning:  Undefined array key "province" in C:\xampp\htdocs\nov_system\public\establishments.php on line 27
+[24-Apr-2025 14:48:40 Asia/Manila] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\establishments.php on line 27
+[24-Apr-2025 14:48:40 Asia/Manila] PHP Warning:  Undefined array key "municipality" in C:\xampp\htdocs\nov_system\public\establishments.php on line 28
+[24-Apr-2025 14:48:40 Asia/Manila] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\establishments.php on line 28
+[24-Apr-2025 14:48:40 Asia/Manila] PHP Warning:  Undefined array key "barangay" in C:\xampp\htdocs\nov_system\public\establishments.php on line 29
+[24-Apr-2025 14:48:40 Asia/Manila] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\establishments.php on line 29
+[24-Apr-2025 14:48:40 Asia/Manila] PHP Warning:  Undefined array key "street" in C:\xampp\htdocs\nov_system\public\establishments.php on line 30
+[24-Apr-2025 14:48:40 Asia/Manila] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\establishments.php on line 30
+[24-Apr-2025 14:50:52 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:50:53 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:50:53 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:50:53 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:50:53 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:50:53 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:50:53 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:50:53 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:50:54 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:52:55 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:52:55 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:52:55 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:52:56 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:53:31 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:54:17 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 14:54:17 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 14:54:17 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 14:54:17 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 14:54:20 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 14:54:21 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28
+[24-Apr-2025 15:14:48 Asia/Manila] Dashboard data error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.violations' doesn't exist
+[24-Apr-2025 15:14:48 Asia/Manila] PHP Warning:  Undefined array key "role" in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 15:14:48 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\nov_system\public\index.php on line 63
+[24-Apr-2025 15:14:48 Asia/Manila] Activity fetch error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'nov_system.activities' doesn't exist
+[24-Apr-2025 15:14:50 Asia/Manila] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.date_created' in 'field list' in C:\xampp\htdocs\nov_system\public\nov_form.php:28
+Stack trace:
+#0 C:\xampp\htdocs\nov_system\public\nov_form.php(28): mysqli->query('\n    SELECT \n  ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\nov_system\public\nov_form.php on line 28

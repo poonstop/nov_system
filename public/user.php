@@ -15,7 +15,7 @@ $current_page = 'user.php';
 $is_logged_in = true;
 
 // Database connection
-require_once '../connection.php'; // Update this path if needed
+require_once '../config.php'; // Update this path if needed
 
 // Check if $pdo is set
 if (!isset($pdo)) {
