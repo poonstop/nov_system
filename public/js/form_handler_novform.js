@@ -1,139 +1,6 @@
 console.log('Script loaded');
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded');
-
-     // Fetch and display records
-     fetchRecords();
-    
-     // Initialize search functionality
-     const searchInput = document.getElementById('searchInput');
-     if (searchInput) {
-         searchInput.addEventListener('input', filterTable);
-     }
- });
- 
- function fetchRecords() {
-     console.log('Fetching records...');
-     
-     fetch('get_establishments.php')
-         .then(response => {
-             if (!response.ok) {
-                 throw new Error(`HTTP error! status: ${response.status}`);
-             }
-             return response.json();
-         })
-         .then(data => {
-             console.log('Records received:', data);
-             displayRecords(data.establishments || []);
-         })
-         .catch(error => {
-             console.error('Error fetching records:', error);
-             
-             // Display error message
-             const tableContainer = document.getElementById('tableContainer');
-             if (tableContainer) {
-                 tableContainer.innerHTML = `
-                     <div class="alert alert-danger">
-                         <strong>Error:</strong> Failed to load establishment records. 
-                         ${error.message}
-                     </div>`;
-             }
-         });
- }
- 
- function displayRecords(establishments) {
-     const tableBody = document.querySelector('#recordsTable tbody');
-     if (!tableBody) {
-         console.error('Table body element not found');
-         return;
-     }
-     
-     // Clear existing rows
-     tableBody.innerHTML = '';
-     
-     if (establishments.length === 0) {
-         // Display no records message
-         const noRecordsRow = document.createElement('tr');
-         noRecordsRow.innerHTML = `
-             <td colspan="9" class="text-center py-3">
-                 <i class="fas fa-info-circle me-2"></i>No records found
-             </td>`;
-         tableBody.appendChild(noRecordsRow);
-         return;
-     }
-     
-     // Add each establishment to the table
-     establishments.forEach(establishment => {
-         const row = document.createElement('tr');
-         row.setAttribute('data-id', establishment.id);
-         
-         // Format dates for display
-         const createdDate = formatDateForDisplay(establishment.created_at);
-         const updatedDate = formatDateForDisplay(establishment.date_updated);
-         
-         // Create inventory products display with badge
-         let productsDisplay = '<span class="text-muted">No inventory</span>';
-         if (establishment.products && establishment.products.length > 0) {
-             const productNames = establishment.products.map(p => p.product_name);
-             productsDisplay = productNames.join(', ') + 
-                 ` <span class="badge bg-primary">${productNames.length}</span>`;
-         }
-         
-         row.innerHTML = `
-             <td>${capitalizeWords(establishment.name || '')}</td>
-             <td>${capitalizeWords(establishment.address || '')}</td>
-             <td>${capitalizeWords(establishment.owner_rep || '')}</td>
-             <td>${establishment.violations || ''}</td>
-             <td>${productsDisplay}</td>
-             <td>${establishment.num_violations || '0'}</td>
-             <td>${createdDate}</td>
-             <td>${updatedDate}</td>
-             <td>
-                 <button class="btn btn-sm btn-primary" onclick="openViewModal(${establishment.id})">
-                     <i class="fas fa-eye"></i> View
-                 </button>
-                 <button class="btn btn-sm btn-secondary ms-1" onclick="openEditModal(${establishment.id})">
-                     <i class="fas fa-edit"></i> Edit
-                 </button>
-             </td>
-         `;
-         
-         tableBody.appendChild(row);
-     });
-     
-     // Initialize event listeners for view/edit buttons
-     const viewButtons = document.querySelectorAll('.btn-primary');
-     const editButtons = document.querySelectorAll('.btn-secondary');
-     
-     console.log('View buttons found:', viewButtons.length);
-     console.log('Edit buttons found:', editButtons.length);
- }
- 
- function formatDateForDisplay(dateString) {
-     if (!dateString) return 'No date';
-     
-     try {
-         const date = new Date(dateString);
-         if (isNaN(date.getTime())) return 'Invalid date';
-         
-         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-         const month = months[date.getMonth()];
-         const day = date.getDate();
-         const year = date.getFullYear();
-         
-         let hours = date.getHours();
-         const ampm = hours >= 12 ? 'PM' : 'AM';
-         hours = hours % 12;
-         hours = hours ? hours : 12; // Convert 0 to 12 for 12-hour format
-         const minutes = String(date.getMinutes()).padStart(2, '0');
-         
-         return `${month} ${day}, ${year} ${hours}:${minutes} ${ampm}`;
-     } catch (e) {
-         console.error('Date formatting error:', e);
-         return 'Invalid date';
-     }
- }
     
     // Add event listeners to all edit and view buttons
     const viewButtons = document.querySelectorAll('.btn-primary');
@@ -141,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('View buttons found:', viewButtons.length);
     console.log('Edit buttons found:', editButtons.length);
-
+});
 
 function openViewModal(id) {
     console.log('Opening view modal for ID:', id);
@@ -235,6 +102,7 @@ function openEditModal(id) {
         alert('Error: Establishment record not found');
         return;
     }
+    
 
     const editModal = document.getElementById('editModal');
     if (!editModal) {

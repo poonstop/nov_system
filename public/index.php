@@ -37,7 +37,7 @@ include '../templates/header.php';
                 <div class="card-body p-4 text-center">
                     <h1 class="display-6 fw-bold mb-3">Welcome, <span class="text-primary"><?php echo htmlspecialchars(ucfirst($_SESSION['username'])); ?></span></h1>
                     <p class="lead text-muted mb-0">
-                        Monitoring and Enforcement Tracking System Non-Compliance
+                        Tracking System for Monitoring and Enforcement Non-Compliance
                     </p>
                 </div>
             </div>

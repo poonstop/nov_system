@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitoring and Enforcement Tracking System System Non - Compliance</title>
+    <title>Tracking System for Monitoring and Enforcement System Non - Compliance</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Favicon (tab logo) -->
     <link rel="icon" href="../images/dti-logo.ico" type="../images/dti-logo.ico">
@@ -101,7 +101,113 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link rel="stylesheet" href="../css/login-styles.css">
+    <style>
+        body {
+            background: linear-gradient(to bottom, #ffffff 0%, #10346C 100%);
+            color: #333;
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-title {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #10346C;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: #10346C;
+            margin-bottom: 20px;
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .logo-img {
+            width: 80px;
+            margin: 0 10px;
+        }
+
+        .time-display {
+            text-align: center;
+            color: #10346C;
+            font-size: 1.5rem;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary {
+            background-color: #10346C !important;
+            border-color: #10346C !important;
+            border-radius: 5px;
+        }
+
+        .btn-primary:hover {
+            background-color: #0d2b58 !important;
+            border-color: #0d2b58 !important;
+        }
+
+        .alert {
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+
+        input.form-control {
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            font-size: 1rem;
+        }
+
+        input.form-control:focus {
+            border-color: #10346C;
+            box-shadow: 0 0 5px rgba(16, 52, 108, 0.5);
+            outline: none;
+        }
+        
+        .password-container {
+            position: relative;
+        }
+        
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: #6c757d;
+        }
+        
+        .toggle-password:hover {
+            color: #10346C;
+        }
+        
+        .form-label {
+            font-weight: 500;
+            color: #10346C;
+        }
+    </style>
 </head>
 <body>
 <div class="login-container">
