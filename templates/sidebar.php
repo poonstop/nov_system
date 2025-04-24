@@ -33,12 +33,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
-            <a href="establishments.php" class="<?php echo ($current_page == 'establishments.php') ? 'active' : ''; ?>">
-                <div class="icon-container">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <span class="nav-text">Notice Management</span>
-            </a>
+        
         </li>
         <li>
             <a href="nov_form.php" class="<?php echo ($current_page == 'nov_form.php') ? 'active' : ''; ?>">
