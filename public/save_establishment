@@ -1,0 +1,139 @@
+<?php
+// Include database connection
+include __DIR__ . '/../db_config.php';
+
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Function to sanitize input data
+function sanitize($data) {
+    global $conn;
+    return $conn->real_escape_string(trim($data));
+}
+
+// Process form submission
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Establishment details
+    $name = sanitize($_POST['establishment'] ?? '');
+    $address = sanitize($_POST['address'] ?? '');
+    $owner_representative = sanitize($_POST['owner_representative'] ?? '');
+    
+    // Nature of business
+    $nature = '';
+    if (isset($_POST['nature_select']) && $_POST['nature_select'] == 'Others') {
+        $nature = sanitize($_POST['nature_custom'] ?? '');
+    } else {
+        $nature = sanitize($_POST['nature_select'] ?? '');
+    }
+    
+    // Products
+    $products = sanitize($_POST['products'] ?? '');
+    
+    // Violations
+    $violations = [];
+    if (isset($_POST['violations']) && is_array($_POST['violations'])) {
+        $violations = $_POST['violations'];
+    }
+    
+    // Convert violations array to string
+    $violations_str = implode(', ', $violations);
+    $violations_str = sanitize($violations_str);
+    
+    // Remarks
+    $remarks = sanitize($_POST['remarks'] ?? '');
+    
+    // Generate a unique filename for NOV files
+    $nov_filename = strtolower(str_replace(' ', '', $name)) . '_' . time() . '.txt';
+    
+    // Create SQL query for establishments table
+    $sql = "INSERT INTO establishments (name, address, owner_representative, nature, products, violations, remarks, nov_files, num_violations) 
+            VALUES ('$name', '$address', '$owner_representative', '$nature', '$products', '$violations_str', '$remarks', '$nov_filename', '" . count($violations) . "')";
+    
+    // Execute the query
+    if ($conn->query($sql) === TRUE) {
+        $establishment_id = $conn->insert_id;
+        
+        // Process notice status if provided
+        if (isset($_POST['notice_status'])) {
+            $notice_status = sanitize($_POST['notice_status']);
+            $issued_by = sanitize($_POST['issued_by'] ?? '');
+            $position = sanitize($_POST['position'] ?? '');
+            $issued_datetime = sanitize($_POST['issued_datetime'] ?? date('Y-m-d H:i:s'));
+            $witnessed_by = sanitize($_POST['witnessed_by'] ?? '');
+            $status_remarks = sanitize($_POST['status_remarks'] ?? '');
+            
+            // Create SQL query for notice_status table
+            $status_sql = "INSERT INTO notice_status (id, status, issued_by, position, issued_datetime, witnessed_by, remarks) 
+                          VALUES ('$establishment_id', '$notice_status', '$issued_by', '$position', '$issued_datetime', '$witnessed_by', '$status_remarks')";
+            
+            // Execute the notice status query
+            $conn->query($status_sql);
+            
+            // Update the establishment table with the status
+            $update_sql = "UPDATE establishments SET notice_status = '$notice_status', issued_by = '$issued_by', issued_datetime = '$issued_datetime' WHERE id = $establishment_id";
+            $conn->query($update_sql);
+        }
+        
+        // Process inventory products if provided
+        if (isset($_POST['products']) && is_array($_POST['products'])) {
+            foreach ($_POST['products'] as $product) {
+                $product_name = sanitize($product['name'] ?? '');
+                $sealed = isset($product['sealed']) ? 1 : 0;
+                $withdrawn = isset($product['withdrawn']) ? 1 : 0;
+                $description = sanitize($product['description'] ?? '');
+                $price = sanitize($product['price'] ?? 0);
+                $pieces = sanitize($product['pieces'] ?? 0);
+                $dao_violation = isset($product['dao_violation']) ? 1 : 0;
+                $other_violation = isset($product['other_violation']) ? 1 : 0;
+                $product_remarks = sanitize($product['remarks'] ?? '');
+                
+                // Create SQL query for inventory table
+                $inventory_sql = "INSERT INTO inventory (id, product_name, sealed, withdrawn, description, price, pieces, dao_violation, other_violation, remarks) 
+                                 VALUES ('$establishment_id', '$product_name', $sealed, $withdrawn, '$description', '$price', '$pieces', $dao_violation, $other_violation, '$product_remarks')";
+                
+                // Execute the inventory query
+                $conn->query($inventory_sql);
+            }
+        }
+        
+        // Create a simple NOV file
+        $nov_content = "Notice of Violation\n";
+        $nov_content .= "====================\n";
+        $nov_content .= "Establishment: $name\n";
+        $nov_content .= "Address: $address\n";
+        $nov_content .= "Owner/Representative: $owner_representative\n";
+        $nov_content .= "Nature of Business: $nature\n";
+        $nov_content .= "Products: $products\n";
+        $nov_content .= "Violations: $violations_str\n";
+        $nov_content .= "Remarks: $remarks\n";
+        $nov_content .= "Date Created: " . date('Y-m-d H:i:s') . "\n";
+        
+        // Create uploads directory if it doesn't exist
+        $upload_dir = "uploads/nov_files/";
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+        
+        // Save the NOV file
+        file_put_contents($upload_dir . $nov_filename, $nov_content);
+        
+        // Set success message
+        $_SESSION['success_message'] = "Notice of Violation for $name has been successfully recorded.";
+        
+        // Redirect to establishments page
+        header("Location: establishments.php?success=1");
+        exit;
+    } else {
+        // Error handling
+        $_SESSION['error_message'] = "Error: " . $sql . "<br>" . $conn->error;
+        header("Location: create_nov.php?error=1");
+        exit;
+    }
+}
+
+// If not a POST request, redirect to the form page
+header("Location: create_nov.php");
+exit;
+?>

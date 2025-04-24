@@ -1,6 +1,6 @@
 <?php
 session_start();
-include __DIR__ . '/../connection.php';
+include __DIR__ . '/../db_config.php';
 
 // Check for logout message
 if (isset($_SESSION['logout_message'])) {
@@ -47,10 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             // Check if user exists and is active
-            $stmt = $pdo->prepare("SELECT id, username, password, ulvl, status, fullname FROM users WHERE username = ?");
-            $stmt->execute([$username]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
+            $stmt = $conn->prepare("SELECT id, username, password, ulvl, status, fullname FROM users WHERE username = ?");
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $user = $result->fetch_assoc();
             if ($user) {
                 if ($user['status'] !== 'active') {
                     // Set flag for inactive account

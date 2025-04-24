@@ -331,3 +331,6 @@
 [2025-04-24 13:14:52] ===== New Update Request =====
 [2025-04-24 13:14:52] Error: Unknown column 'position' in 'field list'
 [2025-04-24 13:14:52] Response: {"success":false,"message":"Error: Unknown column 'position' in 'field list'"}
+[2025-04-24 14:25:03] ===== New Update Request =====
+[2025-04-24 14:25:03] Error: CSRF token validation failed
+[2025-04-24 14:25:03] Response: {"success":false,"message":"CSRF token validation failed"}
