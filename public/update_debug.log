@@ -322,3 +322,12 @@
 [2025-04-16 10:59:46] Number of violations: 2
 [2025-04-16 10:59:46] Date updated: 2025-04-16 10:59:46
 [2025-04-16 10:59:46] Response: {"success":true,"message":"Record updated successfully","updated_id":45,"date_updated":"2025-04-16 10:59:46","formatted_date":"April 16, 2025, 10:59 am","num_violations":2,"violations":"No PS\/ICC Mark, Invalid\/Expired Accreditation"}
+[2025-04-24 13:14:23] ===== New Update Request =====
+[2025-04-24 13:14:23] Error: Unknown column 'position' in 'field list'
+[2025-04-24 13:14:23] Response: {"success":false,"message":"Error: Unknown column 'position' in 'field list'"}
+[2025-04-24 13:14:30] ===== New Update Request =====
+[2025-04-24 13:14:30] Error: Unknown column 'position' in 'field list'
+[2025-04-24 13:14:30] Response: {"success":false,"message":"Error: Unknown column 'position' in 'field list'"}
+[2025-04-24 13:14:52] ===== New Update Request =====
+[2025-04-24 13:14:52] Error: Unknown column 'position' in 'field list'
+[2025-04-24 13:14:52] Response: {"success":false,"message":"Error: Unknown column 'position' in 'field list'"}
