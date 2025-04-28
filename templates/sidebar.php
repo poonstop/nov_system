@@ -32,7 +32,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <span class="nav-text">Home</span>
             </a>
         </li>
-    
+        <li>
+        
+        </li>
         <li>
             <a href="nov_form.php" class="<?php echo ($current_page == 'nov_form.php') ? 'active' : ''; ?>">
                 <div class="icon-container">
