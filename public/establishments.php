@@ -33,8 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Process nature of business
         $nature = ($_POST['nature_select'] === 'Others') 
-            ? htmlspecialchars(trim($_POST['nature_custom'])) 
-            : htmlspecialchars($_POST['nature_select']);
+            ? trim($_POST['nature_custom']) 
+            : $_POST['nature_select'];
         
         if ($_POST['nature_select'] === 'Others' && empty(trim($_POST['nature_custom']))) {
             showError("Please specify the nature of business");
@@ -42,17 +42,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Save form data to session and proceed to violations
         $_SESSION['form_data'] = [
-            'establishment' => htmlspecialchars($_POST['establishment']),
-            'owner_representative' => htmlspecialchars($_POST['owner_representative']),
-            'street' => htmlspecialchars($_POST['street']),
-            'barangay' => htmlspecialchars($_POST['barangay']),
-            'municipality' => htmlspecialchars($_POST['municipality']),
-            'province' => htmlspecialchars($_POST['province']),
-            'region' => htmlspecialchars($_POST['region']),
-            'nature_select' => htmlspecialchars($_POST['nature_select']),
-            'nature_custom' => htmlspecialchars($_POST['nature_custom'] ?? ''),
+            'establishment' => $_POST['establishment'],
+            'owner_representative' => $_POST['owner_representative'],
+            'street' => $_POST['street'],
+            'barangay' => $_POST['barangay'],
+            'municipality' => $_POST['municipality'],
+            'province' => $_POST['province'],
+            'region' => $_POST['region'],
+            'nature_select' => $_POST['nature_select'],
+            'nature_custom' => $_POST['nature_custom'] ?? '',
             'nature' => $nature,
-            'products' => htmlspecialchars($_POST['products'])
+            'products' => $_POST['products']
         ];
         
         header("Location: establishments.php?show_violations_modal=1");
@@ -66,8 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         $formData = $_SESSION['form_data'];
-        $violations = isset($_POST['violations']) ? implode(', ', array_map('htmlspecialchars', $_POST['violations'])) : '';
-        $remarks = htmlspecialchars($_POST['remarks'] ?? '');
+        $violations = isset($_POST['violations']) ? implode(', ', $_POST['violations']) : '';
+        $remarks = $_POST['remarks'] ?? '';
         
         // Generate NOV file
         $filename = preg_replace('/[^A-Za-z0-9\-]/', '', $formData['establishment']) . '_' . time() . '.txt';
@@ -120,20 +120,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 showError("Please add at least one valid product with a name.");
             }
             
-            // Store sanitized products
+            // Store products
             $sanitizedProducts = [];
             foreach ($_POST['products'] as $index => $product) {
                 if (!empty($product['name'])) {
                     $sanitizedProducts[$index] = [
-                        'name' => htmlspecialchars($product['name']),
-                        'description' => htmlspecialchars($product['description'] ?? ''),
+                        'name' => $product['name'],
+                        'description' => $product['description'] ?? '',
                         'price' => filter_var($product['price'] ?? 0, FILTER_VALIDATE_FLOAT),
                         'pieces' => filter_var($product['pieces'] ?? 0, FILTER_VALIDATE_INT),
                         'sealed' => isset($product['sealed']) ? 1 : 0,
                         'withdrawn' => isset($product['withdrawn']) ? 1 : 0,
                         'dao_violation' => isset($product['dao_violation']) ? 1 : 0,
                         'other_violation' => isset($product['other_violation']) ? 1 : 0,
-                        'remarks' => htmlspecialchars($product['remarks'] ?? '')
+                        'remarks' => $product['remarks'] ?? ''
                     ];
                 }
             }
@@ -157,12 +157,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // Process status data
-        $notice_status = htmlspecialchars($_POST['notice_status'] ?? 'Not specified');
-        $issuer_name = htmlspecialchars($_POST['issued_by'] ?? '');
-        $position = htmlspecialchars($_POST['position'] ?? '');
-        $issued_datetime = htmlspecialchars($_POST['issued_datetime'] ?? date('Y-m-d H:i:s'));
-        $witnessed_by = htmlspecialchars($_POST['witnessed_by'] ?? '');
-        $remarks = htmlspecialchars($_POST['remarks'] ?? $novDetails['remarks']);
+        $notice_status = $_POST['notice_status'] ?? 'Not specified';
+        $issuer_name = $_POST['issued_by'] ?? '';
+        $position = $_POST['position'] ?? '';
+        $issued_datetime = $_POST['issued_datetime'] ?? date('Y-m-d H:i:s');
+        $witnessed_by = $_POST['witnessed_by'] ?? '';
+        $remarks = $_POST['remarks'] ?? $novDetails['remarks'];
 
         try {
             // Begin transaction
@@ -363,7 +363,7 @@ unset($_SESSION['success']);
         <h2 class="mb-4">Notice Management</h2>
         
         <?php if ($errorMsg): ?>
-            <div class="alert alert-danger" role="alert"><?php echo $errorMsg; ?></div>
+            <div class="alert alert-danger" role="alert"><?php echo htmlspecialchars($errorMsg); ?></div>
         <?php endif; ?>
         
         <?php if ($successMsg): ?>
