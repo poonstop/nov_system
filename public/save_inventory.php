@@ -1,6 +1,6 @@
 <?php
 // Include database connection
-include __DIR__ . '/../db_config.php';
+include __DIR__ . '/../connection.php';
 
 // Function to sanitize input data
 function sanitize($data) {

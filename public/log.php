@@ -2,7 +2,7 @@
 session_start();
 
 // Database connection
-require_once '../db_config.php';
+include __DIR__ . '/../connection.php';
 
 $error_message = '';
 

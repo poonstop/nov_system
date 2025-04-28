@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-include __DIR__ . '/../db_config.php';
+include __DIR__ . '/../connection.php';
 
 // Error reporting configuration
 error_reporting(E_ALL);

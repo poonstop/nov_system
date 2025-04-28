@@ -1,6 +1,6 @@
 <?php
 session_start();
-include __DIR__ . '/../db_config.php';
+include __DIR__ . '/../connection.php';
 
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['username'])) {
     header("Location: login.php");

@@ -1,6 +1,6 @@
 <?php
 session_start();
-include __DIR__ . '/../db_config.php';
+include __DIR__ . '/../connection.php';
 
 // Check for logout message
 if (isset($_SESSION['logout_message'])) {

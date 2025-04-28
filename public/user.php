@@ -15,7 +15,7 @@ $current_page = 'user.php';
 $is_logged_in = true;
 
 // Database connection
-include __DIR__ . '/../db_config.php'; // Update this path if needed
+include __DIR__ . '/../connection.php';
 
 // Check if $pdo is set
 if (!isset($pdo)) {
