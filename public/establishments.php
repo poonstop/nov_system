@@ -514,6 +514,127 @@ unset($_SESSION['success']);
                             </div>
                         </div>
                         
+                        <!-- Accreditation Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Accreditation Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="No Accreditation Certification" id="noAccCert">
+                                        <label class="form-check-label" for="noAccCert">No Accreditation Certification</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Expired Accreditation Certificate" id="expAccCert">
+                                        <label class="form-check-label" for="expAccCert">Expired Accreditation Certificate</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment." id="accFail">
+                                        <label class="form-check-label" for="accFail">Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment.</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Freight Forwarding Services Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Freight Forwarding Services Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Freight Buisness with No Accreditation Certification" id="freightNoAcc">
+                                        <label class="form-check-label" for="freightNoAcc">Freight Buisness with No Accreditation Certification</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value=" Freight Business with Expired Accreditation Certificate" id="freightExpAccCert">
+                                        <label class="form-check-label" for="freightExpAccCert">Freight Business with Expired Accreditation Certificate</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Freight Business with Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment." id="freightAccFail">
+                                        <label class="form-check-label" for="freightAccFail">Freight Business with Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment.</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Price Tag Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Price Tag Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Products with no/ or inappropriate Price Tag" id="priceTag">
+                                        <label class="form-check-label" for="priceTag">Products with no/ or inappropriate Price Tag</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pricing Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Pricing Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Price grossly in excess of its/their true worth" id="priceExcess">
+                                        <label class="form-check-label" for="priceExcess">Price grossly in excess of its/their true worth</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Price is beyond the price cieling" id="priceCiel">
+                                        <label class="form-check-label" for="priceCiel">Price is beyond the price cieling</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Business Name Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Business Name Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Engaging in business using trade name other than his true name" id="otherName">
+                                        <label class="form-check-label" for="otherName">Engaging in business using trade name other than his true name</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Engaging in business using trade name on signages and/or documents without prior registration" id="bnNoReg">
+                                        <label class="form-check-label" for="bnNoReg">Engaging in business using trade name on signages and/or documents without prior registration</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Failure to Display Business Name Certificate" id="noBNCert">
+                                        <label class="form-check-label" for="noBNCert">Failure to Display Business Name Certificate</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sales Promotion Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Sales Promotion Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Conducting Sales Promotion without Sales Promotion Permit." id="noSPPermit">
+                                        <label class="form-check-label" for="noSPPermit">Conducting Sales Promotion without Sales Promotion Permit.</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
                         <!-- Remarks field -->
                         <div class="mb-3">
                             <label for="remarks" class="form-label">Remarks:</label>
