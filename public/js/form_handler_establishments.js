@@ -1,562 +1,297 @@
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Checking for success message...");
-    console.log("URL params:", window.location.search);
-    console.log("Session storage:", sessionStorage.getItem('successMessage'));
+    // Initialize flatpickr for datetime picker
+    flatpickr('.datepicker', {
+        enableTime: true,
+        dateFormat: "Y-m-d H:i:S",
+        defaultDate: new Date()
+    });
 
-    // Initialize status radio buttons and fields
-    const statusReceived = document.getElementById('statusReceived');
-    const statusRefused = document.getElementById('statusRefused');
-    const receivedByFields = document.getElementById('receivedByFields');
-    const refusedByFields = document.getElementById('refusedByFields');
-
-    // Status radio button handlers
-    if (statusReceived) {
-        statusReceived.addEventListener('change', function() {
-            if (this.checked && receivedByFields) {
-                receivedByFields.style.display = 'block';
-                if (refusedByFields) refusedByFields.style.display = 'none';
-                
-                if (document.getElementById('received_by')) {
-                    document.getElementById('received_by').setAttribute('required', 'required');
-                }
-                if (document.getElementById('position')) {
-                    document.getElementById('position').setAttribute('required', 'required');
-                }
-                if (document.getElementById('witnessed_by')) {
-                    document.getElementById('witnessed_by').removeAttribute('required');
-                }
-            }
-        });
-    }
-
-    if (statusRefused) {
-        statusRefused.addEventListener('change', function() {
-            if (this.checked && refusedByFields) {
-                if (receivedByFields) receivedByFields.style.display = 'none';
-                refusedByFields.style.display = 'block';
-                
-                if (document.getElementById('witnessed_by')) {
-                    document.getElementById('witnessed_by').setAttribute('required', 'required');
-                }
-                if (document.getElementById('received_by')) {
-                    document.getElementById('received_by').removeAttribute('required');
-                }
-                if (document.getElementById('position')) {
-                    document.getElementById('position').removeAttribute('required');
-                }
-            }
-        });
-    }
-
-    // Show success message if URL has success parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('success')) {
-        const successData = JSON.parse(sessionStorage.getItem('successMessage'));
-        if (successData) {
-            Swal.fire({
-                icon: 'success',
-                title: successData.title || 'Success',
-                text: successData.text || 'Operation completed successfully.',
-                confirmButtonColor: '#10346C'
-            });
-            sessionStorage.removeItem('successMessage');
-        }
-    }
-
-    // Initialize date/time picker
-    if (document.getElementById('issued_datetime')) {
-        flatpickr("#issued_datetime", {
-            enableTime: true,
-            dateFormat: "Y-m-d H:i",
-            defaultDate: new Date()
-        });
-    }
-
-    // Proceed to violations button handler
-    const proceedBtn = document.getElementById('proceedToViolationsBtn');
-    if (proceedBtn) {
-        proceedBtn.addEventListener('click', function(e) {
-            const formElement = document.getElementById('novForm');
-            const requiredFields = formElement.querySelectorAll('[required]');
-            let isValid = true;
-            
-            requiredFields.forEach(field => {
-                if (!field.value.trim()) {
-                    isValid = false;
-                    field.classList.add('is-invalid');
-                } else {
-                    field.classList.remove('is-invalid');
-                }
-            });
-            
-            if (isValid) {
-                const formData = new FormData(formElement);
-                const region = document.getElementById('region').value;
-                const province = document.getElementById('province').value;
-                const municipality = document.getElementById('municipality').value;
-                const barangay = document.getElementById('barangay').value;
-                const street = document.getElementById('street').value;
-                const fullAddress = `${street}, ${barangay}, ${municipality}, ${province}, ${region}`;
-                
-                document.getElementById('hiddenEstablishment').value = formData.get('establishment');
-                document.getElementById('hiddenOwnerRep').value = formData.get('owner_representative');
-                document.getElementById('hiddenAddress').value = fullAddress;
-                document.getElementById('hiddenNatureSelect').value = formData.get('nature_select');
-                document.getElementById('hiddenNatureCustom').value = formData.get('nature_custom') || '';
-                document.getElementById('hiddenProducts').value = formData.get('products');
-                
-                new bootstrap.Modal(document.getElementById('violationsModal')).show();
-            } else {
-                Swal.fire({
-                    title: 'Missing Information',
-                    text: 'Please fill in all required fields before proceeding.',
-                    icon: 'warning',
-                    confirmButtonColor: '#10346C'
-                });
-            }
-        });
-    }
-
-    // Violations form submission
-    const submitViolationsBtn = document.getElementById('submitViolationsBtn');
-    if (submitViolationsBtn) {
-        submitViolationsBtn.addEventListener('click', function() {
-            const violationsForm = document.getElementById('violationsForm');
-            const formData = new FormData(violationsForm);
-            const violations = Array.from(formData.getAll('violations[]'));
-            
-            if (violations.length === 0) {
-                Swal.fire({
-                    title: 'No Violations Selected',
-                    text: 'Please select at least one violation before proceeding.',
-                    icon: 'warning',
-                    confirmButtonColor: '#10346C'
-                });
-                return;
-            }
-            
-            // Store ALL form data
-            let formDataObj = {};
-            for (const [key, value] of formData.entries()) {
-                if (formDataObj[key]) {
-                    if (!Array.isArray(formDataObj[key])) {
-                        formDataObj[key] = [formDataObj[key]];
-                    }
-                    formDataObj[key].push(value);
-                } else {
-                    formDataObj[key] = value;
-                }
-            }
-            
-            sessionStorage.setItem('violationsFormData', JSON.stringify(formDataObj));
-            
-            bootstrap.Modal.getInstance(document.getElementById('violationsModal')).hide();
-            
-            // Show inventory modal
-            setTimeout(() => {
-                populateInventoryModal();
-                new bootstrap.Modal(document.getElementById('inventoryModal')).show();
-            }, 300);
-        });
-    }
-
-    // Skip inventory button handler
-    const skipInventoryBtn = document.getElementById('skipInventoryBtn');
-    if (skipInventoryBtn) {
-        skipInventoryBtn.addEventListener('click', function() {
-            const inventoryModal = document.getElementById('inventoryModal');
-            const bsInventoryModal = bootstrap.Modal.getInstance(inventoryModal);
-            
-            if (bsInventoryModal) {
-                bsInventoryModal.hide();
-                
-                inventoryModal.addEventListener('hidden.bs.modal', function() {
-                    new bootstrap.Modal(document.getElementById('receivedRefusedModal')).show();
-                }, { once: true });
-            } else {
-                inventoryModal.classList.remove('show');
-                document.body.classList.remove('modal-open');
-                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-                
-                setTimeout(() => {
-                    new bootstrap.Modal(document.getElementById('receivedRefusedModal')).show();
-                }, 300);
-            }
-        });
-    }
-
-    // Populate inventory modal with data
-    function populateInventoryModal() {
-        const inventoryForm = document.getElementById('inventoryForm');
-        inventoryForm.querySelector('input[name="establishment"]').value = 
-            document.getElementById('hiddenEstablishment').value;
-        inventoryForm.querySelector('input[name="owner_representative"]').value = 
-            document.getElementById('hiddenOwnerRep').value;
-        inventoryForm.querySelector('input[name="address"]').value = 
-            document.getElementById('hiddenAddress').value;
-        inventoryForm.querySelector('input[name="nature_select"]').value = 
-            document.getElementById('hiddenNatureSelect').value;
-        inventoryForm.querySelector('input[name="nature_custom"]').value = 
-            document.getElementById('hiddenNatureCustom').value;
-        inventoryForm.querySelector('input[name="products"]').value = 
-            document.getElementById('hiddenProducts').value;
-    }
-
-    // Status Form Submission
-    const submitStatusBtn = document.getElementById('submitStatusBtn');
-    if (submitStatusBtn) {
-        submitStatusBtn.addEventListener('click', function() {
-            const statusForm = document.getElementById('noticeStatusForm');
-            const statusData = new FormData(statusForm);
-            
-            // Validate status selection
-            if (!statusData.get('notice_status')) {
-                Swal.fire({
-                    title: 'Status Required',
-                    text: 'Please select whether the notice was received or refused.',
-                    icon: 'warning',
-                    confirmButtonColor: '#10346C'
-                });
-                return;
-            }
-
-            // Validate required fields based on selected status
-            if (statusData.get('notice_status') === 'Received') {
-                const issuedBy = document.getElementById('received_by').value.trim();
-                const position = document.getElementById('position').value.trim();
-                
-                if (!issuedBy) {
-                    Swal.fire({
-                        title: 'Issuer Required',
-                        text: 'Please enter the name of the issuer.',
-                        icon: 'warning',
-                        confirmButtonColor: '#10346C'
-                    });
-                    return;
-                }
-                
-                if (!position) {
-                    Swal.fire({
-                        title: 'Position Required',
-                        text: 'Please enter the position of the issuer.',
-                        icon: 'warning',
-                        confirmButtonColor: '#10346C'
-                    });
-                    return;
-                }
-            } else if (statusData.get('notice_status') === 'Refused') {
-                const witnessedBy = document.getElementById('witnessed_by').value.trim();
-                
-                if (!witnessedBy) {
-                    Swal.fire({
-                        title: 'Witness Required',
-                        text: 'Please enter the name of the witness.',
-                        icon: 'warning',
-                        confirmButtonColor: '#10346C'
-                    });
-                    return;
-                }
-            }
-            
-            // Get all the previously collected data
-            const violationsData = sessionStorage.getItem('violationsFormData') ? 
-                JSON.parse(sessionStorage.getItem('violationsFormData')) : {};
-            
-            // Create a summary for confirmation
-            const establishment = document.getElementById('hiddenEstablishment').value;
-            
-            Swal.fire({
-                title: 'Confirm Submission',
-                html: `
-                    <div class="text-start">
-                        <p><strong>Establishment:</strong> ${establishment}</p>
-                        <p><strong>Notice Status:</strong> ${statusData.get('notice_status')}</p>
-                        <p><strong>Date Issued:</strong> ${statusData.get('issued_datetime')}</p>
-                    </div>
-                `,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#10346C',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Submit Notice',
-                cancelButtonText: 'Review Information'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Store success message
-                    sessionStorage.setItem('successMessage', JSON.stringify({
-                        title: 'Notice of Violation Saved',
-                        text: `NOV for ${establishment} has been successfully recorded.`
-                    }));
-                    
-                    // Create a form that includes ALL necessary data
-                    const finalForm = document.createElement('form');
-                    finalForm.method = 'POST';
-                    finalForm.action = "establishments.php?success=1";
-                    finalForm.style.display = 'none';
-                    document.body.appendChild(finalForm);
-                    
-                    // Add violations data
-                    for (const key in violationsData) {
-                        if (Array.isArray(violationsData[key])) {
-                            for (const value of violationsData[key]) {
-                                const input = document.createElement('input');
-                                input.type = 'hidden';
-                                input.name = key;
-                                input.value = value;
-                                finalForm.appendChild(input);
-                            }
-                        } else {
-                            const input = document.createElement('input');
-                            input.type = 'hidden';
-                            input.name = key;
-                            input.value = violationsData[key];
-                            finalForm.appendChild(input);
-                        }
-                    }
-                    
-                    // Add status data
-                    const addHiddenField = (name, value) => {
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = name;
-                        input.value = value;
-                        finalForm.appendChild(input);
-                    };
-                    
-                    addHiddenField('notice_status', statusData.get('notice_status'));
-                    addHiddenField('issued_datetime', statusData.get('issued_datetime'));
-                    
-                    // Add the correct fields based on status
-                    if (statusData.get('notice_status') === 'Received') {
-                        const issuedBy = document.getElementById('received_by').value;
-                        addHiddenField('issued_by', issuedBy);
-                        addHiddenField('position', statusData.get('position'));
-                        addHiddenField('witnessed_by', '');
-                    } else {
-                        const witnessedBy = document.getElementById('witnessed_by').value;
-                        addHiddenField('witnessed_by', witnessedBy);
-                        addHiddenField('issued_by', '');
-                        addHiddenField('position', '');
-                    }
-                    
-                    // Show loading indicator
-                    Swal.fire({
-                        title: 'Submitting...',
-                        text: 'Please wait while your notice is being processed.',
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        allowEnterKey: false,
-                        showConfirmButton: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        }
-                    });
-                    
-                    // Submit the form
-                    setTimeout(() => {
-                        finalForm.submit();
-                    }, 500);
-                }
-            });
-        });
-    }
-
-    // Save Inventory Button
-    const saveInventoryBtn = document.getElementById('saveInventoryBtn');
-    if (saveInventoryBtn) {
-        saveInventoryBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            if (!validateInventoryForm()) return;
-            
-            const saveInventoryBtn = this;
-            const inventoryForm = document.getElementById('inventoryForm');
-            const formData = new FormData(inventoryForm);
-            
-            saveInventoryBtn.disabled = true;
-            saveInventoryBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
-
-            fetch('save_inventory.php', {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(response => {
-                if (!response.ok) throw new Error('Network response was not ok');
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success',
-                        text: data.message,
-                        timer: 1000,
-                        showConfirmButton: false,
-                        willClose: () => {
-                            const inventoryModal = bootstrap.Modal.getInstance(document.getElementById('inventoryModal'));
-                            inventoryModal.hide();
-                            document.getElementById('inventoryModal').addEventListener('hidden.bs.modal', () => {
-                                new bootstrap.Modal(document.getElementById('receivedRefusedModal')).show();
-                                resetButton(saveInventoryBtn);
-                            }, { once: true });
-                        }
-                    });
-                } else {
-                    throw new Error(data.message || 'Failed to save inventory products');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: error.message,
-                    confirmButtonColor: '#10346C'
-                }).then(() => resetButton(saveInventoryBtn));
-            });
-
-            function resetButton(button) {
-                button.disabled = false;
-                button.innerHTML = 'Save Products';
-            }
-        });
-    }
-
-    function validateInventoryForm() {
-        const productItems = document.querySelectorAll('.product-item');
-        if (productItems.length === 0) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Please add at least one product'
-            });
-            return false;
-        }
-        
-        let isValid = true;
-        productItems.forEach(item => {
-            const nameInput = item.querySelector('input[name^="products["][name$="[name]"]');
-            if (!nameInput.value.trim()) {
-                isValid = false;
-                nameInput.classList.add('is-invalid');
-            } else {
-                nameInput.classList.remove('is-invalid');
-            }
-        });
-        
-        if (!isValid) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Please fill in all required product fields'
-            });
-        }
-        
-        return isValid;
-    }
-
-    // Add Product Button
-    const addProductBtn = document.getElementById('addProductBtn');
-    if (addProductBtn) {
-        addProductBtn.addEventListener('click', function() {
-            const productsContainer = document.getElementById('productsContainer');
-            const productCount = productsContainer.querySelectorAll('.product-item').length;
-            
-            const newProductHtml = `
-                <div class="product-item border p-3 mb-3 rounded">
-                    <div class="row mb-2">
-                        <div class="col-md-8">
-                            <label for="product_name">Product:</label>
-                            <input type="text" class="form-control" name="products[${productCount}][name]" required>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="d-flex mt-4">
-                                <div class="form-check me-4">
-                                    <input class="form-check-input" type="checkbox" name="products[${productCount}][sealed]" value="1">
-                                    <label class="form-check-label">Sealed</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="products[${productCount}][withdrawn]" value="1">
-                                    <label class="form-check-label">Withdrawn</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-2">
-                        <label for="brand_description">Brand Description:</label>
-                        <textarea class="form-control" name="products[${productCount}][description]" rows="3"></textarea>
-                    </div>
-                    
-                    <div class="row mb-2">
-                        <div class="col-md-4">
-                            <label for="price">Price:</label>
-                            <input type="number" class="form-control" name="products[${productCount}][price]" step="0.01">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="pieces">No. of Pieces:</label>
-                            <input type="number" class="form-control" name="products[${productCount}][pieces]">
-                        </div>
-                        <div class="col-md-4">
-                            <div class="d-flex mt-4">
-                                <div class="form-check me-4">
-                                    <input class="form-check-input" type="checkbox" name="products[${productCount}][dao_violation]" value="1">
-                                    <label class="form-check-label">Violation of DAO</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="products[${productCount}][other_violation]" value="1">
-                                    <label class="form-check-label">Other Violation</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-2">
-                        <label for="remarks">Product Remarks:</label>
-                        <input type="text" class="form-control" name="products[${productCount}][remarks]">
-                    </div>
-                    
-                    <button type="button" class="btn btn-danger btn-sm remove-product">
-                        <i class="bi bi-trash"></i> Remove
-                    </button>
-                </div>`;
-            
-            productsContainer.insertAdjacentHTML('beforeend', newProductHtml);
-            
-            const lastRemoveButton = productsContainer.querySelector('.product-item:last-child .remove-product');
-            if (lastRemoveButton) {
-                lastRemoveButton.addEventListener('click', function() {
-                    this.closest('.product-item').remove();
-                });
-            }
-        });
-    }
-    
-    // Back from inventory button
-    const backFromInventoryBtn = document.getElementById('backFromInventoryBtn');
-    if (backFromInventoryBtn) {
-        backFromInventoryBtn.addEventListener('click', function() {
-            bootstrap.Modal.getInstance(document.getElementById('inventoryModal')).hide();
-            setTimeout(() => {
-                new bootstrap.Modal(document.getElementById('violationsModal')).show();
-            }, 300);
-        });
-    }
-    
-    // Nature of business custom field toggle
-    const natureSelect = document.getElementById('natureSelect');
-    const natureCustom = document.getElementById('natureCustom');
+    // Handle nature of business custom field toggle
+    const natureSelect = document.getElementById('nature_select');
+    const natureCustom = document.getElementById('nature_custom');
     
     if (natureSelect && natureCustom) {
         natureSelect.addEventListener('change', function() {
-            natureCustom.style.display = this.value === 'Others' ? 'block' : 'none';
-            natureCustom.required = this.value === 'Others';
+            if (this.value === 'Others') {
+                natureCustom.style.display = 'block';
+                natureCustom.setAttribute('required', 'required');
+            } else {
+                natureCustom.style.display = 'none';
+                natureCustom.removeAttribute('required');
+            }
         });
     }
 
-    // Error handling
-    window.addEventListener('error', function(e) {
-        console.error('JavaScript error:', e.message, 'at', e.filename, 'line', e.lineno);
+    // Initialize modals
+    const violationsModal = new bootstrap.Modal(document.getElementById('violationsModal'), {
+        backdrop: 'static',
+        keyboard: false
     });
+    
+    const inventoryModal = new bootstrap.Modal(document.getElementById('inventoryModal'), {
+        backdrop: 'static',
+        keyboard: false
+    });
+    
+    const statusModal = new bootstrap.Modal(document.getElementById('statusModal'), {
+        backdrop: 'static',
+        keyboard: false
+    });
+
+    // Show modals based on URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.get('show_violations_modal') === '1') {
+        violationsModal.show();
+    }
+    
+    if (urlParams.get('show_inventory_modal') === '1') {
+        inventoryModal.show();
+    }
+    
+    if (urlParams.get('show_status_modal') === '1') {
+        statusModal.show();
+    }
+
+    // Handle 'Back' buttons on modals
+    document.querySelectorAll('.modal .btn-secondary').forEach(button => {
+        button.addEventListener('click', function() {
+            const modal = this.closest('.modal');
+            
+            if (modal.id === 'violationsModal') {
+                // Go back to main form
+                window.location.href = 'establishments.php';
+            } else if (modal.id === 'inventoryModal') {
+                // Go back to violations modal
+                inventoryModal.hide();
+                setTimeout(() => {
+                    violationsModal.show();
+                }, 500);
+            } else if (modal.id === 'statusModal') {
+                // Go back to inventory modal
+                statusModal.hide();
+                setTimeout(() => {
+                    inventoryModal.show();
+                }, 500);
+            }
+        });
+    });
+
+    // Handle adding products in inventory modal
+    let productCounter = 1;
+    const addProductBtn = document.getElementById('addProductBtn');
+    const productsContainer = document.getElementById('productsContainer');
+    
+    if (addProductBtn && productsContainer) {
+        addProductBtn.addEventListener('click', function() {
+            const productHTML = `
+                <div class="product-item border p-3 mb-3 rounded">
+                    <div class="row mb-2">
+                        <div class="col-md-8">
+                            <label for="product_name_${productCounter}">Product:</label>
+                            <input type="text" class="form-control" id="product_name_${productCounter}" name="products[${productCounter}][name]">
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex mt-4">
+                                <div class="form-check me-3">
+                                    <input class="form-check-input" type="checkbox" id="product_sealed_${productCounter}" name="products[${productCounter}][sealed]" value="1">
+                                    <label class="form-check-label" for="product_sealed_${productCounter}">Sealed</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="product_withdrawn_${productCounter}" name="products[${productCounter}][withdrawn]" value="1">
+                                    <label class="form-check-label" for="product_withdrawn_${productCounter}">Withdrawn</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label for="product_description_${productCounter}">Description:</label>
+                        <textarea class="form-control" id="product_description_${productCounter}" name="products[${productCounter}][description]" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="row mb-2">
+                        <div class="col-md-4">
+                            <label for="product_price_${productCounter}">Price:</label>
+                            <input type="number" class="form-control" id="product_price_${productCounter}" name="products[${productCounter}][price]" step="0.01">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="product_pieces_${productCounter}">No. of Pieces:</label>
+                            <input type="number" class="form-control" id="product_pieces_${productCounter}" name="products[${productCounter}][pieces]">
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex mt-4">
+                                <div class="form-check me-3">
+                                    <input class="form-check-input" type="checkbox" id="product_dao_${productCounter}" name="products[${productCounter}][dao_violation]" value="1">
+                                    <label class="form-check-label" for="product_dao_${productCounter}">DAO</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="product_other_${productCounter}" name="products[${productCounter}][other_violation]" value="1">
+                                    <label class="form-check-label" for="product_other_${productCounter}">Other</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label for="product_remarks_${productCounter}">Remarks:</label>
+                        <input type="text" class="form-control" id="product_remarks_${productCounter}" name="products[${productCounter}][remarks]">
+                    </div>
+                    
+                    <div class="text-end">
+                        <button type="button" class="btn btn-sm btn-danger remove-product">Remove</button>
+                    </div>
+                </div>
+            `;
+            
+            // Add the new product form to the container
+            productsContainer.insertAdjacentHTML('beforeend', productHTML);
+            
+            // Increment counter for next product
+            productCounter++;
+            
+            // Add event listener to the newly added remove button
+            attachRemoveProductListeners();
+        });
+        
+        // Function to attach remove event listeners
+        function attachRemoveProductListeners() {
+            document.querySelectorAll('.remove-product').forEach(button => {
+                button.addEventListener('click', function() {
+                    this.closest('.product-item').remove();
+                });
+            });
+        }
+        
+        // Initialize remove buttons for initial product
+        attachRemoveProductListeners();
+    }
+
+    // Form validation
+    const novForm = document.getElementById('novForm');
+    if (novForm) {
+        novForm.addEventListener('submit', function(event) {
+            // Validate nature of business if "Others" is selected
+            if (natureSelect && natureSelect.value === 'Others' && 
+                (!natureCustom.value || natureCustom.value.trim() === '')) {
+                event.preventDefault();
+                alert('Please specify the nature of business.');
+                natureCustom.focus();
+            }
+        });
+    }
+
+    // Handle success messages with SweetAlert2
+    const successMessage = document.getElementById('success-message');
+    if (successMessage && successMessage.textContent.trim() !== '') {
+        try {
+            const successData = JSON.parse(successMessage.textContent);
+            Swal.fire({
+                icon: 'success',
+                title: successData.title || 'Success!',
+                text: successData.text || 'Operation completed successfully.',
+                confirmButtonColor: '#3085d6'
+            }).then(() => {
+                // Optional: Redirect to a listing page or clear the form
+                if (urlParams.get('success') === '1') {
+                    // Clear any form data if needed
+                }
+            });
+        } catch (e) {
+            // Fallback if JSON parsing fails
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: successMessage.textContent,
+                confirmButtonColor: '#3085d6'
+            });
+        }
+    }
+
+    const statusRadios = document.querySelectorAll('.status-radio');
+    const receivedFields = document.querySelector('.received-only-fields');
+    const refusedFields = document.querySelector('.refused-only-fields');
+    const issuedByField = document.getElementById('issued_by');
+    const positionField = document.getElementById('position');
+    const witnessedByField = document.getElementById('witnessed_by');
+    
+    if (statusRadios.length && receivedFields && refusedFields) {
+        statusRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'Received') {
+                    // Show fields for "Received" status
+                    receivedFields.style.display = 'block';
+                    refusedFields.style.display = 'none';
+                    
+                    // Make fields required accordingly
+                    issuedByField.setAttribute('required', 'required');
+                    positionField.setAttribute('required', 'required');
+                    witnessedByField.removeAttribute('required');
+                } else if (this.value === 'Refused') {
+                    // Show fields for "Refused" status
+                    receivedFields.style.display = 'none';
+                    refusedFields.style.display = 'block';
+                    
+                    // Make fields required accordingly
+                    issuedByField.removeAttribute('required');
+                    positionField.removeAttribute('required');
+                    witnessedByField.setAttribute('required', 'required');
+                }
+            });
+        });
+    }
+    
+    // Update form validation for the status modal
+    const finalSubmitBtn = document.querySelector('button[name="submit_status"]');
+    if (finalSubmitBtn) {
+        finalSubmitBtn.addEventListener('click', function(event) {
+            // Validate required fields before submitting
+            const statusReceived = document.getElementById('statusReceived');
+            const statusRefused = document.getElementById('statusRefused');
+            
+            if (!statusReceived.checked && !statusRefused.checked) {
+                event.preventDefault();
+                alert('Please select a notice status.');
+                return;
+            }
+            
+            if (statusReceived.checked) {
+                // Validate "Received" specific fields
+                if (!issuedByField.value || issuedByField.value.trim() === '') {
+                    event.preventDefault();
+                    alert('Please enter who issued the notice.');
+                    issuedByField.focus();
+                    return;
+                }
+                
+                if (!positionField.value || positionField.value.trim() === '') {
+                    event.preventDefault();
+                    alert('Please enter the position of the issuer.');
+                    positionField.focus();
+                    return;
+                }
+            } else if (statusRefused.checked) {
+                // Validate "Refused" specific fields
+                if (!witnessedByField.value || witnessedByField.value.trim() === '') {
+                    event.preventDefault();
+                    alert('Please enter who witnessed the notice.');
+                    witnessedByField.focus();
+                    return;
+                }
+            }
+            
+            // If all validations pass, show a loading indicator
+            Swal.fire({
+                title: 'Submitting...',
+                text: 'Please wait while we process your submission.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            // Let the form submit normally
+        });
+    }
 });
