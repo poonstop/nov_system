@@ -1,5 +1,5 @@
 <?php
-include __DIR__ . '/../db_config.php';
+include __DIR__ . '/../connection.php';
 include '../templates/header.php';
 
 // Helper function to capitalize first letter of each word
@@ -10,24 +10,41 @@ function capitalizeWords($string) {
 // Query with additional fields for improved functionality
 $query = "
     SELECT 
-        e.id,
+        e.establishment_id,
         e.name, 
-        e.address, 
-        IFNULL(e.owner_representative, 'Not specified') AS owner_rep,
+        e.owner_representative AS owner_rep,
         e.violations AS all_violations,
         e.products AS inventory_products,
         e.num_violations,
         e.nature,
         e.remarks,
         e.created_at,
-        e.updated_at,
-        e.nov_files
+        e.date_updated,
+        e.nov_files,
+        CONCAT(IFNULL(a.street, ''), IF(a.street IS NOT NULL AND a.street != '', ', ', ''),
+               IFNULL(a.barangay, ''), IF(a.barangay IS NOT NULL AND a.barangay != '', ', ', ''),
+               IFNULL(a.municipality, ''), IF(a.municipality IS NOT NULL AND a.municipality != '', ', ', ''),
+               IFNULL(a.province, ''), IF(a.province IS NOT NULL AND a.province != '', ', ', ''),
+               IFNULL(a.region, '')) AS address
     FROM establishments e
-    ORDER BY e.updated_at DESC
+    LEFT JOIN addresses a ON e.establishment_id = a.establishment_id
+    ORDER BY e.date_updated DESC
 ";
 $result = $conn->query($query);
 ?>
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Establishment Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="css/nov-form.css">
+</head>
+<body>
+    <div class="container py-5">
+        <h2 class="mb-4">Establishment Management</h2>
 <style>
     body {
         background: linear-gradient(to bottom, #ffffff 0%, #10346C 100%);
@@ -285,83 +302,81 @@ $result = $conn->query($query);
     }
 </style>
 
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="mb-0">Establishment Management</h4>
-        <button class="btn btn-primary" onclick="openAddModal()">
-            <i class="fas fa-plus"></i> Add New Establishment
-        </button>
-    </div>
-    
+
     <!-- Filter Controls -->
-    <div class="filter-controls">
-        <div class="filter-row">
-            <div class="filter-item">
-                <div class="input-group">
-                    <span class="input-group-text" style="background-color: #10346C; color: white;">
-                        <i class="fas fa-search"></i>
-                    </span>
-                    <input 
-                        type="text" 
-                        id="searchInput" 
-                        class="form-control search-bar" 
-                        placeholder="Search establishment, address, or violations"
-                        onkeyup="filterTable()"
-                    >
-                </div>
-            </div>
-            <div class="filter-item">
-                <select id="violationFilter" class="form-select" onchange="filterTable()">
-                    <option value="">All Violations</option>
-                    <option value="PS/ICC">No PS/ICC Mark</option>
-                    <option value="Invalid/Expired">Invalid/Expired Accreditation</option>
-                    <option value="Improper Labeling">Improper Labeling</option>
-                    <option value="Price Tag">Price Tag Violations</option>
-                </select>
-            </div>
-            <div class="filter-item">
-                <select id="natureFilter" class="form-select" onchange="filterTable()">
-                    <option value="">All Business Types</option>
-                    <option value="Manufacturing">Manufacturing</option>
-                    <option value="Retail Trade">Retail Trade</option>
-                    <option value="Food Service">Food Service</option>
-                    <option value="Other">Other</option>
-                </select>
+<div class="filter-controls">
+    <div class="filter-row">
+        <div class="filter-item">
+            <div class="input-group">
+                <span class="input-group-text" style="background-color: #10346C; color: white;">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    class="form-control search-bar" 
+                    placeholder="Search establishment, address, or violations"
+                    onkeyup="filterTable()"
+                >
             </div>
         </div>
-        <div class="filter-row">
-            <div class="filter-item">
-                <select id="sortBy" class="form-select" onchange="sortTable()">
-                    <option value="dateDesc">Newest First</option>
-                    <option value="dateAsc">Oldest First</option>
-                    <option value="nameAsc">Name (A-Z)</option>
-                    <option value="nameDesc">Name (Z-A)</option>
-                    <option value="violationsDesc">Most Violations</option>
-                </select>
+        <div class="filter-item">
+            <select id="violationFilter" class="form-select" onchange="filterTable()">
+                <option value="">All Violations</option>
+                <option value="PS/ICC">No PS/ICC Mark</option>
+                <option value="Invalid/Expired">Invalid/Expired Accreditation</option>
+                <option value="Improper Labeling">Improper Labeling</option>
+                <option value="Price Tag">Price Tag Violations</option>
+                <option value="Overpricing">Overpricing</option>
+                <option value="Business Name">Business Name Violation</option>
+                <option value="Sales Promotion">Unauthorized Sales Promotion</option>
+                <option value="Other">Other Violations</option>
+            </select>
+        </div>
+        <div class="filter-item">
+            <select id="natureFilter" class="form-select" onchange="filterTable()">
+                <option value="">All Business Types</option>
+                <option value="Manufacturing">Manufacturing</option>
+                <option value="Retail Trade">Retail Trade</option>
+                <option value="Food Service">Food Service</option>
+                <option value="Service and Repair">Service and Repair</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+    </div>
+    <div class="filter-row">
+        <div class="filter-item">
+            <select id="sortBy" class="form-select" onchange="sortTable()">
+                <option value="dateDesc">Newest First</option>
+                <option value="dateAsc">Oldest First</option>
+                <option value="nameAsc">Name (A-Z)</option>
+                <option value="nameDesc">Name (Z-A)</option>
+                <option value="violationsDesc">Most Violations</option>
+            </select>
+        </div>
+        <div class="filter-item d-flex align-items-center">
+            <label class="me-2">Status:</label>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="showUrgent" checked onchange="filterTable()">
+                <label class="form-check-label" for="showUrgent">
+                    <span class="status-indicator status-urgent"></span> Urgent
+                </label>
             </div>
-            <div class="filter-item d-flex align-items-center">
-                <label class="me-2">Status:</label>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" id="showUrgent" checked onchange="filterTable()">
-                    <label class="form-check-label" for="showUrgent">
-                        <span class="status-indicator status-urgent"></span> Urgent
-                    </label>
-                </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" id="showPending" checked onchange="filterTable()">
-                    <label class="form-check-label" for="showPending">
-                        <span class="status-indicator status-pending"></span> Pending
-                    </label>
-                </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" id="showResolved" checked onchange="filterTable()">
-                    <label class="form-check-label" for="showResolved">
-                        <span class="status-indicator status-resolved"></span> Resolved
-                    </label>
-                </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="showPending" checked onchange="filterTable()">
+                <label class="form-check-label" for="showPending">
+                    <span class="status-indicator status-pending"></span> Pending
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="showResolved" checked onchange="filterTable()">
+                <label class="form-check-label" for="showResolved">
+                    <span class="status-indicator status-resolved"></span> Resolved
+                </label>
             </div>
         </div>
     </div>
+</div>
 
     <div class="table-container">
         <div class="table-responsive">
@@ -399,29 +414,33 @@ $result = $conn->query($query);
                                 $statusText = "Resolved";
                             }
                         }
-                    ?>
-                        <tr data-id="<?= $row['id'] ?>" data-status="<?= $status ?>" data-nature="<?= $row['nature'] ?>">
+                        ?>
+                        <tr data-id="<?= isset($row['establishment_id']) ? $row['establishment_id'] : '' ?>" data-status="<?= $status ?>" data-nature="<?= isset($row['nature']) ? $row['nature'] : '' ?>">
                             <td><?= capitalizeWords(htmlspecialchars($row['name'])) ?></td>
-                            <td><?= capitalizeWords(htmlspecialchars($row['address'])) ?></td>
+                            <td><?= isset($row['address']) ? capitalizeWords(htmlspecialchars(trim($row['address'], ', '))) : '<span class="text-muted">No address available</span>' ?></td>
                             <td><?= capitalizeWords(htmlspecialchars($row['owner_rep'])) ?></td>
                             <td><?= htmlspecialchars($row['nature']) ?></td>
+                            
                             <td class="violations-cell">
-                                <?php 
-                                if (!empty($row['all_violations'])) {
-                                    $violations = array_map('trim', explode(',', $row['all_violations']));
-                                    $formattedViolations = array_map(function($v) {
-                                        if (strpos(strtolower($v), 'ps/icc') !== false) return '<span class="badge bg-danger">No PS/ICC Mark</span>';
-                                        if (strpos(strtolower($v), 'invalid/expired') !== false) return '<span class="badge bg-warning">Invalid/Expired Accreditation</span>';
-                                        if (strpos(strtolower($v), 'improper labeling') !== false) return '<span class="badge bg-info">Improper Labeling</span>';
-                                        if (strpos(strtolower($v), 'price tag') !== false) return '<span class="badge bg-secondary">Price Tag Violations</span>';
-                                        return '<span class="badge bg-secondary">' . ucwords(strtolower($v)) . '</span>';
-                                    }, $violations);
-                                    echo implode(' ', array_unique($formattedViolations));
-                                } else {
-                                    echo '<span class="text-muted">No violations</span>';
-                                }
-                                ?>
-                            </td>
+    <?php 
+    if (!empty($row['all_violations'])) {
+        $violations = array_map('trim', explode(',', $row['all_violations']));
+        $formattedViolations = array_map(function($v) {
+            if (strpos(strtolower($v), 'ps/icc') !== false) return '<span class="badge bg-danger">No PS/ICC Mark</span>';
+            if (strpos(strtolower($v), 'invalid/expired') !== false) return '<span class="badge bg-warning">Invalid/Expired Accreditation</span>';
+            if (strpos(strtolower($v), 'improper labeling') !== false) return '<span class="badge bg-info">Improper Labeling</span>';
+            if (strpos(strtolower($v), 'price tag') !== false) return '<span class="badge bg-secondary">Price Tag Violations</span>';
+            if (strpos(strtolower($v), 'overpricing') !== false) return '<span class="badge bg-danger">Overpricing</span>';
+            if (strpos(strtolower($v), 'business name') !== false) return '<span class="badge bg-primary">Business Name Violation</span>';
+            if (strpos(strtolower($v), 'sales promotion') !== false) return '<span class="badge bg-info">Unauthorized Sales Promotion</span>';
+            return '<span class="badge bg-secondary">' . ucwords(strtolower($v)) . '</span>';
+        }, $violations);
+        echo implode(' ', array_unique($formattedViolations));
+    } else {
+        echo '<span class="text-muted">No violations</span>';
+    }
+    ?>
+</td>
                             <td>
                                 <?php 
                                 if (!empty($row['inventory_products'])) {
@@ -614,117 +633,6 @@ $result = $conn->query($query);
     </div>
 </div>
 
-<!-- Add Establishment Modal -->
-<div id="addModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Add New Establishment</h3>
-            <span class="close-btn" onclick="closeModal('addModal')">&times;</span>
-        </div>
-        <div id="addModalContent">
-            <form id="addForm">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="add_name">Establishment Name</label>
-                        <input type="text" class="form-control" id="add_name" name="name" required>
-                    </div>
-                    
-                    <div class="col-md-6 mb-3">
-                        <label for="add_owner_rep">Owner/Representative</label>
-                        <input type="text" class="form-control" id="add_owner_rep" name="owner_rep">
-                    </div>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="add_address">Address</label>
-                    <input type="text" class="form-control" id="add_address" name="address" required>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="add_nature">Nature of Business</label>
-                        <select class="form-select" id="add_nature" name="nature" required>
-                            <option value="">Select business type</option>
-                            <option value="Manufacturing">Manufacturing</option>
-                            <option value="Retail Trade">Retail Trade</option>
-                            <option value="Food Service">Food Service</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    
-                    <div class="col-md-6 mb-3">
-                        <label>Violations</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="add_violation_psicc" name="violations[]" value="No PS/ICC Mark">
-                            <label class="form-check-label" for="add_violation_psicc">No PS/ICC Mark</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="add_violation_expired" name="violations[]" value="Invalid/Expired Accreditation">
-                            <label class="form-check-label" for="add_violation_expired">Invalid/Expired Accreditation</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="add_violation_labeling" name="violations[]" value="Improper Labeling">
-                            <label class="form-check-label" for="add_violation_labeling">Improper Labeling</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="add_violation_price" name="violations[]" value="Price Tag Violations">
-                            <label class="form-check-label" for="add_violation_price">Price Tag Violations</label>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="add_remarks">Remarks</label>
-                    <textarea class="form-control" id="add_remarks" name="remarks" rows="3"></textarea>
-                </div>
-                
-                <h4>Products Inventory</h4>
-                <div id="add_inventory_items" class="inventory-container">
-                    <div class="inventory-item">
-                        <div class="row">
-                            <div class="col-md-6 mb-2">
-                                <label>Product Name</label>
-                                <input type="text" class="form-control" name="product_name[]" required>
-                            </div>
-                            <div class="col-md-3 mb-2">
-                                <label>Price</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">₱</span>
-                                    <input type="number" class="form-control" name="product_price[]" min="0" step="0.01" value="0.00">
-                                </div>
-                            </div>
-                            <div class="col-md-3 mb-2">
-                                <label>Quantity</label>
-                                <input type="number" class="form-control" name="product_quantity[]" min="0" value="0">
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" name="product_sealed[]" value="1">
-                                    <label class="form-check-label">Sealed</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" name="product_withdrawn[]" value="1">
-                                    <label class="form-check-label">Withdrawn</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <button type="button" class="btn btn-success" onclick="addInventoryItemToAdd()">
-                    <i class="fas fa-plus"></i> Add Product
-                </button>
-            </form>
-        </div>
-        <div class="text-center mt-3">
-            <button class="btn btn-primary" onclick="saveNewEstablishment()">Save Establishment</button>
-            <button class="btn btn-secondary" onclick="closeModal('addModal')">Cancel</button>
-        </div>
-    </div>
-</div>
-
 <!-- Delete Confirmation Modal -->
 <div id="deleteModal" class="modal">
     <div class="modal-content" style="max-width: 500px;">
@@ -746,19 +654,6 @@ $result = $conn->query($query);
 <script>
 // Global variables
 let currentEstablishmentId = null;
-
-// Modal functions
-function openAddModal() {
-    document.getElementById('addModal').style.display = 'block';
-}
-function fetchWithTimeout(url, options, timeout = 10000) {
-    return Promise.race([
-        fetch(url, options),
-        new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Request timeout')), timeout)
-        )
-    ]);
-}
 
 function openViewModal(id) {
     currentEstablishmentId = id;
@@ -1357,8 +1252,67 @@ function saveChanges() {
     });
 }
 
+    function saveNewEstablishment() {
+    const form = document.getElementById('addForm');
+    const formData = new FormData(form);
+    
+    // Validate required fields
+    const name = formData.get('name');
+    const address = formData.get('address');
+    const nature = formData.get('nature');
+    
+    if (!name || !address || !nature) {
+        alert('Please fill in all required fields (Name, Address, and Business Type)');
+        return;
+    }
+    
+    // Show loading state
+    const saveButton = document.querySelector('#addModal .btn-primary');
+    const originalButtonText = saveButton.innerHTML;
+    saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    saveButton.disabled = true;
+    
+    // Process violations
+    const selectedViolations = [];
+    document.querySelectorAll('#addForm input[name="violations[]"]:checked').forEach(checkbox => {
+        selectedViolations.push(checkbox.value);
+    });
+    
+    // AJAX call to save establishment
+    fetchWithTimeout('save_establishment.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            alert('Establishment successfully added');
+            // Reload the page to show the new establishment
+            location.reload();
+        } else {
+            // Reset button and show error
+            saveButton.innerHTML = originalButtonText;
+            saveButton.disabled = false;
+            throw new Error(data.message || 'Unknown error adding establishment');
+        }
+    })
+    .catch(error => {
+        console.error('Error adding establishment:', error);
+        // Reset button and show error
+        saveButton.innerHTML = originalButtonText;
+        saveButton.disabled = false;
+        alert(error.message || 'Network error. Please check your connection and try again.');
+    });
+}
+
 // Table filtering and sorting functions
-function filterTable() {
+    function filterTable() {
     const searchText = document.getElementById('searchInput').value.toLowerCase();
     const violationFilter = document.getElementById('violationFilter').value.toLowerCase();
     const natureFilter = document.getElementById('natureFilter').value;
