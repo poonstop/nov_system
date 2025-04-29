@@ -241,6 +241,53 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Validate violations form submission
+    const violationsForm = document.querySelector('#violationsModal form');
+    if (violationsForm) {
+        violationsForm.addEventListener('submit', function(event) {
+            // Check if at least one violation checkbox is checked
+            const violationChecks = this.querySelectorAll('input[name="violations[]"]:checked');
+            if (violationChecks.length === 0) {
+                event.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No Violations Selected',
+                    text: 'Please select at least one violation before proceeding.',
+                    confirmButtonColor: '#3085d6'
+                });
+            }
+        });
+    }
+    
+    // Validate inventory form submission
+    const inventoryForm = document.querySelector('#inventoryModal form');
+    if (inventoryForm) {
+        const saveInventoryBtn = inventoryForm.querySelector('button[name="save_inventory"]');
+        if (saveInventoryBtn) {
+            saveInventoryBtn.addEventListener('click', function(event) {
+                // Check if at least one product has a name
+                let hasValidProduct = false;
+                const productInputs = inventoryForm.querySelectorAll('input[id^="product_name_"]');
+                
+                productInputs.forEach(input => {
+                    if (input.value && input.value.trim() !== '') {
+                        hasValidProduct = true;
+                    }
+                });
+                
+                if (!hasValidProduct) {
+                    event.preventDefault();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Missing Product Information',
+                        text: 'Please add at least one product with a name before proceeding.',
+                        confirmButtonColor: '#3085d6'
+                    });
+                }
+            });
+        }
+    }
+    
     // Update form validation for the status modal
     const finalSubmitBtn = document.querySelector('button[name="submit_status"]');
     if (finalSubmitBtn) {
