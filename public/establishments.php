@@ -1,274 +1,300 @@
 <?php
-    // Start output buffering at the VERY TOP
-    ob_start();
-    session_start();
-    include __DIR__ . '/../connection.php';
+// Basic setup
+ob_start();
+session_start();
+include __DIR__ . '/../connection.php';
 
-    // Create upload directory if not exists
-    $uploadDir = __DIR__ . '/nov_files/';
-    if (!file_exists($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
-    }
+// Simple error handler
+function showError($message) {
+    $_SESSION['error'] = $message;
+    header("Location: establishments.php");
+    exit();
+}
 
-    // Process form submission BEFORE any output
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['submit_issuer'])) {
-        // Handle nature of business
-        $nature = ($_POST['nature_select'] === 'Others') 
-            ? htmlspecialchars($_POST['nature_custom']) 
-            : htmlspecialchars($_POST['nature_select']);
-        $owner_rep = $_POST['owner_representative'] ?? 'Not specified';
-        $establishment = htmlspecialchars($_POST['establishment']);
-        $products = htmlspecialchars($_POST['products']);
-        $violations = implode(', ', $_POST['violations'] ?? []);
-        $remarks = htmlspecialchars($_POST['remarks']);
-        $notice_status = htmlspecialchars($_POST['notice_status'] ?? 'Not specified');
+// Create upload directory if needed
+$uploadDir = __DIR__ . '/nov_files/';
+if (!file_exists($uploadDir)) {
+    mkdir($uploadDir, 0755, true);
+}
+
+// Process main form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Handle establishment form submission
+    if (isset($_POST['submit_establishment'])) {
+        // Validate required fields
+        $requiredFields = ['establishment', 'owner_representative', 'street', 'barangay', 
+                          'municipality', 'province', 'region', 'nature_select', 'products'];
         
-        // Get address components
-        $region = htmlspecialchars($_POST['region']);
-        $province = htmlspecialchars($_POST['province']);
-        $municipality = htmlspecialchars($_POST['municipality']);
-        $barangay = htmlspecialchars($_POST['barangay']);
-        $street = htmlspecialchars($_POST['street']);
-        
-        // Format the full address for display
-        $full_address = "$street, Brgy. $barangay, $municipality, $province, $region";
-    
-        // Validate custom nature input
-        if ($_POST['nature_select'] === 'Others' && empty(trim($_POST['nature_custom']))) {
-            $_SESSION['error'] = "Please specify the nature of business";
-            header("Location: establishments.php");
-            ob_end_flush();
-            exit();
-        } else {
-            // First, insert the address into addresses table and get the address_id
-            $stmt_address = $conn->prepare("INSERT INTO addresses 
-                (street, barangay, municipality, province, region, full_address) 
-                VALUES (?, ?, ?, ?, ?, ?)");
-            
-            if ($stmt_address === false) {
-                $_SESSION['error'] = "Error preparing address statement: " . $conn->error;
-                header("Location: establishments.php");
-                ob_end_flush();
-                exit();
+        foreach ($requiredFields as $field) {
+            if (empty($_POST[$field])) {
+                showError("Missing required field: $field");
             }
-            
-            $stmt_address->bind_param("ssssss", 
-                $street, 
-                $barangay, 
-                $municipality, 
-                $province, 
-                $region,
-                $full_address
-            );
-            
-            if (!$stmt_address->execute()) {
-                $_SESSION['error'] = "Error inserting address: " . $stmt_address->error;
-                header("Location: establishments.php");
-                ob_end_flush();
-                exit();
-            }
-            
-            $address_id = $conn->insert_id;
-            
-            // Generate NOV file
-            $filename = preg_replace('/[^A-Za-z0-9\-]/', '', $establishment) . '_' . time() . '.txt';
-            $fileContent = "NOTICE OF VIOLATION\n\n";
-            $fileContent .= "Establishment: $establishment\n";
-            $fileContent .= "Address: $full_address\n";
-            $fileContent .= "Nature of Business: $nature\n";
-            $fileContent .= "Non-Conforming Products: $products\n";
-            $fileContent .= "Violations: $violations\n";
-            $fileContent .= "Notice Status: $notice_status\n";
-            $fileContent .= "Remarks: $remarks\n";
-            $fileContent .= "\nDate: " . date('Y-m-d H:i:s');
-    
-            file_put_contents($uploadDir . $filename, $fileContent);
-    
-            // Store details in session
-            $_SESSION['nov_details'] = [
-                'filename' => $filename,
-                'establishment' => $establishment,
-                'address_id' => $address_id,
-                'full_address' => $full_address,
-                'nature' => $nature,
-                'nature_select' => $_POST['nature_select'],
-                'nature_custom' => $_POST['nature_custom'] ?? '',
-                'owner_representative' => $owner_rep,
-                'products' => $products,
-                'violations' => $_POST['violations'] ?? [],
-                'notice_status' => $notice_status, 
-                'remarks' => $remarks
-            ];
-    
-            // Take a snapshot of form data before redirecting
-            $_SESSION['form_snapshot'] = $_POST;
-    
-            // Redirect to the same page to show the issuer modal
-            header("Location: establishments.php?show_issuer_modal=1");
-            ob_end_flush();
-            exit();
         }
-    }
-
-    // Process issuer form submission
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_issuer'])) {
-        // Debug logging
-        error_log("Received form data: " . print_r($_POST, true));
         
-        // Retrieve previously stored NOV details
+        // Process nature of business
+        $nature = ($_POST['nature_select'] === 'Others') 
+            ? trim($_POST['nature_custom']) 
+            : $_POST['nature_select'];
+        
+        if ($_POST['nature_select'] === 'Others' && empty(trim($_POST['nature_custom']))) {
+            showError("Please specify the nature of business");
+        }
+        
+        // Save form data to session and proceed to violations
+        $_SESSION['form_data'] = [
+            'establishment' => $_POST['establishment'],
+            'owner_representative' => $_POST['owner_representative'],
+            'street' => $_POST['street'],
+            'barangay' => $_POST['barangay'],
+            'municipality' => $_POST['municipality'],
+            'province' => $_POST['province'],
+            'region' => $_POST['region'],
+            'nature_select' => $_POST['nature_select'],
+            'nature_custom' => $_POST['nature_custom'] ?? '',
+            'nature' => $nature,
+            'products' => $_POST['products']
+        ];
+        
+        header("Location: establishments.php?show_violations_modal=1");
+        exit();
+    }
+    
+    // Handle violations form submission
+    else if (isset($_POST['submit_violations'])) {
+        if (!isset($_SESSION['form_data'])) {
+            showError("Missing establishment data. Please complete the form again.");
+        }
+        
+        $formData = $_SESSION['form_data'];
+        $violations = isset($_POST['violations']) ? implode(', ', $_POST['violations']) : '';
+        $remarks = $_POST['remarks'] ?? '';
+        
+        // Generate NOV file
+        $filename = preg_replace('/[^A-Za-z0-9\-]/', '', $formData['establishment']) . '_' . time() . '.txt';
+        $fileContent = "NOTICE OF VIOLATION\n\n" .
+                      "Establishment: {$formData['establishment']}\n" .
+                      "Address: {$formData['street']}, {$formData['barangay']}, {$formData['municipality']}, {$formData['province']}, {$formData['region']}\n" .
+                      "Nature of Business: {$formData['nature']}\n" .
+                      "Non-Conforming Products: {$formData['products']}\n" .
+                      "Violations: $violations\n" .
+                      "Remarks: $remarks\n\n" .
+                      "Date: " . date('Y-m-d H:i:s');
+                      
+        file_put_contents($uploadDir . $filename, $fileContent);
+        
+        // Save session data for next step
+        $_SESSION['nov_details'] = [
+            'filename' => $filename,
+            'establishment' => $formData['establishment'],
+            'street' => $formData['street'],
+            'barangay' => $formData['barangay'],
+            'municipality' => $formData['municipality'],
+            'province' => $formData['province'],
+            'region' => $formData['region'],
+            'nature' => $formData['nature'],
+            'owner_representative' => $formData['owner_representative'],
+            'products' => $formData['products'],
+            'violations' => $violations,
+            'remarks' => $remarks
+        ];
+        
+        // Proceed to inventory or notice status
+        header("Location: establishments.php?show_inventory_modal=1");
+        exit();
+    }
+    
+    // Handle inventory submission
+    else if (isset($_POST['save_inventory']) || isset($_POST['skip_inventory'])) {
+        if (isset($_POST['products']) && is_array($_POST['products']) && !isset($_POST['skip_inventory'])) {
+            $validProducts = false;
+            
+            // Check if at least one product has a name
+            foreach ($_POST['products'] as $product) {
+                if (!empty($product['name'])) {
+                    $validProducts = true;
+                    break;
+                }
+            }
+            
+            if (!$validProducts) {
+                showError("Please add at least one valid product with a name.");
+            }
+            
+            // Store products
+            $sanitizedProducts = [];
+            foreach ($_POST['products'] as $index => $product) {
+                if (!empty($product['name'])) {
+                    $sanitizedProducts[$index] = [
+                        'name' => $product['name'],
+                        'description' => $product['description'] ?? '',
+                        'price' => filter_var($product['price'] ?? 0, FILTER_VALIDATE_FLOAT),
+                        'pieces' => filter_var($product['pieces'] ?? 0, FILTER_VALIDATE_INT),
+                        'sealed' => isset($product['sealed']) ? 1 : 0,
+                        'withdrawn' => isset($product['withdrawn']) ? 1 : 0,
+                        'dao_violation' => isset($product['dao_violation']) ? 1 : 0,
+                        'other_violation' => isset($product['other_violation']) ? 1 : 0,
+                        'remarks' => $product['remarks'] ?? ''
+                    ];
+                }
+            }
+            
+            $_SESSION['inventory'] = $sanitizedProducts;
+        } else {
+            // Skip inventory or no products added
+            $_SESSION['inventory'] = [];
+        }
+        
+        header("Location: establishments.php?show_status_modal=1");
+        exit();
+    }
+    
+    // Handle final notice status submission
+    else if (isset($_POST['submit_status'])) {
         $novDetails = $_SESSION['nov_details'] ?? null;
         
         if (!$novDetails) {
-            // If no session data, try to get directly from POST
-            $novDetails = [
-                'establishment' => $_POST['establishment'] ?? '',
-                'street' => $_POST['street'] ?? '',
-                'barangay' => $_POST['barangay'] ?? '',
-                'municipality' => $_POST['municipality'] ?? '',
-                'province' => $_POST['province'] ?? '',
-                'region' => $_POST['region'] ?? '',
-                'owner_representative' => $_POST['owner_representative'] ?? '',
-                'nature' => $_POST['nature'] ?? '',
-                'products' => $_POST['products'] ?? '',
-                'violations' => $_POST['violations'] ?? [],
-                'filename' => $_POST['filename'] ?? '' 
-            ];
-            
-            // If still empty, report error
-            if (empty($novDetails['establishment'])) {
-                $_SESSION['error'] = "Missing establishment data. Please complete the form again.";
-                header("Location: establishments.php");
-                exit();
-            }
+            showError("Missing establishment data. Please complete the form again.");
         }
         
-        // Process and sanitize input data
-        $issuer_name = !empty($_POST['issued_by']) ? htmlspecialchars($_POST['issued_by']) : '';
-        $position = !empty($_POST['position']) ? htmlspecialchars($_POST['position']) : '';
-        $issued_datetime = !empty($_POST['issued_datetime']) ? htmlspecialchars($_POST['issued_datetime']) : date('Y-m-d H:i:s');
-        $notice_status = !empty($_POST['notice_status']) ? htmlspecialchars($_POST['notice_status']) : ($novDetails['notice_status'] ?? 'Not specified');
-        $witnessed_by = !empty($_POST['witnessed_by']) ? htmlspecialchars($_POST['witnessed_by']) : '';
-        $remarks = !empty($_POST['remarks']) ? htmlspecialchars($_POST['remarks']) : ($novDetails['remarks'] ?? '');
+        // Process status data
+        $notice_status = $_POST['notice_status'] ?? 'Not specified';
+        $issuer_name = $_POST['issued_by'] ?? '';
+        $position = $_POST['position'] ?? '';
+        $issued_datetime = $_POST['issued_datetime'] ?? date('Y-m-d H:i:s');
+        $witnessed_by = $_POST['witnessed_by'] ?? '';
+        $remarks = $_POST['remarks'] ?? $novDetails['remarks'];
 
         try {
             // Begin transaction
             $conn->begin_transaction();
             
-            // First, insert address information
-            $stmt_address = $conn->prepare("INSERT INTO addresses 
-                (street, barangay, municipality, province, region)
-                VALUES (?, ?, ?, ?, ?)");
-                
-            if ($stmt_address === false) {
-                throw new Exception("Prepare address statement failed: " . $conn->error);
-            }
+            // 1. Insert establishment first (as the main table)
+            $stmt_establishment = $conn->prepare("
+                INSERT INTO establishments (
+                    name, 
+                    owner_representative, 
+                    nature, 
+                    products, 
+                    violations, 
+                    notice_status, 
+                    remarks, 
+                    nov_files, 
+                    issued_by, 
+                    issued_datetime,
+                    created_at
+                ) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
             
-            $stmt_address->bind_param("sssss", 
-                $novDetails['street'],
-                $novDetails['barangay'],
-                $novDetails['municipality'],
-                $novDetails['province'],
-                $novDetails['region']
+            $stmt_establishment->bind_param("ssssssssss", 
+                $novDetails['establishment'],
+                $novDetails['owner_representative'],
+                $novDetails['nature'],
+                $novDetails['products'],
+                $novDetails['violations'],
+                $notice_status,
+                $remarks,
+                $novDetails['filename'],
+                $issuer_name,
+                $issued_datetime
             );
-            
-            if (!$stmt_address->execute()) {
-                throw new Exception("Execute address insert failed: " . $stmt_address->error);
-            }
-            
-            // Get the inserted address ID
-            $address_id = $conn->insert_id;
-            
-            // Format violations data
-            $violations_str = is_array($novDetails['violations']) ? implode(', ', $novDetails['violations']) : $novDetails['violations'];
-            
-            // Store in establishment table with address_id
-            $stmt = $conn->prepare("INSERT INTO establishments 
-            (name, address_id, owner_representative, nature, products, violations, notice_status, remarks, nov_files, issued_by, issued_datetime)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        
-        if ($stmt === false) {
-            throw new Exception("Prepare statement failed: " . $conn->error);
-        }
-        
-        // FIX 2: Make sure all variables are properly defined before binding
-        $establishment = $novDetails['establishment'];
-        $address_id = $address_id; // Already defined above
-        $owner_rep = $novDetails['owner_representative'];
-        $nature = $novDetails['nature'];
-        $products = $novDetails['products'];
-        $filename = $novDetails['filename'] ?? '';
-        
-        $stmt->bind_param("sissssssss", 
-            $establishment,
-            $address_id,
-            $owner_rep,
-            $nature,
-            $products,
-            $violations_str,
-            $notice_status,
-            $remarks,
-            $filename,
-            $issuer_name,
-            $issued_datetime
-        );
-            
-        if (!$stmt->execute()) {
-            throw new Exception("Execute failed: " . $stmt->error);
-        }
-            
-            // Get the inserted establishment ID
+            $stmt_establishment->execute();
             $establishment_id = $conn->insert_id;
             
-            // Insert notice status details
-            $stmt_status = $conn->prepare("INSERT INTO notice_stat 
-                (id, status, issued_by, position, issued_datetime, witnessed_by, remarks)
-                VALUES (?, ?, ?, ?, ?, ?, ?)");
-                
-            if ($stmt_status === false) {
-                throw new Exception("Prepare status statement failed: " . $conn->error);
-            }
+            // 2. Insert address with foreign key to establishment
+            $stmt_address = $conn->prepare("
+                INSERT INTO addresses (
+                    establishment_id,
+                    street, 
+                    barangay, 
+                    municipality, 
+                    province, 
+                    region
+                ) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
             
-            $stmt_status->bind_param("issssss", 
+            $street = $novDetails['street'];
+            $barangay = $novDetails['barangay'];
+            $municipality = $novDetails['municipality'];
+            $province = $novDetails['province'];
+            $region = $novDetails['region'];
+            
+            $stmt_address->bind_param("isssss", 
                 $establishment_id,
-                $notice_status,
-                $issuer_name,
-                $position,
-                $issued_datetime,
-                $witnessed_by,
-                $remarks
+                $street,
+                $barangay,
+                $municipality,
+                $province,
+                $region
             );
+            $stmt_address->execute();
             
-            if (!$stmt_status->execute()) {
-                throw new Exception("Execute status insert failed: " . $stmt_status->error);
-            }
+            // 3. Insert notice status with foreign key to establishment
+            $stmt_status = $conn->prepare("
+                INSERT INTO notice_status (
+                    establishment_id, 
+                    status, 
+                    issued_by, 
+                    position, 
+                    issued_datetime, 
+                    witnessed_by
+                ) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
             
-            // Insert inventory products if available
-            if (isset($_SESSION['inventory']) && is_array($_SESSION['inventory'])) {
+            // Fix: Ensure all variables are properly defined as variables
+            $status = $notice_status;
+            $issuer = $issuer_name;
+            $pos = $position;
+            $datetime = $issued_datetime;
+            $witness = $witnessed_by;
+            
+            $stmt_status->bind_param("isssss", 
+                $establishment_id,
+                $status,
+                $issuer,
+                $pos,
+                $datetime,
+                $witness
+            );
+            $stmt_status->execute();
+            
+            // 4. Insert inventory products if available
+            if (isset($_SESSION['inventory']) && is_array($_SESSION['inventory']) && !empty($_SESSION['inventory'])) {
                 foreach ($_SESSION['inventory'] as $product) {
-                    $stmt_product = $conn->prepare("INSERT INTO inventory 
-                        (id, product_name, sealed, withdrawn, description, price, pieces, 
-                        dao_violation, other_violation, remarks)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    if (empty($product['name'])) continue;
                     
-                    if ($stmt_product === false) {
-                        throw new Exception("Prepare product statement failed: " . $conn->error);
-                    }
+                    $stmt_product = $conn->prepare("
+                        INSERT INTO inventory (
+                            establishment_id, 
+                            product_name, 
+                            sealed, 
+                            withdrawn, 
+                            description, 
+                            price, 
+                            pieces, 
+                            dao_violation, 
+                            other_violation, 
+                            inv_remarks
+                        ) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
                     
-                    $sealed = isset($product['sealed']) ? 1 : 0;
-                    $withdrawn = isset($product['withdrawn']) ? 1 : 0;
-                    $dao_violation = isset($product['dao_violation']) ? 1 : 0;
-                    $other_violation = isset($product['other_violation']) ? 1 : 0;
-                    
-                    // Create temporary variables for all values to ensure they can be passed by reference
-                    $product_name = $product['name'] ?? '';
+                    // Fix: Use variables for all bind_param parameters
+                    $prod_name = $product['name'];
+                    $sealed = $product['sealed'];
+                    $withdrawn = $product['withdrawn'];
                     $description = $product['description'] ?? '';
-                    $price = $product['price'] ?? 0;
-                    $pieces = $product['pieces'] ?? 0;
-                    $product_remarks = $product['remarks'] ?? '';
+                    $price = $product['price'];
+                    $pieces = $product['pieces'];
+                    $dao_violation = $product['dao_violation'];
+                    $other_violation = $product['other_violation'];
+                    $inv_remarks = $product['remarks'] ?? '';
                     
-                    $stmt_product->bind_param("isssdiiiss", 
+                    $stmt_product->bind_param("isiiisdiss", 
                         $establishment_id,
-                        $product_name,
+                        $prod_name,
                         $sealed,
                         $withdrawn,
                         $description,
@@ -276,19 +302,16 @@
                         $pieces,
                         $dao_violation,
                         $other_violation,
-                        $product_remarks
+                        $inv_remarks
                     );
-                    
-                    if (!$stmt_product->execute()) {
-                        throw new Exception("Execute product insert failed: " . $stmt_product->error);
-                    }
+                    $stmt_product->execute();
                 }
             }
             
             // Commit transaction
             $conn->commit();
             
-            // Set success message
+            // Success message
             $_SESSION['success'] = json_encode([
                 'title' => 'Notice of Violation Saved',
                 'text' => "NOV for {$novDetails['establishment']} has been successfully recorded.",
@@ -297,72 +320,33 @@
                 'datetime' => $issued_datetime
             ]);
             
-            // Clear the session
-            unset($_SESSION['nov_details']);
-            unset($_SESSION['form_data']);
-            unset($_SESSION['form_snapshot']);
-            unset($_SESSION['inventory_products']);
-            unset($_SESSION['inventory']);  // Added this to ensure complete cleanup
+            // Clear session data
+            unset($_SESSION['nov_details'], $_SESSION['form_data'], $_SESSION['inventory']);
             
-            // Redirect to establishments page
             header("Location: establishments.php?success=1");
-            ob_end_flush();
             exit();
             
         } catch (Exception $e) {
-            // Roll back transaction on error
+            // Rollback on error
             $conn->rollback();
-            
-            error_log("Database Error: " . $e->getMessage());
             $_SESSION['error'] = "Failed to save Notice of Violation: " . $e->getMessage();
             header("Location: establishments.php");
             exit();
         }
     }
+}
 
-    // Process inventory form submission 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_inventory'])) {
-        // Store inventory products in session
-        if (isset($_POST['products']) && is_array($_POST['products'])) {
-            $_SESSION['inventory'] = $_POST['products'];
-            
-            // Redirect to violations page or show status modal
-            header("Location: establishments.php?show_status_modal=1");
-            exit();
-        } else {
-            $_SESSION['error'] = "No products were submitted. Please add at least one product.";
-            header("Location: establishments.php");
-            exit();
-        }
-    }
+// Include header
+include '../templates/header.php';
 
-    // Process proceed to violations
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['proceed_to_violations'])) {
-        // Store form data in session
-        $_SESSION['form_data'] = [
-            'establishment' => htmlspecialchars($_POST['establishment']),
-            'owner_representative' => htmlspecialchars($_POST['owner_representative']),
-            'street' => htmlspecialchars($_POST['street']),
-            'barangay' => htmlspecialchars($_POST['barangay']),
-            'municipality' => htmlspecialchars($_POST['municipality']),
-            'province' => htmlspecialchars($_POST['province']),
-            'region' => htmlspecialchars($_POST['region']),
-            'nature_select' => htmlspecialchars($_POST['nature_select']),
-            'nature_custom' => htmlspecialchars($_POST['nature_custom'] ?? ''),
-            'nature' => ($_POST['nature_select'] === 'Others') 
-                ? htmlspecialchars($_POST['nature_custom']) 
-                : htmlspecialchars($_POST['nature_select']),
-            'products' => htmlspecialchars($_POST['products'])
-        ];
-        
-        // Redirect to violations page
-        header("Location: violations.php");
-        exit();
-    }
+// Add this section to display success/error messages
+$errorMsg = $_SESSION['error'] ?? null;
+$successMsg = $_SESSION['success'] ?? null;
 
-    // Now include header and output HTML
-    include '../templates/header.php';
-    ?>
+// Clear messages after displaying
+unset($_SESSION['error']);
+unset($_SESSION['success']);
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -376,62 +360,58 @@
 </head>
 <body>
     <div class="container py-5">
-    <h2 class="mb-4">Notice Management</h2>
-    
-    <!-- NOV Submission Form -->
-    <div class="nov-form mb-5 shadow p-4 bg-white">
-        <form id="novForm" method="POST">
-            <!-- Establishment Section -->
-            <div class="form-section mb-4">
-                <h5 class="section-title mb-3">Establishment Details</h5>
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label for="owner_representative">Owner/Representative:</label>
-                        <input type="text" class="form-control bg-light" id="owner_representative" 
-                            name="owner_representative" required>
-                    </div>
-                    <div class="col-12">
-                        <label for="establishment">Name of Establishment:</label>
-                        <input type="text" name="establishment" class="form-control bg-light" 
-                            id="establishment" required>
-                    </div>
-                    
-                    <!-- Address Fields - Restructured to match the address table -->
-                    <div class="col-md-4">
-                        <label for="region">Region:</label>
-                        <input type="text" name="region" id="region" class="form-control bg-light" required
-                            oninvalid="this.setCustomValidity('Region is required')" 
-                            oninput="this.setCustomValidity('')">
-                    </div>
-                    <div class="col-md-4">
-                        <label for="province">Province:</label>
-                        <input type="text" name="province" id="province" class="form-control bg-light" required
-                            oninvalid="this.setCustomValidity('Province is required')" 
-                            oninput="this.setCustomValidity('')">
-                    </div>
-                    <div class="col-md-4">
-                        <label for="municipality">Municipality:</label>
-                        <input type="text" name="municipality" id="municipality" class="form-control bg-light" required
-                            oninvalid="this.setCustomValidity('Municipality is required')" 
-                            oninput="this.setCustomValidity('')">
-                    </div>
-                    <div class="col-md-6">
-                        <label for="barangay">Barangay:</label>
-                        <input type="text" name="barangay" id="barangay" class="form-control bg-light" required
-                            oninvalid="this.setCustomValidity('Barangay is required')" 
-                            oninput="this.setCustomValidity('')">
-                    </div>
-                    <div class="col-md-6">
-                        <label for="street">Street and house no.:</label>
-                        <input type="text" name="street" id="street" class="form-control bg-light" required
-                            oninvalid="this.setCustomValidity('Street and house no. is required')" 
-                            oninput="this.setCustomValidity('')">
-                    </div>
-                    
-                    <div class="col-12">
-                        <label>Nature of business:</label>
-                        <div class="input-group">
-                            <select name="nature_select" id="natureSelect" class="form-select bg-light" required>
+        <h2 class="mb-4">Notice Management</h2>
+        
+        <?php if ($errorMsg): ?>
+            <div class="alert alert-danger" role="alert"><?php echo htmlspecialchars($errorMsg); ?></div>
+        <?php endif; ?>
+        
+        <?php if ($successMsg): ?>
+            <div id="success-message" style="display: none;"><?php echo $successMsg; ?></div>
+        <?php endif; ?>
+        
+        <!-- NOV Submission Form -->
+        <div class="nov-form mb-5 shadow p-4 bg-white">
+            <form id="novForm" method="POST">
+                <!-- Establishment Details -->
+                <div class="form-section mb-4">
+                    <h5 class="section-title mb-3">Establishment Details</h5>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="owner_representative">Owner/Representative:</label>
+                            <input type="text" class="form-control" id="owner_representative" name="owner_representative" required>
+                        </div>
+                        <div class="col-12">
+                            <label for="establishment">Name of Establishment:</label>
+                            <input type="text" name="establishment" class="form-control" id="establishment" required>
+                        </div>
+                        
+                        <!-- Address Fields -->
+                        <div class="col-md-4">
+                            <label for="region">Region:</label>
+                            <input type="text" name="region" id="region" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="province">Province:</label>
+                            <input type="text" name="province" id="province" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="municipality">Municipality:</label>
+                            <input type="text" name="municipality" id="municipality" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="barangay">Barangay:</label>
+                            <input type="text" name="barangay" id="barangay" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="street">Street and house no.:</label>
+                            <input type="text" name="street" id="street" class="form-control" required>
+                        </div>
+                        
+                        <!-- Nature of Business -->
+                        <div class="col-12">
+                            <label for="nature_select">Nature of business:</label>
+                            <select name="nature_select" id="nature_select" class="form-select" required>
                                 <option value="">Select Nature of business</option>
                                 <option value="Retail/Wholesaler">Retailer/Wholesaler</option>
                                 <option value="Supermarket/Grocery/Convenience Store">Supermarket/Grocery/Convenience Store</option>
@@ -440,443 +420,230 @@
                                 <option value="Manufacturing">Manufacturing</option>
                                 <option value="Others">Others</option>
                             </select>
+                            <input type="text" name="nature_custom" id="nature_custom" class="form-control mt-2" 
+                                placeholder="Specify nature of business" style="display: none;">
                         </div>
-                        <input type="text" name="nature_custom" id="natureCustom" 
-                            class="form-control mt-2 custom-nature bg-light" 
-                            placeholder="Specify nature of business"
-                            style="display: none;">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Products Section -->
-            <div class="form-section mb-4">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label>Non-Conforming Product and services:</label>
-                        <input type="text" name="products" class="form-control bg-light" required>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="mt-4 text-end">
-                <button type="button" class="btn btn-primary btn-lg" id="proceedToViolationsBtn">
-                    Proceed
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-    <!-- Received/Refused Modal -->
-    <div class="modal fade" id="receivedRefusedModal" tabindex="-1" aria-labelledby="receivedRefusedModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="receivedRefusedModalLabel">Notice Status</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="noticeStatusForm">
-                    <div class="mb-4">
-                        <label class="form-label">Notice Status:</label>
-                        <div class="border p-3 rounded">
-                            <div class="d-flex justify-content-around">
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="notice_status" id="statusReceived" value="Received" required>
-                                    <label class="form-check-label" for="statusReceived">Received</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="notice_status" id="statusRefused" value="Refused" required>
-                                    <label class="form-check-label" for="statusRefused">Refused</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    
-                    <div class="mb-3">
-                        <label for="issued_datetime" class="form-label">Date Issued:</label>
-                            <input type="text" class="form-control" id="issued_datetime" name="issued_datetime" 
-                                placeholder="" required>
-                    </div>
-                    
-                    <!-- Received By fields - initially hidden -->
-                    <div id="receivedByFields" style="display: none;">
-                        <div class="mb-3">
-                        <label for="received_by" class="form-label">Issued By:</label>
-                        <input type="text" class="form-control" id="received_by" name="issued_by" placeholder="Enter name of issuer">
-                        </div>
-                        <div class="mb-3">
-                            <label for="position" class="form-label">Position:</label>
-                            <input type="text" class="form-control" id="position" name="position" placeholder="Enter position of issuer">
-                        </div>
-                    </div>
-                    
-                    <!-- Refused/Witnessed By field - initially hidden -->
-                    <div id="refusedByFields" style="display: none;">
-                        <div class="mb-3">
-                            <label for="witnessed_by" class="form-label">Witnessed By:</label>
-                            <input type="text" class="form-control" id="witnessed_by" name="witnessed_by" placeholder="Enter name of witness">
-                        </div>
-                    </div>
-                    
-                    <div class="text-end mt-4">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Back</button>
-                        <button type="button" class="btn btn-primary" id="submitStatusBtn">Proceed</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Inventory Modal -->
-<div class="modal fade" id="inventoryModal" tabindex="-1" aria-labelledby="inventoryModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="inventoryModalLabel">Inventory of Non-Conforming Products</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="inventoryForm" method="POST">
-                    <!-- Hidden fields for establishment data -->
-                    <input type="hidden" name="establishment" value="">
-                    <input type="hidden" name="owner_representative" value="">
-                    <input type="hidden" name="street" value="">
-                    <input type="hidden" name="barangay" value="">
-                    <input type="hidden" name="municipality" value="">
-                    <input type="hidden" name="province" value="">
-                    <input type="hidden" name="region" value="">
-                    <input type="hidden" name="nature_select" value="">
-                    <input type="hidden" name="nature_custom" value="">
-                    <input type="hidden" name="products" value="">
-                    
-                    <div class="mb-3">
-                        <h5>Inventory of Non-Conforming Products:</h5>
                         
-                        <div id="productsContainer">
-                            <!-- Product items will be added here dynamically -->
-                            <div class="product-item border p-3 mb-3 rounded">
-                                <div class="row mb-2">
-                                    <div class="col-md-8">
-                                        <label for="product_name">Product:</label>
-                                        <input type="text" class="form-control" name="products[0][name]" required>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="d-flex mt-4">
-                                            <div class="form-check me-4">
-                                                <input class="form-check-input" type="checkbox" name="products[0][sealed]" value="1">
-                                                <label class="form-check-label">Sealed</label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="products[0][withdrawn]" value="1">
-                                                <label class="form-check-label">Withdrawn</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="mb-2">
-                                    <label for="brand_description">Brand Description:</label>
-                                    <textarea class="form-control" name="products[0][description]" rows="3"></textarea>
-                                </div>
-                                
-                                <div class="row mb-2">
-                                    <div class="col-md-4">
-                                        <label for="price">Price:</label>
-                                        <input type="number" class="form-control" name="products[0][price]" step="0.01">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="pieces">No. of Pieces:</label>
-                                        <input type="number" class="form-control" name="products[0][pieces]">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="d-flex mt-4">
-                                            <div class="form-check me-4">
-                                                <input class="form-check-input" type="checkbox" name="products[0][dao_violation]" value="1">
-                                                <label class="form-check-label">Violation of DAO</label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="products[0][other_violation]" value="1">
-                                                <label class="form-check-label">Other Violation</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="mb-2">
-                                    <label for="remarks">Product Remarks:</label>
-                                    <input type="text" class="form-control" name="products[0][remarks]">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Add Button to add more products -->
-                        <div class="text-center mt-3">
-                            <button type="button" class="btn btn-outline-primary" id="addProductBtn">
-                                <i class="bi bi-plus-circle"></i> Add Another Product
-                            </button>
+                        <div class="col-12">
+                            <label for="products">Non-Conforming Product and services:</label>
+                            <input type="text" name="products" id="products" class="form-control" required>
                         </div>
                     </div>
-                    
-                    <!-- Add Back and Save buttons -->
-                    <div class="text-end mt-4">
-                        <button type="button" class="btn btn-secondary" id="backFromInventoryBtn">Back</button>
-                        <button type="button" class="btn btn-outline-primary" id="skipInventoryBtn">Skip</button>
-                        <button type="button" class="btn btn-primary" id="saveInventoryBtn">Save Products</button>
-                    </div>
-                </form>
-            </div>
+                </div>
+                
+                <div class="mt-4 text-end">
+                    <button type="submit" class="btn btn-primary" name="submit_establishment">Proceed</button>
+                </div>
+            </form>
         </div>
     </div>
-</div>
 
     <!-- Violations Modal -->
-<div class="modal fade" id="violationsModal" tabindex="-1" aria-labelledby="violationsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="violationsModalLabel">Notice Management</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="violationsForm" method="POST">
-                    <h5>Violation Found:</h5>
-                    
-                    <!-- Product Standards Violation -->
-                    <div class="violation-category mb-3">
-                        <strong>Product Standards Violation:</strong>
-                        <div class="row mt-2">
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="No PS/ICC Mark" id="noMark">
-                                    <label class="form-check-label" for="noMark">No PS/ICC Mark</label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="Invalid/suspended or cancelled BPS license or permit" id="invalidLicense">
-                                    <label class="form-check-label" for="invalidLicense">Invalid/ suspended or cancelled BPS license or permit</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- DAO Violation -->
-                    <div class="violation-category mb-3">
-                        <strong>DAO Violation:</strong>
-                        <div class="row mt-2">
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="No Manufacturer's Name" id="noManufacturerName">
-                                    <label class="form-check-label" for="noManufacturerName">No Manufacturer's Name</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="No Manufacturer's Address" id="noManufacturerAddress">
-                                    <label class="form-check-label" for="noManufacturerAddress">No Manufacturer's Address</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="No Date Manufactured" id="noDateManufactured">
-                                    <label class="form-check-label" for="noDateManufactured">No Date Manufactured</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="No Country of Origin" id="noCountryOrigin">
-                                    <label class="form-check-label" for="noCountryOrigin">No Country of Origin</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="No Batch Number/Lot Code" id="noBatchNumber">
-                                    <label class="form-check-label" for="noBatchNumber">No Batch Number/Lot Code</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="No Product Contents/Ingredients" id="noContents">
-                                    <label class="form-check-label" for="noContents">No Product Contents/Ingredients</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="Misleading Information" id="misleadingInfo">
-                                    <label class="form-check-label" for="misleadingInfo">Misleading Information</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="Expired Product" id="expiredProduct">
-                                    <label class="form-check-label" for="expiredProduct">Expired Product</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input violation-other" type="checkbox" name="violations[]" value="DAO Violation - Other" id="othersDAO">
-                                    <label class="form-check-label" for="othersDAO">Others</label>
-                                    <input type="text" class="form-control mt-1 other-specification" id="otherDAOText" name="other_dao" placeholder="Please specify" style="display: none;">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Accreditation Violation -->
-                    <div class="violation-category mb-3">
-                        <strong>Accreditation Violation:</strong>
-                        <div class="row mt-2">
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="No Accreditation Certificate" id="noAccreditationCert">
-                                    <label class="form-check-label" for="noAccreditationCert">No Accreditation Certificate</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="Expired Accreditation Certificate" id="expiredAccreditationCert">
-                                    <label class="form-check-label" for="expiredAccreditationCert">Expired Accreditation Certificate</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="Failure to Display Accreditation" id="failureToDisplayAccreditation">
-                                    <label class="form-check-label" for="failureToDisplayAccreditation">Failure to Display Accreditation</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations[]" value="Operating Without Valid License" id="noValidLicense">
-                                    <label class="form-check-label" for="noValidLicense">Operating Without Valid License</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input violation-other" type="checkbox" name="violations[]" value="Accreditation Violation - Other" id="otherAccreditation">
-                                    <label class="form-check-label" for="otherAccreditation">Others</label>
-                                    <input type="text" class="form-control mt-1 other-specification" id="otherAccreditationText" name="other_accreditation" placeholder="Please specify" style="display: none;">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                                
-                                <!-- Freight Forwarding Violation -->
-                                <div class="violation-category mb-3">
-                                    <strong>Freight Forwarding Violation:</strong>
-                                    <div class="row mt-2">
-                                        <div class="col-md-4">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="violations[]" value="No Accreditation Certificate (FF)" id="noAccreditationCertFF">
-                                                <label class="form-check-label" for="noAccreditationCertFF">No Accreditation Certificate</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="violations[]" value="Expired Accreditation Certificate (FF)" id="expiredAccreditationCertFF">
-                                                <label class="form-check-label" for="expiredAccreditationCertFF">Expired Accreditation Certificate</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="violations[]" value="Failure to Display Accreditation in a Conspicuous Place (FF)" id="failureToDisplayAccreditationFF">
-                                                <label class="form-check-label" for="failureToDisplayAccreditationFF">Failure to Display Accreditation in a Conspicuous Place</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Price Tag Violation -->
-                                <div class="violation-category mb-3">
-                                    <strong>Price Tag Violation:</strong>
-                                    <div class="row mt-2">
-                                        <div class="col-md-6">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="violations[]" value="No/Inappropriate Price Tag" id="noPriceTag">
-                                                <label class="form-check-label" for="noPriceTag">No/Inappropriate Price Tag</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Price Violation -->
-                                <div class="violation-category mb-3">
-                                    <strong>Price Violation:</strong>
-                                    <div class="row mt-2">
-                                        <div class="col-md-6">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="violations[]" value="Price grossly in excess of its true worth" id="excessivePrice">
-                                                <label class="form-check-label" for="excessivePrice">Price grossly in excess of its true worth</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="violations[]" value="Price is beyond the Price Ceiling" id="beyondCeiling">
-                                                <label class="form-check-label" for="beyondCeiling">Price is beyond the Price Ceiling</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Hidden fields to carry over data -->
-                                <input type="hidden" name="establishment" id="hiddenEstablishment">
-                                <input type="hidden" name="owner_representative" id="hiddenOwnerRep">
-                                <input type="hidden" name="address" id="hiddenAddress">
-                                <input type="hidden" name="nature_select" id="hiddenNatureSelect">
-                                <input type="hidden" name="nature_custom" id="hiddenNatureCustom">
-                                <input type="hidden" name="products" id="hiddenProducts">
-                                
-                                <div class="text-end mt-4">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                    <button type="button" class="btn btn-primary" id="submitViolationsBtn">Proceed</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-                    <!-- Issuer Modal -->   
-    <div class="modal fade" id="issuerModal" tabindex="-1" aria-labelledby="issuerModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+    <div class="modal fade" id="violationsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="issuerModalLabel">Notice Issuer</h5>
+                    <h5 class="modal-title">Select Violations</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="issuerForm" method="POST">
-                        <input type="hidden" name="submit_issuer" value="1">
-                        <input type="hidden" name="notice_status" id="issuerNoticeStatus">
-                        <input type="hidden" name="witnessed_by" id="issuerWitnessedBy">
+                    <form method="POST">
+                        <h5>Violations Found:</h5>
                         
-                        <div class="mb-3">
-                            <label for="issued_by" class="form-label">Issued By:</label>
-                            <input type="text" class="form-control" id="issued_by" name="issued_by" required>
+                        <!-- Product Standards Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Product Standards Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="No PS/ICC Mark" id="noMark">
+                                        <label class="form-check-label" for="noMark">No PS/ICC Mark</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Invalid/suspended or cancelled BPS license" id="invalidLicense">
+                                        <label class="form-check-label" for="invalidLicense">Invalid/suspended/cancelled BPS license</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- DAO Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>DAO Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="No Manufacturer's Name" id="noManufacturerName">
+                                        <label class="form-check-label" for="noManufacturerName">No Manufacturer's Name</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="No Manufacturer's Address" id="noManufacturerAddress">
+                                        <label class="form-check-label" for="noManufacturerAddress">No Manufacturer's Address</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="No Date Manufactured" id="noDateManufactured">
+                                        <label class="form-check-label" for="noDateManufactured">No Date Manufactured</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="No Country of Origin" id="noCountryOrigin">
+                                        <label class="form-check-label" for="noCountryOrigin">No Country of Origin</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="No Batch Number/Lot Code" id="noBatchNumber">
+                                        <label class="form-check-label" for="noBatchNumber">No Batch Number/Lot Code</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="No Product Contents/Ingredients" id="noContents">
+                                        <label class="form-check-label" for="noContents">No Product Contents/Ingredients</label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="issuer_position" class="form-label">Position:</label>
-                            <input type="text" class="form-control" id="issuer_position" name="position">
+                        <!-- Accreditation Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Accreditation Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="No Accreditation Certification" id="noAccCert">
+                                        <label class="form-check-label" for="noAccCert">No Accreditation Certification</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Expired Accreditation Certificate" id="expAccCert">
+                                        <label class="form-check-label" for="expAccCert">Expired Accreditation Certificate</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment." id="accFail">
+                                        <label class="form-check-label" for="accFail">Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment.</label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        
+
+                        <!-- Freight Forwarding Services Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Freight Forwarding Services Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Freight Buisness with No Accreditation Certification" id="freightNoAcc">
+                                        <label class="form-check-label" for="freightNoAcc">Freight Buisness with No Accreditation Certification</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value=" Freight Business with Expired Accreditation Certificate" id="freightExpAccCert">
+                                        <label class="form-check-label" for="freightExpAccCert">Freight Business with Expired Accreditation Certificate</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Freight Business with Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment." id="freightAccFail">
+                                        <label class="form-check-label" for="freightAccFail">Freight Business with Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment.</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Price Tag Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Price Tag Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Products with no/ or inappropriate Price Tag" id="priceTag">
+                                        <label class="form-check-label" for="priceTag">Products with no/ or inappropriate Price Tag</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pricing Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Pricing Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Price grossly in excess of its/their true worth" id="priceExcess">
+                                        <label class="form-check-label" for="priceExcess">Price grossly in excess of its/their true worth</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Price is beyond the price cieling" id="priceCiel">
+                                        <label class="form-check-label" for="priceCiel">Price is beyond the price cieling</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Business Name Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Business Name Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Engaging in business using trade name other than his true name" id="otherName">
+                                        <label class="form-check-label" for="otherName">Engaging in business using trade name other than his true name</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Engaging in business using trade name on signages and/or documents without prior registration" id="bnNoReg">
+                                        <label class="form-check-label" for="bnNoReg">Engaging in business using trade name on signages and/or documents without prior registration</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Failure to Display Business Name Certificate" id="noBNCert">
+                                        <label class="form-check-label" for="noBNCert">Failure to Display Business Name Certificate</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sales Promotion Violation -->
+                        <div class="violation-category mb-3">
+                            <strong>Sales Promotion Violation:</strong>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Conducting Sales Promotion without Sales Promotion Permit." id="noSPPermit">
+                                        <label class="form-check-label" for="noSPPermit">Conducting Sales Promotion without Sales Promotion Permit.</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <!-- Remarks field -->
                         <div class="mb-3">
-                            <label for="issuer_datetime" class="form-label">Date and Time:</label>
-                            <input type="text" class="form-control" id="issuer_datetime" name="issued_datetime" required>
+                            <label for="remarks" class="form-label">Remarks:</label>
+                            <textarea class="form-control" id="remarks" name="remarks" rows="3"></textarea>
                         </div>
                         
                         <div class="text-end mt-4">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Notice</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Back</button>
+                            <button type="submit" class="btn btn-primary" name="submit_violations">Proceed</button>
                         </div>
                     </form>
                 </div>
@@ -884,10 +651,154 @@
         </div>
     </div>
 
-            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
-            <script src="js/form_handler_establishments.js"></script>
-            </body>
-            </html>
+    <!-- Inventory Modal -->
+    <div class="modal fade" id="inventoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Inventory of Non-Conforming Products</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST">
+                        <div id="productsContainer">
+                            <!-- Product template -->
+                            <div class="product-item border p-3 mb-3 rounded">
+                                <div class="row mb-2">
+                                    <div class="col-md-8">
+                                        <label for="product_name_0">Product:</label>
+                                        <input type="text" class="form-control" id="product_name_0" name="products[0][name]">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-flex mt-4">
+                                            <div class="form-check me-3">
+                                                <input class="form-check-input" type="checkbox" id="product_sealed_0" name="products[0][sealed]" value="1">
+                                                <label class="form-check-label" for="product_sealed_0">Sealed</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="product_withdrawn_0" name="products[0][withdrawn]" value="1">
+                                                <label class="form-check-label" for="product_withdrawn_0">Withdrawn</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <label for="product_description_0">Description:</label>
+                                    <textarea class="form-control" id="product_description_0" name="products[0][description]" rows="2"></textarea>
+                                </div>
+                                
+                                <div class="row mb-2">
+                                    <div class="col-md-4">
+                                        <label for="product_price_0">Price:</label>
+                                        <input type="number" class="form-control" id="product_price_0" name="products[0][price]" step="0.01">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="product_pieces_0">No. of Pieces:</label>
+                                        <input type="number" class="form-control" id="product_pieces_0" name="products[0][pieces]">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-flex mt-4">
+                                            <div class="form-check me-3">
+                                                <input class="form-check-input" type="checkbox" id="product_dao_0" name="products[0][dao_violation]" value="1">
+                                                <label class="form-check-label" for="product_dao_0">DAO</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="product_other_0" name="products[0][other_violation]" value="1">
+                                                <label class="form-check-label" for="product_other_0">Other</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <label for="product_remarks_0">Remarks:</label>
+                                    <input type="text" class="form-control" id="product_remarks_0" name="products[0][remarks]">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-3">
+                            <button type="button" class="btn btn-outline-primary" id="addProductBtn">
+                                <i class="bi bi-plus-circle"></i> Add Another Product
+                            </button>
+                        </div>
+                        
+                        <div class="text-end mt-4">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Back</button>
+                            <button type="submit" class="btn btn-outline-primary" name="skip_inventory">Skip</button>
+                            <button type="submit" class="btn btn-primary" name="save_inventory">Proceed</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notice Status Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Notice Status</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST">
+                    <div class="mb-4">
+                        <label class="form-label">Notice Status:</label>
+                        <div class="border p-3 rounded">
+                            <div class="d-flex justify-content-around">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input status-radio" type="radio" name="notice_status" id="statusReceived" value="Received" required>
+                                    <label class="form-check-label" for="statusReceived">Received</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input status-radio" type="radio" name="notice_status" id="statusRefused" value="Refused" required>
+                                    <label class="form-check-label" for="statusRefused">Refused</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="issued_datetime" class="form-label">Date Issued:</label>
+                        <input type="text" class="form-control datepicker" id="issued_datetime" name="issued_datetime" value="<?= date('Y-m-d H:i:s') ?>" required>
+                    </div>
+                    
+                    <!-- Fields shown only when "Received" is selected -->
+                    <div class="received-only-fields">
+                        <div class="mb-3">
+                            <label for="issued_by" class="form-label">Issued By:</label>
+                            <input type="text" class="form-control" id="issued_by" name="issued_by">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="position" class="form-label">Position:</label>
+                            <input type="text" class="form-control" id="position" name="position">
+                        </div>
+                    </div>
+                    
+                    <!-- Fields shown only when "Refused" is selected -->
+                    <div class="refused-only-fields" style="display: none;">
+                        <div class="mb-3">
+                            <label for="witnessed_by" class="form-label">Witnessed By:</label>
+                            <input type="text" class="form-control" id="witnessed_by" name="witnessed_by">
+                        </div>
+                    </div>
+                    
+                    <div class="text-end mt-4">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Back</button>
+                        <button type="submit" class="btn btn-primary" name="submit_status">Submit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="js/form_handler_establishments.js"></script>
+    <script>
