@@ -14,20 +14,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
 $current_page = 'user.php';
 $is_logged_in = true;
 
-// Database connection
+// Database connection (MySQLi)
 include __DIR__ . '/../connection.php';
 
-// Check if $pdo is set
-if (!isset($pdo)) {
-    die("Database connection failed: PDO object not available");
+// Check if $conn is set
+if (!isset($conn)) {
+    die("Database connection failed: MySQLi connection not available");
 }
 
 // Fetch users from database
 try {
-    $stmt = $pdo->prepare("SELECT id, username, fullname, ulvl, email, status FROM users");
-    $stmt->execute();
-    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
+    $query = "SELECT id, username, fullname, ulvl, email, status FROM users";
+    $result = $conn->query($query);
+    $users = $result->fetch_all(MYSQLI_ASSOC);
+} catch (mysqli_sql_exception $e) {
     // Handle database error
     $error_message = "Database error: " . $e->getMessage();
     $users = []; // Initialize as empty array to prevent the foreach error
@@ -53,14 +53,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     // Check if username already exists
     if (empty($errors)) {
         try {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
-            $stmt->execute([$username]);
-            $count = $stmt->fetchColumn();
+            $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $stmt->bind_result($count);
+            $stmt->fetch();
+            $stmt->close();
             
             if ($count > 0) {
                 $errors[] = "Username already exists";
             }
-        } catch (PDOException $e) {
+        } catch (mysqli_sql_exception $e) {
             $errors[] = "Database error: " . $e->getMessage();
         }
     }
@@ -71,8 +74,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             // Hash password
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
             
-            $stmt = $pdo->prepare("INSERT INTO users (username, password, fullname, ulvl, email, status) VALUES (?, ?, ?, ?, ?, 'active')");
-            $result = $stmt->execute([$username, $hashedPassword, $name, $userLevel, $email]);
+            $stmt = $conn->prepare("INSERT INTO users (username, password, fullname, ulvl, email, status) VALUES (?, ?, ?, ?, ?, 'active')");
+            $stmt->bind_param("sssss", $username, $hashedPassword, $name, $userLevel, $email);
+            $result = $stmt->execute();
+            $stmt->close();
             
             if ($result) {
                 // Set success message
@@ -84,12 +89,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             } else {
                 $errors[] = "Failed to add user. Please try again.";
             }
-        } catch (PDOException $e) {
+        } catch (mysqli_sql_exception $e) {
             $errors[] = "Database error: " . $e->getMessage();
         }
     }
-    
-    // If there are errors, they will be displayed on the page
 }
 
 // Process edit user form submission
@@ -115,12 +118,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
             // If password is being updated
             if (!empty($newPassword)) {
                 $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("UPDATE users SET fullname = ?, ulvl = ?, password = ?, email = ? WHERE id = ?");
-                $result = $stmt->execute([$name, $userLevel, $hashedPassword, $email, $userId]);
+                $stmt = $conn->prepare("UPDATE users SET fullname = ?, ulvl = ?, password = ?, email = ? WHERE id = ?");
+                $stmt->bind_param("ssssi", $name, $userLevel, $hashedPassword, $email, $userId);
             } else {
-                $stmt = $pdo->prepare("UPDATE users SET fullname = ?, ulvl = ?, email = ? WHERE id = ?");
-                $result = $stmt->execute([$name, $userLevel, $email, $userId]);
+                $stmt = $conn->prepare("UPDATE users SET fullname = ?, ulvl = ?, email = ? WHERE id = ?");
+                $stmt->bind_param("sssi", $name, $userLevel, $email, $userId);
             }
+            
+            $result = $stmt->execute();
+            $stmt->close();
             
             if ($result) {
                 // Set success message
@@ -132,12 +138,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
             } else {
                 $errors[] = "Failed to update user. Please try again.";
             }
-        } catch (PDOException $e) {
+        } catch (mysqli_sql_exception $e) {
             $errors[] = "Database error: " . $e->getMessage();
         }
     }
-    
-    // If there are errors, they will be displayed on the page
 }
 
 // Process activate/deactivate user
@@ -146,13 +150,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_status'])) {
     $newStatus = $_POST['newStatus'];
     
     try {
-        $stmt = $pdo->prepare("UPDATE users SET status = ? WHERE id = ?");
-        $stmt->execute([$newStatus, $userId]);
+        $stmt = $conn->prepare("UPDATE users SET status = ? WHERE id = ?");
+        $stmt->bind_param("si", $newStatus, $userId);
+        $stmt->execute();
+        $stmt->close();
         
         $_SESSION['success_message'] = "User status updated successfully!";
         header("Location: user.php");
         exit;
-    } catch (PDOException $e) {
+    } catch (mysqli_sql_exception $e) {
         $error_message = "Database error: " . $e->getMessage();
     }
 }
