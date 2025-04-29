@@ -5,6 +5,13 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['username'])) {
     exit;
 }
 
+// Add access control check for inspectors
+if ($_SESSION['user_level'] === 'inspector') {
+    // Redirect inspectors to their dashboard
+    header("Location: inspector.php");
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
     session_destroy();
     header("Location: login.php");
@@ -22,6 +29,7 @@ if (!isset($conn)) {
     die("Database connection failed: MySQLi connection not available");
 }
 
+// Rest of the code remains the same...
 // Fetch users from database
 try {
     $query = "SELECT id, username, fullname, ulvl, email, status FROM users";

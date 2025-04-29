@@ -48,6 +48,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <span class="nav-text">Establishments Management</span>
             </a>
         </li>
+        <?php if(isset($_SESSION['user_level']) && $_SESSION['user_level'] !== 'inspector'): ?>
         <li>
             <a href="user.php" class="<?php echo ($current_page == 'user.php') ? 'active' : ''; ?>">
                 <div class="icon-container">
@@ -56,6 +57,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <span class="nav-text">User Management</span>
             </a>
         </li>
+        <?php endif; ?>
     </ul>
     
     <div class="logout-section">
