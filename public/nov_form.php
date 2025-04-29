@@ -431,6 +431,13 @@ $result = $conn->query($query);
 .btn-success:hover {
     background-color: #1e7e34;
 }
+.violation-count {
+        font-weight: bold;
+    }
+    .violation-count-badge {
+        font-size: 1rem;
+        padding: 0.35em 0.65em;
+    }
 </style>
 
 
@@ -519,7 +526,7 @@ $result = $conn->query($query);
                         <th>Owner/Representative</th>  
                         <th>Nature</th>
                         <th>Violations</th>
-                        <th>Products</th>
+                        <th>Violation Count</th>
                         <th>Last Updated</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -527,7 +534,7 @@ $result = $conn->query($query);
                 </thead>
 
                 <tbody>
-                    <?php while ($row = $result->fetch_assoc()): 
+                <?php while ($row = $result->fetch_assoc()): 
                         // Determine status based on remarks
                         $status = "pending";
                         $statusBadge = "bg-warning";
@@ -546,15 +553,17 @@ $result = $conn->query($query);
                             }
                         }
                         ?>
-                        <tr data-id="<?= isset($row['establishment_id']) ? $row['establishment_id'] : '' ?>" data-status="<?= $status ?>" data-nature="<?= isset($row['nature']) ? $row['nature'] : '' ?>">
+
+                         <tr data-id="<?= isset($row['establishment_id']) ? $row['establishment_id'] : '' ?>" data-status="<?= $status ?>" data-nature="<?= isset($row['nature']) ? $row['nature'] : '' ?>">
                             <td><?= capitalizeWords(htmlspecialchars($row['name'])) ?></td>
                             <td><?= isset($row['address']) ? capitalizeWords(htmlspecialchars(trim($row['address'], ', '))) : '<span class="text-muted">No address available</span>' ?></td>
                             <td><?= capitalizeWords(htmlspecialchars($row['owner_rep'])) ?></td>
                             <td><?= htmlspecialchars($row['nature']) ?></td>
                             
                             <td class="violations-cell">
+    
     <?php 
-    if (!empty($row['all_violations'])) {
+      if (!empty($row['all_violations'])) {
         $violations = array_map('trim', explode(',', $row['all_violations']));
         $formattedViolations = array_map(function($v) {
             if (strpos(strtolower($v), 'ps/icc') !== false) return '<span class="badge bg-danger">No PS/ICC Mark</span>';
@@ -572,24 +581,21 @@ $result = $conn->query($query);
     }
     ?>
 </td>
-                            <td>
+                                <td class="violation-count text-center">
                                 <?php 
-                                if (!empty($row['inventory_products'])) {
-                                    $products = json_decode($row['inventory_products'], true);
-                                    if (is_array($products)) {
-                                        $productNames = array_column($products, 'product_name');
-                                        echo htmlspecialchars(implode(', ', $productNames));
-                                        echo ' <span class="badge bg-primary">' . count($productNames) . '</span>';
-                                    } else {
-                                        echo htmlspecialchars($row['inventory_products']);
-                                    }
+                                if (!empty($row['all_violations'])) {
+                                    $violations = array_map('trim', explode(',', $row['all_violations']));
+                                    $uniqueViolations = array_unique($violations);
+                                    $count = count($uniqueViolations);
+                                    $badgeClass = ($count > 2) ? 'bg-danger' : (($count > 0) ? 'bg-warning' : 'bg-secondary');
+                                    echo '<span class="badge ' . $badgeClass . ' violation-count-badge">' . $count . '</span>';
                                 } else {
-                                    echo '<span class="text-muted">No inventory</span>';
+                                    echo '<span class="badge bg-secondary">0</span>';
                                 }
                                 ?>
                             </td>
-                            <td>
-                               
+
+                            <td> 
                             <?php 
 if (!empty($row['date_updated']) && $row['date_updated'] != '0000-00-00 00:00:00') {
     try {
