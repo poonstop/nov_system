@@ -589,38 +589,67 @@ $result = $conn->query($query);
                                 ?>
                             </td>
                             <td>
-                                <?php 
-                                if (!empty($row['date_updated']) && $row['date_updated'] != '0000-00-00 00:00:00') {
-                                    try {
-                                        $date = new DateTime($row['date_updated'], new DateTimeZone('UTC'));
-                                        $date->setTimezone(new DateTimeZone('Asia/Manila'));
-                                        echo $date->format('M d, Y h:i A');
-                                        
-                                        // Calculate days since last update
-                                        $now = new DateTime('now', new DateTimeZone('Asia/Manila'));
-                                        $diff = $now->diff($date);
-                                        $days = $diff->days;
-                                        
-                                        // Display age indicator
-                                        if ($days == 0) {
-                                            echo ' <span class="badge bg-success">Today</span>';
-                                        } elseif ($days == 1) {
-                                            echo ' <span class="badge bg-success">Yesterday</span>';
-                                        } elseif ($days <= 7) {
-                                            echo ' <span class="badge bg-success">' . $days . ' days ago</span>';
-                                        } elseif ($days <= 30) {
-                                            echo ' <span class="badge bg-warning">' . $days . ' days ago</span>';
-                                        } else {
-                                            echo ' <span class="badge bg-danger">' . $days . ' days ago</span>';
-                                        }
-                                    } catch (Exception $e) {
-                                        echo 'Invalid date';
-                                    }
-                                } else {
-                                    echo 'No date';
-                                }
-                                ?>
+                               
+                            <?php 
+if (!empty($row['date_updated']) && $row['date_updated'] != '0000-00-00 00:00:00') {
+    try {
+        // Store the original UTC timestamp in a data attribute
+        $rawTimestamp = htmlspecialchars($row['date_updated']);
+        echo '<span data-timestamp="' . $rawTimestamp . '">';
+        
+        // Convert database time (assumed to be UTC) to Asia/Manila timezone
+        $dateUtc = new DateTime($row['date_updated'], new DateTimeZone('UTC'));
+        $dateManila = clone $dateUtc;
+        $dateManila->setTimezone(new DateTimeZone('Asia/Manila'));
+        
+        // Output formatted date and time in Asia/Manila
+        echo $dateManila->format('M d, Y h:i A');
+        
+        // Get the current time in Asia/Manila
+        $now = new DateTime('now', new DateTimeZone('Asia/Manila'));
+        
+        // Calculate badge based on date difference
+        $diff = $now->diff($dateManila);
+        $days = (int)$diff->format('%a');
+        $hours = (int)$diff->format('%h');
+        $mins = (int)$diff->format('%i');
+        $totalHours = $days * 24 + $hours;
+        
+        // Only compare dates if they're on different days
+        $nowDate = $now->format('Y-m-d');
+        $updatedDate = $dateManila->format('Y-m-d');
+        
+        if ($nowDate === $updatedDate && $totalHours < 24) {
+            if ($mins < 5) {
+                echo ' <span class="badge bg-success">Just now</span>';
+            } else if ($hours < 1) {
+                echo ' <span class="badge bg-success">' . $mins . ' min' . ($mins !== 1 ? 's' : '') . ' ago</span>';
+            } else {
+                echo ' <span class="badge bg-success">' . $hours . ' hour' . ($hours !== 1 ? 's' : '') . ' ago</span>';
+            }
+        } elseif ($nowDate === $updatedDate) {
+            echo ' <span class="badge bg-success">Today</span>';
+        } elseif ($days === 1) {
+            echo ' <span class="badge bg-success">Yesterday</span>';
+        } elseif ($days <= 7) {
+            echo ' <span class="badge bg-success">' . $days . ' days ago</span>';
+        } elseif ($days <= 30) {
+            echo ' <span class="badge bg-warning">' . $days . ' days ago</span>';
+        } else {
+            echo ' <span class="badge bg-danger">' . $days . ' days ago</span>';
+        }
+        
+        echo '</span>';
+    } catch (Exception $e) {
+        echo 'Invalid date';
+    }
+} else {
+    echo 'No date';
+}
+?>
+
                             </td>
+                            
                             <td>
                                 <span class="status-indicator status-<?= $status ?>"></span>
                                 <span class="badge <?= $statusBadge ?>"><?= $statusText ?></span>

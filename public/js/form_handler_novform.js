@@ -1,16 +1,195 @@
 // Global variables
 let currentEstablishmentId = null;
+let updateTimersInterval = null; // Added declaration for missing variable
 
-function openViewModal(id) {
-    currentEstablishmentId = id;
-    document.getElementById('viewModal').style.display = 'block';
-    document.getElementById('viewModalContent').innerHTML = `
-        <div class="text-center">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </div>
-    `;
+/**
+ * Format date and time with proper relative time indicators
+ * @param {string} dateString - Date string from database
+ * @returns {string} - Formatted date string with appropriate badge
+ */
+function formatLastUpdated(dateString, timezone = 'Asia/Manila') {
+    if (!dateString || dateString === '0000-00-00 00:00:00') {
+        return 'No date';
+    }
+    
+    try {
+        // Parse the date - FIXED: Don't add 'Z' to treat it as local time from DB
+        // The database times are already in the server's local time
+        const date = new Date(dateString);
+        
+        // Format the date nicely for Philippines locale
+        const formattedDate = new Intl.DateTimeFormat('en-PH', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: timezone
+        }).format(date);
+        
+        // Calculate time difference
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        
+        // Create appropriate badge based on time difference
+        let badge = '';
+        if (diffMins < 5) {
+            badge = '<span class="badge bg-success">Just now</span>';
+        } else if (diffMins < 60) {
+            badge = `<span class="badge bg-success">${diffMins} min${diffMins !== 1 ? 's' : ''} ago</span>`;
+        } else if (diffHours < 24) {
+            badge = `<span class="badge bg-success">${diffHours} hour${diffHours !== 1 ? 's' : ''} ago</span>`;
+        } else if (diffDays === 0) {
+            badge = '<span class="badge bg-success">Today</span>';
+        } else if (diffDays === 1) {
+            badge = '<span class="badge bg-success">Yesterday</span>';
+        } else if (diffDays <= 7) {
+            badge = `<span class="badge bg-success">${diffDays} days ago</span>`;
+        } else if (diffDays <= 30) {
+            badge = `<span class="badge bg-warning">${diffDays} days ago</span>`;
+        } else {
+            badge = `<span class="badge bg-danger">${diffDays} days ago</span>`;
+        }
+        
+        return `${formattedDate} ${badge}`;
+    } catch (e) {
+        console.error('Date formatting error:', e);
+        return 'Invalid date';
+    }
+}
+
+// Update the PHP table display for last updated
+function updateLastUpdatedDisplay() {
+    // Get all elements with timestamps
+    const timeElements = document.querySelectorAll('[data-timestamp]');
+    
+    timeElements.forEach(element => {
+        const timestamp = element.getAttribute('data-timestamp');
+        if (timestamp && timestamp !== '0000-00-00 00:00:00') {
+            try {
+                element.innerHTML = formatLastUpdated(timestamp);
+            } catch (e) {
+                console.error('Error updating time display:', e, timestamp);
+            }
+        }
+    });
+}
+
+function startTimerUpdates() {
+    // Clear any existing interval
+    if (updateTimersInterval) {
+        clearInterval(updateTimersInterval);
+    }
+    
+    // Update immediately
+    updateLastUpdatedDisplay();
+    
+    // Then update every minute
+    updateTimersInterval = setInterval(updateLastUpdatedDisplay, 60000);
+}
+
+function loadEstablishmentData(establishmentId) {
+    currentEstablishmentId = establishmentId;
+    
+    // Show loading spinner
+    const tableBody = document.querySelector('#recordsTable tbody');
+    tableBody.innerHTML = '<tr><td colspan="8" class="text-center"><div class="spinner-border text-primary"></div></td></tr>';
+    
+    // FIXED: Use correct variable establishmentId instead of Id
+    fetch(`get_establishment.php?id=${establishmentId}`)
+        .then(response => response.json())
+        .then(data => {
+            // Clear loading indicator
+            tableBody.innerHTML = '';
+            
+            if (data.length === 0) {
+                // Show empty message
+                tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No records found</td></tr>';
+                return;
+            }
+            
+            // Populate table with data
+            data.forEach(record => {
+                const row = document.createElement('tr');
+                
+                // Create cells for other columns
+                // ...
+                
+                // Create last updated cell with timestamp data attribute
+                const lastUpdatedCell = document.createElement('td');
+                if (record.date_updated && record.date_updated !== '0000-00-00 00:00:00') {
+                    lastUpdatedCell.innerHTML = `<span data-timestamp="${record.date_updated}"></span>`;
+                } else {
+                    lastUpdatedCell.textContent = 'No date';
+                }
+                
+                row.appendChild(lastUpdatedCell);
+                tableBody.appendChild(row);
+            });
+            
+            // Update all timestamps after populating the table
+            updateLastUpdatedDisplay();
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
+            tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading data</td></tr>';
+        });
+}
+
+function refreshCurrentData() {
+    if (currentEstablishmentId !== null) {
+        loadEstablishmentData(currentEstablishmentId);
+    } else {
+        // Just update the time displays if we're not loading new data
+        updateLastUpdatedDisplay();
+    }
+}
+
+// ADDED: Missing function from original code
+function updateExistingTable() {
+    updateLastUpdatedDisplay();
+}
+
+// Example usage with a refresh button
+document.addEventListener('DOMContentLoaded', function() {
+    // Start timer updates
+    startTimerUpdates();
+    
+    // Handle refresh button clicks
+    const refreshButton = document.getElementById('refreshButton');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            refreshCurrentData();
+        });
+    }
+    
+    // Handle establishment selection changes
+    const establishmentSelect = document.getElementById('establishmentSelect');
+    if (establishmentSelect) {
+        establishmentSelect.addEventListener('change', function() {
+            const selectedId = parseInt(this.value, 10);
+            if (!isNaN(selectedId)) {
+                loadEstablishmentData(selectedId);
+            }
+        });
+        
+        // Trigger initial load if a value is selected
+        if (establishmentSelect.value) {
+            const initialId = parseInt(establishmentSelect.value, 10);
+            if (!isNaN(initialId)) {
+                loadEstablishmentData(initialId);
+            }
+        }
+    }
+    
+    // Update any existing table content for backward compatibility
+    updateExistingTable();
+});
     
     // Improved AJAX call to get establishment details
     fetchWithTimeout(`get_establishment.php?id=${id}`, {
@@ -70,7 +249,7 @@ function openViewModal(id) {
             </div>
         `;
     });
-}
+
 
 function displayEstablishmentDetails(establishment) {
     // Format the violations
@@ -156,25 +335,11 @@ function displayEstablishmentDetails(establishment) {
     let updatedDate = 'Not available';
     
     if (establishment.date_created && establishment.date_created !== '0000-00-00 00:00:00') {
-        const created = new Date(establishment.date_created);
-        createdDate = created.toLocaleString('en-PH', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        createdDate = formatLastUpdated(establishment.date_created).split('<span')[0].trim(); // Just the date without badge
     }
     
     if (establishment.date_updated && establishment.date_updated !== '0000-00-00 00:00:00') {
-        const updated = new Date(establishment.date_updated);
-        updatedDate = updated.toLocaleString('en-PH', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        updatedDate = formatLastUpdated(establishment.date_updated);
     }
     
     // NOV files section

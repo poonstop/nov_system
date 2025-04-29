@@ -19,8 +19,213 @@ if (!file_exists($uploadDir)) {
 
 // Process main form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Handle establishment form submission
-    if (isset($_POST['submit_establishment'])) {
+    // Handle combined form submission from JavaScript
+    if (isset($_POST['combined_form_submission'])) {
+        // Extract form data sections
+        $establishment = $_POST['establishment'] ?? '';
+        $owner_representative = $_POST['owner_representative'] ?? '';
+        $street = $_POST['street'] ?? '';
+        $barangay = $_POST['barangay'] ?? '';
+        $municipality = $_POST['municipality'] ?? '';
+        $province = $_POST['province'] ?? '';
+        $region = $_POST['region'] ?? '';
+        $nature_select = $_POST['nature_select'] ?? '';
+        $nature_custom = $_POST['nature_custom'] ?? '';
+        $products = $_POST['products'] ?? '';
+        
+        // Process nature of business
+        $nature = ($nature_select === 'Others') 
+            ? trim($nature_custom) 
+            : $nature_select;
+            
+        // Process violations
+        $violations = isset($_POST['violations']) ? implode(', ', $_POST['violations']) : '';
+        $remarks = $_POST['remarks'] ?? '';
+        
+        // Process status
+        $notice_status = $_POST['notice_status'] ?? 'Not specified';
+        $issuer_name = $_POST['issued_by'] ?? '';
+        $position = $_POST['position'] ?? '';
+        $issued_datetime = $_POST['issued_datetime'] ?? date('Y-m-d H:i:s');
+        $witnessed_by = $_POST['witnessed_by'] ?? '';
+        
+        // Generate NOV file
+        $filename = preg_replace('/[^A-Za-z0-9\-]/', '', $establishment) . '_' . time() . '.txt';
+        $fileContent = "NOTICE OF VIOLATION\n\n" .
+                      "Establishment: {$establishment}\n" .
+                      "Address: {$street}, {$barangay}, {$municipality}, {$province}, {$region}\n" .
+                      "Nature of Business: {$nature}\n" .
+                      "Non-Conforming Products: {$products}\n" .
+                      "Violations: $violations\n" .
+                      "Remarks: $remarks\n\n" .
+                      "Date: " . date('Y-m-d H:i:s');
+                      
+        file_put_contents($uploadDir . $filename, $fileContent);
+        
+        try {
+            // Begin transaction
+            $conn->begin_transaction();
+            
+            // 1. Insert establishment first (as the main table)
+            $stmt_establishment = $conn->prepare("
+                INSERT INTO establishments (
+                    name, 
+                    owner_representative, 
+                    nature, 
+                    products, 
+                    violations, 
+                    notice_status, 
+                    remarks, 
+                    nov_files, 
+                    issued_by, 
+                    issued_datetime,
+                    created_at
+                ) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            
+            $stmt_establishment->bind_param("ssssssssss", 
+                $establishment,
+                $owner_representative,
+                $nature,
+                $products,
+                $violations,
+                $notice_status,
+                $remarks,
+                $filename,
+                $issuer_name,
+                $issued_datetime
+            );
+            $stmt_establishment->execute();
+            $establishment_id = $conn->insert_id;
+            
+            // 2. Insert address with foreign key to establishment
+            $stmt_address = $conn->prepare("
+                INSERT INTO addresses (
+                    establishment_id,
+                    street, 
+                    barangay, 
+                    municipality, 
+                    province, 
+                    region
+                ) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            
+            $stmt_address->bind_param("isssss", 
+                $establishment_id,
+                $street,
+                $barangay,
+                $municipality,
+                $province,
+                $region
+            );
+            $stmt_address->execute();
+            
+            // 3. Insert notice status with foreign key to establishment
+            $stmt_status = $conn->prepare("
+                INSERT INTO notice_status (
+                    establishment_id, 
+                    status, 
+                    issued_by, 
+                    position, 
+                    issued_datetime, 
+                    witnessed_by
+                ) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            
+            // Fix: Ensure all variables are properly defined as variables
+            $status = $notice_status;
+            $issuer = $issuer_name;
+            $pos = $position;
+            $datetime = $issued_datetime;
+            $witness = $witnessed_by;
+            
+            $stmt_status->bind_param("isssss", 
+                $establishment_id,
+                $status,
+                $issuer,
+                $pos,
+                $datetime,
+                $witness
+            );
+            $stmt_status->execute();
+            
+            // 4. Insert inventory products if available
+            if (isset($_POST['products']) && is_array($_POST['products']) && !empty($_POST['products'])) {
+                foreach ($_POST['products'] as $product) {
+                    if (empty($product['name'])) continue;
+                    
+                    $stmt_product = $conn->prepare("
+                        INSERT INTO inventory (
+                            establishment_id, 
+                            product_name, 
+                            sealed, 
+                            withdrawn, 
+                            description, 
+                            price, 
+                            pieces, 
+                            dao_violation, 
+                            other_violation, 
+                            inv_remarks
+                        ) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    
+                    // Fix: Use variables for all bind_param parameters
+                    $prod_name = $product['name'];
+                    $sealed = $product['sealed'] ?? 0;
+                    $withdrawn = $product['withdrawn'] ?? 0;
+                    $description = $product['description'] ?? '';
+                    $price = $product['price'] ?? 0;
+                    $pieces = $product['pieces'] ?? 0;
+                    $dao_violation = $product['dao_violation'] ?? 0;
+                    $other_violation = $product['other_violation'] ?? 0;
+                    $inv_remarks = $product['remarks'] ?? '';
+                    
+                    $stmt_product->bind_param("isiiisdiss", 
+                        $establishment_id,
+                        $prod_name,
+                        $sealed,
+                        $withdrawn,
+                        $description,
+                        $price,
+                        $pieces,
+                        $dao_violation,
+                        $other_violation,
+                        $inv_remarks
+                    );
+                    $stmt_product->execute();
+                }
+            }
+            
+            // Commit transaction
+            $conn->commit();
+            
+            // Success message
+            $_SESSION['success'] = json_encode([
+                'title' => 'Notice of Violation Saved',
+                'text' => "NOV for {$establishment} has been successfully recorded.",
+                'establishment' => $establishment,
+                'issuer' => $issuer_name,
+                'datetime' => $issued_datetime
+            ]);
+            
+            header("Location: establishments.php?success=1");
+            exit();
+            
+        } catch (Exception $e) {
+            // Rollback on error
+            $conn->rollback();
+            $_SESSION['error'] = "Failed to save Notice of Violation: " . $e->getMessage();
+            header("Location: establishments.php");
+            exit();
+        }
+    }
+    
+    // Handle establishment form submission (keeping this for backward compatibility)
+    else if (isset($_POST['submit_establishment'])) {
         // Validate required fields
         $requiredFields = ['establishment', 'owner_representative', 'street', 'barangay', 
                           'municipality', 'province', 'region', 'nature_select', 'products'];
