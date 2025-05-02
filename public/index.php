@@ -211,7 +211,7 @@ include '../templates/header.php';
                         </div>
                     </div>
                     <div class="mt-3">
-                        <a href="users.php" class="text-decoration-none text-info">
+                        <a href="user.php" class="text-decoration-none text-info">
                             <i class="fas fa-user-cog me-1"></i>
                             Manage Users
                         </a>
@@ -348,7 +348,7 @@ include '../templates/header.php';
                     <h5 class="card-title mb-3">Quick Access</h5>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <a href="establishments.php" class="btn btn-outline-primary w-100 p-3">
+                            <a href="nov_form.php" class="btn btn-outline-primary w-100 p-3">
                                 <i class="fas fa-store mb-2 fs-3"></i>
                                 <div>Manage Establishments</div>
                             </a>

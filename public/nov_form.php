@@ -525,9 +525,7 @@ $result = $conn->query($query);
                         <th>Establishment</th>
                         <th>Address</th>
                         <th>Owner/Representative</th>  
-                        <th>Nature</th>
                         <th>Violations</th>
-                        <th>Violation Count</th>
                         <th>Last Updated</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -559,7 +557,6 @@ $result = $conn->query($query);
                             <td><?= capitalizeWords(htmlspecialchars($row['name'])) ?></td>
                             <td><?= isset($row['address']) ? capitalizeWords(htmlspecialchars(trim($row['address'], ', '))) : '<span class="text-muted">No address available</span>' ?></td>
                             <td><?= capitalizeWords(htmlspecialchars($row['owner_rep'])) ?></td>
-                            <td><?= htmlspecialchars($row['nature']) ?></td>
                             
                             <td class="violations-cell">
     
@@ -582,19 +579,6 @@ $result = $conn->query($query);
     }
     ?>
 </td>
-                                <td class="violation-count text-center">
-                                <?php 
-                                if (!empty($row['all_violations'])) {
-                                    $violations = array_map('trim', explode(',', $row['all_violations']));
-                                    $uniqueViolations = array_unique($violations);
-                                    $count = count($uniqueViolations);
-                                    $badgeClass = ($count > 2) ? 'bg-danger' : (($count > 0) ? 'bg-warning' : 'bg-secondary');
-                                    echo '<span class="badge ' . $badgeClass . ' violation-count-badge">' . $count . '</span>';
-                                } else {
-                                    echo '<span class="badge bg-secondary">0</span>';
-                                }
-                                ?>
-                            </td>
 
                             <td> 
                             <?php 
