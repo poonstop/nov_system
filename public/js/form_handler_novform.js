@@ -721,7 +721,7 @@ function deleteEstablishment() {
     });
 }
 
-function saveChanges() {
+    function saveChanges() {
     const form = document.getElementById('editForm');
     const formData = new FormData(form);
     
