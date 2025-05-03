@@ -63,6 +63,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['user_level'] = $user['ulvl'];
                     $_SESSION['fullname'] = $user['fullname'];
                     
+                    // Log successful login to user_logs table
+                    $user_id = $user['id'];
+                    $action = "Login";
+                    $user_agent = $_SERVER['HTTP_USER_AGENT'];
+                    $details = "User {$user['username']} ({$user['fullname']}) logged in successfully";
+                    $current_time = date("Y-m-d H:i:s");
+                    
+                    $log_stmt = $conn->prepare("INSERT INTO user_logs (user_id, action, user_agent, details, timestamp) VALUES (?, ?, ?, ?, ?)");
+                    $log_stmt->bind_param("issss", $user_id, $action, $user_agent, $details, $current_time);
+                    $log_stmt->execute();
+                    
                     // Regenerate session ID to prevent session fixation
                     session_regenerate_id(true);
                     
@@ -75,11 +86,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     exit;
                 } else {
                     $error_message = "Invalid username or password";
+                    
+                    // Log failed login attempt (optional)
+                    $action = "Failed Login";
+                    $user_agent = $_SERVER['HTTP_USER_AGENT'];
+                    $details = "Failed login attempt for username: {$username} - Invalid password";
+                    $current_time = date("Y-m-d H:i:s");
+                    
+                    $log_stmt = $conn->prepare("INSERT INTO user_logs (user_id, action, user_agent, details, timestamp) VALUES (?, ?, ?, ?, ?)");
+                    $user_id = $user['id']; // We have the user ID even though login failed
+                    $log_stmt->bind_param("issss", $user_id, $action, $user_agent, $details, $current_time);
+                    $log_stmt->execute();
                 }
             } else {
                 $error_message = "Invalid username or password";
+                
+                // Log failed login attempt with non-existent username (optional)
+                $action = "Failed Login";
+                $user_agent = $_SERVER['HTTP_USER_AGENT'];
+                $details = "Failed login attempt with non-existent username: {$username}";
+                $current_time = date("Y-m-d H:i:s");
+                
+                $log_stmt = $conn->prepare("INSERT INTO user_logs (action, user_agent, details, timestamp) VALUES (?, ?, ?, ?)");
+                $log_stmt->bind_param("ssss", $action, $user_agent, $details, $current_time);
+                $log_stmt->execute();
             }
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             $error_message = "Database error: " . $e->getMessage();
         }
     }

@@ -33,7 +33,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
-        <a href="establishments.php" class="<?php echo ($current_page == 'establishments.php') ? 'active' : ''; ?>">
+            <a href="establishments.php" class="<?php echo ($current_page == 'establishments.php') ? 'active' : ''; ?>">
                 <div class="icon-container">
                     <i class="fas fa-exclamation-triangle"></i>
                 </div>
@@ -48,6 +48,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <span class="nav-text">Establishments Management</span>
             </a>
         </li>
+        
         <?php if(isset($_SESSION['user_level']) && $_SESSION['user_level'] !== 'inspector'): ?>
         <li>
             <a href="user.php" class="<?php echo ($current_page == 'user.php') ? 'active' : ''; ?>">
@@ -58,6 +59,35 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <?php endif; ?>
+        
+        <!-- IMPORTANT: Utilities dropdown menu with Audit Logs link -->
+        <li>
+            <a href="#utilitiesSubmenu" data-toggle="collapse" aria-expanded="<?php echo (in_array($current_page, ['audit_logs.php', 'backup_restore.php'])) ? 'true' : 'false'; ?>" class="dropdown-toggle <?php echo (in_array($current_page, ['audit_logs.php', 'backup_restore.php'])) ? 'active' : ''; ?>">
+                <div class="icon-container">
+                    <i class="fas fa-tools"></i>
+                </div>
+                <span class="nav-text">Utilities</span>
+            </a>
+            <ul class="collapse list-unstyled <?php echo (in_array($current_page, ['audit_logs.php', 'backup_restore.php'])) ? 'show' : ''; ?>" id="utilitiesSubmenu">
+                <!-- THIS IS THE AUDIT LOGS LINK -->
+                <li>
+                    <a href="audit_logs.php" class="<?php echo ($current_page == 'audit_logs.php') ? 'active' : ''; ?>">
+                        <div class="icon-container">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <span class="nav-text">Audit Logs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="backup_restore.php" class="<?php echo ($current_page == 'backup_restore.php') ? 'active' : ''; ?>">
+                        <div class="icon-container">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <span class="nav-text">Backup & Restore</span>
+                    </a>
+                </li>
+            </ul>
+        </li>
     </ul>
     
     <div class="logout-section">
@@ -70,7 +100,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     </div>
 </nav>
 
-<!-- JavaScript for Mobile Toggle -->
+<!-- JavaScript to handle dropdown menu and navigation -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Mobile sidebar toggle
@@ -94,6 +124,38 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Make mobile toggle visible
     if (mobileToggle) mobileToggle.classList.remove('d-none');
+    
+    // Toggle submenu on click
+    document.querySelectorAll('.dropdown-toggle').forEach(function(element) {
+        element.addEventListener('click', function(e) {
+            e.preventDefault();
+            const submenu = document.querySelector(this.getAttribute('href'));
+            if (submenu) {
+                submenu.classList.toggle('show');
+                this.setAttribute('aria-expanded', submenu.classList.contains('show'));
+            }
+        });
+    });
+    
+    // Add event listener for the audit logs menu item specifically
+    const auditLogsLink = document.querySelector('a[href="audit_logs.php"]');
+    if (auditLogsLink) {
+        auditLogsLink.addEventListener('click', function(e) {
+            // Navigate to audit_logs.php when clicked
+            window.location.href = 'audit_logs.php';
+        });
+    }
+    
+    // For any dropdown-toggle that's showing (active or current section), 
+    // ensure the submenu is visible
+    document.querySelectorAll('.dropdown-toggle.active').forEach(function(element) {
+        const submenuId = element.getAttribute('href');
+        const submenu = document.querySelector(submenuId);
+        if (submenu && !submenu.classList.contains('show')) {
+            submenu.classList.add('show');
+            element.setAttribute('aria-expanded', 'true');
+        }
+    });
     
     // Logout button functionality with 1-second delay
     const logoutBtn = document.getElementById('logoutBtn');
