@@ -40,7 +40,8 @@ $result = $conn->query($query);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="css/nov-form.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
 </head>
 <body>
     <div class="container py-5">
@@ -431,6 +432,13 @@ $result = $conn->query($query);
 .btn-success:hover {
     background-color: #1e7e34;
 }
+.violation-count {
+        font-weight: bold;
+    }
+    .violation-count-badge {
+        font-size: 1rem;
+        padding: 0.35em 0.65em;
+    }
 </style>
 
 
@@ -517,9 +525,7 @@ $result = $conn->query($query);
                         <th>Establishment</th>
                         <th>Address</th>
                         <th>Owner/Representative</th>  
-                        <th>Nature</th>
                         <th>Violations</th>
-                        <th>Products</th>
                         <th>Last Updated</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -527,7 +533,7 @@ $result = $conn->query($query);
                 </thead>
 
                 <tbody>
-                    <?php while ($row = $result->fetch_assoc()): 
+                <?php while ($row = $result->fetch_assoc()): 
                         // Determine status based on remarks
                         $status = "pending";
                         $statusBadge = "bg-warning";
@@ -546,15 +552,16 @@ $result = $conn->query($query);
                             }
                         }
                         ?>
-                        <tr data-id="<?= isset($row['establishment_id']) ? $row['establishment_id'] : '' ?>" data-status="<?= $status ?>" data-nature="<?= isset($row['nature']) ? $row['nature'] : '' ?>">
+
+                         <tr data-id="<?= isset($row['establishment_id']) ? $row['establishment_id'] : '' ?>" data-status="<?= $status ?>" data-nature="<?= isset($row['nature']) ? $row['nature'] : '' ?>">
                             <td><?= capitalizeWords(htmlspecialchars($row['name'])) ?></td>
                             <td><?= isset($row['address']) ? capitalizeWords(htmlspecialchars(trim($row['address'], ', '))) : '<span class="text-muted">No address available</span>' ?></td>
                             <td><?= capitalizeWords(htmlspecialchars($row['owner_rep'])) ?></td>
-                            <td><?= htmlspecialchars($row['nature']) ?></td>
                             
                             <td class="violations-cell">
+    
     <?php 
-    if (!empty($row['all_violations'])) {
+      if (!empty($row['all_violations'])) {
         $violations = array_map('trim', explode(',', $row['all_violations']));
         $formattedViolations = array_map(function($v) {
             if (strpos(strtolower($v), 'ps/icc') !== false) return '<span class="badge bg-danger">No PS/ICC Mark</span>';
@@ -572,24 +579,8 @@ $result = $conn->query($query);
     }
     ?>
 </td>
-                            <td>
-                                <?php 
-                                if (!empty($row['inventory_products'])) {
-                                    $products = json_decode($row['inventory_products'], true);
-                                    if (is_array($products)) {
-                                        $productNames = array_column($products, 'product_name');
-                                        echo htmlspecialchars(implode(', ', $productNames));
-                                        echo ' <span class="badge bg-primary">' . count($productNames) . '</span>';
-                                    } else {
-                                        echo htmlspecialchars($row['inventory_products']);
-                                    }
-                                } else {
-                                    echo '<span class="text-muted">No inventory</span>';
-                                }
-                                ?>
-                            </td>
-                            <td>
-                               
+
+                            <td> 
                             <?php 
 if (!empty($row['date_updated']) && $row['date_updated'] != '0000-00-00 00:00:00') {
     try {
@@ -816,7 +807,6 @@ if (!empty($row['date_updated']) && $row['date_updated'] != '0000-00-00 00:00:00
             <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-            <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
             <script src="js/action-button-fix.js"></script>
             <script src="js/form_handler_novform.js"></script>
             </body>

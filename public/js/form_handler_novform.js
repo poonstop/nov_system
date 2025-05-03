@@ -721,7 +721,7 @@ function deleteEstablishment() {
     });
 }
 
-function saveChanges() {
+    function saveChanges() {
     const form = document.getElementById('editForm');
     const formData = new FormData(form);
     
@@ -892,45 +892,91 @@ function saveChanges() {
 }
 
 function sortTable() {
-    const sortBy = document.getElementById('sortBy').value;
-    const tbody = document.querySelector('#recordsTable tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const sortOption = document.getElementById('sortBy').value;
+    const table = document.getElementById('recordsTable');
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
     
-    // Sort the rows based on the selected option
     rows.sort((a, b) => {
-        if (sortBy === 'dateDesc') {
-            // Sort by date updated (newest first)
-            const dateA = a.cells[6].textContent.trim();
-            const dateB = b.cells[6].textContent.trim();
-            return new Date(dateB) - new Date(dateA);
-        } else if (sortBy === 'dateAsc') {
-            // Sort by date updated (oldest first)
-            const dateA = a.cells[6].textContent.trim();
-            const dateB = b.cells[6].textContent.trim();
-            return new Date(dateA) - new Date(dateB);
-        } else if (sortBy === 'nameAsc') {
-            // Sort by name (A-Z)
-            const nameA = a.cells[0].textContent.toLowerCase();
-            const nameB = b.cells[0].textContent.toLowerCase();
-            return nameA.localeCompare(nameB);
-        } else if (sortBy === 'nameDesc') {
-            // Sort by name (Z-A)
-            const nameA = a.cells[0].textContent.toLowerCase();
-            const nameB = b.cells[0].textContent.toLowerCase();
-            return nameB.localeCompare(nameA);
-        } else if (sortBy === 'violationsDesc') {
-            // Sort by number of violations (most first)
-            const violationsA = a.cells[4].querySelectorAll('.badge').length;
-            const violationsB = b.cells[4].querySelectorAll('.badge').length;
-            return violationsB - violationsA;
-        }
+        // Get proper indexes in case table structure changes
+        const nameIndex = 0;
+        const violationsIndex = 4;
+        const violationCountIndex = 5;
+        const dateIndex = 6;
         
+        if (sortOption === 'nameAsc') {
+            return a.cells[nameIndex].textContent.trim().toLowerCase().localeCompare(
+                b.cells[nameIndex].textContent.trim().toLowerCase()
+            );
+        } else if (sortOption === 'nameDesc') {
+            return b.cells[nameIndex].textContent.trim().toLowerCase().localeCompare(
+                a.cells[nameIndex].textContent.trim().toLowerCase()
+            );
+        } else if (sortOption === 'dateAsc') {
+            // Try to get timestamp from data attribute first
+            const dateAElem = a.cells[dateIndex].querySelector('[data-timestamp]');
+            const dateBElem = b.cells[dateIndex].querySelector('[data-timestamp]');
+            
+            let dateA, dateB;
+            
+            if (dateAElem && dateBElem) {
+                dateA = dateAElem.getAttribute('data-timestamp');
+                dateB = dateBElem.getAttribute('data-timestamp');
+            } else {
+                // Fall back to text content if no data attribute
+                dateA = a.cells[dateIndex].textContent.trim();
+                dateB = b.cells[dateIndex].textContent.trim();
+            }
+            
+            return new Date(dateA) - new Date(dateB);
+        } else if (sortOption === 'dateDesc') {
+            // Try to get timestamp from data attribute first
+            const dateAElem = a.cells[dateIndex].querySelector('[data-timestamp]');
+            const dateBElem = b.cells[dateIndex].querySelector('[data-timestamp]');
+            
+            let dateA, dateB;
+            
+            if (dateAElem && dateBElem) {
+                dateA = dateAElem.getAttribute('data-timestamp');
+                dateB = dateBElem.getAttribute('data-timestamp');
+            } else {
+                // Fall back to text content if no data attribute
+                dateA = a.cells[dateIndex].textContent.trim();
+                dateB = b.cells[dateIndex].textContent.trim();
+            }
+            
+            return new Date(dateB) - new Date(dateA);
+        } else if (sortOption === 'violationsDesc') {
+            // First try to get from violation count column if it exists
+            if (a.cells.length > violationCountIndex) {
+                const countA = parseInt(a.cells[violationCountIndex].querySelector('.badge')?.textContent || '0');
+                const countB = parseInt(b.cells[violationCountIndex].querySelector('.badge')?.textContent || '0');
+                return countB - countA;  // Sort by highest count first
+            } else {
+                // Fall back to counting violation badges in the violations column
+                const violationsA = a.cells[violationsIndex].querySelectorAll('.badge').length;
+                const violationsB = b.cells[violationsIndex].querySelectorAll('.badge').length;
+                return violationsB - violationsA;
+            }
+        }
         return 0;
     });
     
-    // Re-append the sorted rows to the table
+    // Reattach sorted rows to table
+    const tbody = table.querySelector('tbody');
     rows.forEach(row => tbody.appendChild(row));
 }
+
+// Add event listener to make sure sorting works after the DOM loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Initial sort
+    sortTable();
+});
 
 // Initialize event listeners when the DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {

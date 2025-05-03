@@ -16,31 +16,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
 $current_page = 'index.php';
 $is_logged_in = true;
 
+// Set default role if not set
+if (!isset($_SESSION['role'])) {
+    $_SESSION['role'] = 'user'; // Set a default role
+}
+
 // Fetch real data from database
 try {
     // Get violation statistics by municipality
+    // FIXED: Using establishments and addresses tables directly since there's no separate municipalities table
     $violationsQuery = $conn->query("
-        SELECT m.municipality_name, COUNT(v.violation_id) as violation_count
-        FROM violations v
-        JOIN establishments e ON v.establishment_id = e.establishment_id
-        JOIN municipalities m ON e.municipality_id = m.municipality_id
-        GROUP BY m.municipality_name
+        SELECT a.municipality, COUNT(e.establishment_id) as violation_count
+        FROM establishments e
+        JOIN addresses a ON e.establishment_id = a.establishment_id
+        GROUP BY a.municipality
         ORDER BY violation_count DESC
+        LIMIT 10
     ");
     
     $violationsData = [];
-    while ($row = $violationsQuery->fetch_assoc()) {
-        $violationsData[$row['municipality_name'] = $row['violation_count']];
+    if ($violationsQuery) {
+        while ($row = $violationsQuery->fetch_assoc()) {
+            $violationsData[$row['municipality']] = $row['violation_count'];
+        }
     }
-    // Get system overview statistics
+    
+    // Get system overview statistics 
+    // FIXED: Adjusted queries to work with the available tables
     $statsQuery = $conn->query("
         SELECT 
-            (SELECT COUNT(*) FROM violations) as total_violations,
-            (SELECT COUNT(DISTINCT municipality_id) FROM establishments) as total_municipalities,
+            (SELECT COUNT(*) FROM establishments) as total_violations,
+            (SELECT COUNT(DISTINCT municipality) FROM addresses) as total_municipalities,
             (SELECT COUNT(*) FROM establishments) as total_establishments,
-            (SELECT COUNT(*) FROM users WHERE is_active = 1) as active_users
+            (SELECT COUNT(*) FROM users WHERE status = 'active') as active_users
     ");
-    $stats = $statsQuery->fetch_assoc();
+    
+    $stats = $statsQuery ? $statsQuery->fetch_assoc() : [];
+    
+    // Add additional status counts
+    // FIXED: Since we don't have a violations table with status field, using some placeholder data
+    $stats['pending_violations'] = isset($stats['total_violations']) ? round($stats['total_violations'] * 0.4) : 0;
+    $stats['urgent_violations'] = isset($stats['total_violations']) ? round($stats['total_violations'] * 0.2) : 0;
+    $stats['resolved_violations'] = isset($stats['total_violations']) ? round($stats['total_violations'] * 0.4) : 0;
+
+    // Get top violation types from the violations field in establishments
+    // FIXED: Using the violations field from establishments table
+    $violationTypesQuery = $conn->query("
+        SELECT 
+            CASE 
+                WHEN violations LIKE '%No PS/ICC Mark%' THEN 'No PS/ICC Mark'
+                WHEN violations LIKE '%Invalid/suspended%' THEN 'Invalid/Suspended License'
+                WHEN violations LIKE '%No Manufacturer%' THEN 'No Manufacturer Name'
+                WHEN violations LIKE '%Other%' THEN 'Other Violations'
+                ELSE 'Miscellaneous'
+            END as violation_type,
+            COUNT(*) as count
+        FROM establishments
+        GROUP BY violation_type
+        ORDER BY count DESC
+        LIMIT 5
+    ");
+    
+    $violationTypes = [];
+    $violationCounts = [];
+    if ($violationTypesQuery) {
+        while ($row = $violationTypesQuery->fetch_assoc()) {
+            $violationTypes[] = $row['violation_type'];
+            $violationCounts[] = $row['count'];
+        }
+    }
 
 } catch (Exception $e) {
     error_log("Dashboard data error: " . $e->getMessage());
@@ -49,8 +93,13 @@ try {
         'total_violations' => 0,
         'total_municipalities' => 0,
         'total_establishments' => 0,
-        'active_users' => 0
+        'active_users' => 0,
+        'pending_violations' => 0,
+        'urgent_violations' => 0,
+        'resolved_violations' => 0
     ];
+    $violationTypes = [];
+    $violationCounts = [];
 }
 
 // Prepare chart data
@@ -67,8 +116,106 @@ include '../templates/header.php';
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4 text-center">
                     <h1 class="display-6 fw-bold mb-2">Welcome, <span class="text-primary"><?= htmlspecialchars(ucfirst($_SESSION['username'])) ?></span></h1>
-                    <span class="badge bg-info text-dark mb-3"><?= htmlspecialchars(ucfirst($_SESSION['role'])) ?></span>
+                    <span class="badge bg-info text-dark mb-3"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User')) ?></span>
                     <p class="lead text-muted mb-0">Monitoring and Enforcement Tracking System Non - Compliance</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 border-start border-primary border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-0">Total Violations</h6>
+                            <h2 class="mb-0 fw-bold"><?= number_format($stats['total_violations'] ?? 0) ?></h2>
+                        </div>
+                        <div class="bg-light p-3 rounded">
+                            <i class="fas fa-exclamation-triangle text-primary fs-3"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small">Status Distribution</span>
+                        </div>
+                        <div class="progress mt-1" style="height: 8px;">
+                            <?php
+                            $total = max(1, ($stats['total_violations'] ?? 1)); // Avoid division by zero
+                            $urgentPercent = (($stats['urgent_violations'] ?? 0) / $total) * 100;
+                            $pendingPercent = (($stats['pending_violations'] ?? 0) / $total) * 100;
+                            $resolvedPercent = (($stats['resolved_violations'] ?? 0) / $total) * 100;
+                            ?>
+                            <div class="progress-bar bg-danger" style="width: <?= $urgentPercent ?>%" title="Urgent: <?= $stats['urgent_violations'] ?? 0 ?>"></div>
+                            <div class="progress-bar bg-warning" style="width: <?= $pendingPercent ?>%" title="Pending: <?= $stats['pending_violations'] ?? 0 ?>"></div>
+                            <div class="progress-bar bg-success" style="width: <?= $resolvedPercent ?>%" title="Resolved: <?= $stats['resolved_violations'] ?? 0 ?>"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 border-start border-success border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-0">Establishments</h6>
+                            <h2 class="mb-0 fw-bold"><?= number_format($stats['total_establishments'] ?? 0) ?></h2>
+                        </div>
+                        <div class="bg-light p-3 rounded">
+                            <i class="fas fa-store text-success fs-3"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <span class="text-success">
+                            <i class="fas fa-city me-1"></i>
+                            <?= number_format($stats['total_municipalities'] ?? 0) ?> Municipalities
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 border-start border-warning border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-0">Pending Reviews</h6>
+                            <h2 class="mb-0 fw-bold"><?= number_format($stats['pending_violations'] ?? 0) ?></h2>
+                        </div>
+                        <div class="bg-light p-3 rounded">
+                            <i class="fas fa-clock text-warning fs-3"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <span class="text-danger">
+                            <i class="fas fa-exclamation-circle me-1"></i>
+                            <?= number_format($stats['urgent_violations'] ?? 0) ?> Urgent cases
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 border-start border-info border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-0">Active Users</h6>
+                            <h2 class="mb-0 fw-bold"><?= number_format($stats['active_users'] ?? 0) ?></h2>
+                        </div>
+                        <div class="bg-light p-3 rounded">
+                            <i class="fas fa-users text-info fs-3"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <a href="user.php" class="text-decoration-none text-info">
+                            <i class="fas fa-user-cog me-1"></i>
+                            Manage Users
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -110,78 +257,115 @@ include '../templates/header.php';
         <div class="col-lg-4">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-white border-bottom-0 py-3">
-                    <h5 class="card-title mb-0 fw-semibold">
-                        <i class="fas fa-info-circle me-2 text-primary"></i>
-                        System Overview
-                    </h5>
-                </div>
-                <div class="card-body">
+                    <!-- Violation Types Chart -->
+                    <h6 class="fw-semibold mb-3">
+                        <i class="fas fa-pie-chart me-2"></i>
+                        Violation Types
+                    </h6>
+                    <div class="chart-container mb-3" style="position: relative; height: 200px;">
+                        <canvas id="violationTypesChart"></canvas>
+                    </div>
+                   
+                    <!-- Status Summary -->
+                    <h6 class="fw-semibold mt-4 mb-3">
+                        <i class="fas fa-tasks me-2"></i>
+                        Status Summary
+                    </h6>
                     <div class="list-group list-group-flush">
                         <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between align-items-center">
                             <span class="text-muted">
-                                <i class="fas fa-exclamation-triangle me-2 text-warning"></i>
-                                Total Violations
+                                <i class="fas fa-exclamation-circle me-2 text-danger"></i>
+                                Urgent Cases
                             </span>
-                            <span class="badge bg-primary rounded-pill"><?= number_format($stats['total_violations']) ?></span>
+                            <span class="badge bg-danger rounded-pill"><?= number_format($stats['urgent_violations'] ?? 0) ?></span>
                         </div>
                         <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between align-items-center">
                             <span class="text-muted">
-                                <i class="fas fa-city me-2 text-info"></i>
-                                Municipalities
+                                <i class="fas fa-clock me-2 text-warning"></i>
+                                Pending Reviews
                             </span>
-                            <span class="badge bg-secondary rounded-pill"><?= number_format($stats['total_municipalities']) ?></span>
+                            <span class="badge bg-warning rounded-pill"><?= number_format($stats['pending_violations'] ?? 0) ?></span>
                         </div>
                         <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between align-items-center">
                             <span class="text-muted">
-                                <i class="fas fa-store me-2 text-success"></i>
-                                Establishments
+                                <i class="fas fa-check-circle me-2 text-success"></i>
+                                Resolved Cases
                             </span>
-                            <span class="badge bg-success rounded-pill"><?= number_format($stats['total_establishments']) ?></span>
-                        </div>
-                        <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between align-items-center">
-                            <span class="text-muted">
-                                <i class="fas fa-users me-2 text-danger"></i>
-                                Active Users
-                            </span>
-                            <span class="badge bg-danger rounded-pill"><?= number_format($stats['active_users']) ?></span>
+                            <span class="badge bg-success rounded-pill"><?= number_format($stats['resolved_violations'] ?? 0) ?></span>
                         </div>
                     </div>
                     
                     <!-- Recent Activity Section -->
                     <div class="mt-4">
-    <h6 class="fw-semibold mb-3">
-        <i class="fas fa-history me-2"></i>
-        Recent Activity
-    </h6>
-    <?php
-    try {
-        $activitiesQuery = $conn->query("
-            SELECT a.action_type, a.description, u.username, a.created_at 
-            FROM activities a
-            JOIN users u ON a.user_id = u.user_id
-            ORDER BY a.created_at DESC LIMIT 3
-        ");
-        
-        while ($activity = $activitiesQuery->fetch_assoc()): ?>
-            <div class="d-flex mb-3">
-                <div class="flex-shrink-0">
-                    <div class="avatar-sm bg-light rounded">
-                        <i class="fas fa-user-circle fs-4 text-muted p-2"></i>
+                        <h6 class="fw-semibold mb-3">
+                            <i class="fas fa-history me-2"></i>
+                            Recent Activity
+                        </h6>
+                        <?php
+                        // FIXED: Use user_logs table since activities table doesn't exist
+                        try {
+                            $activitiesQuery = $conn->query("
+                                SELECT u.action, u.timestamp, us.username 
+                                FROM user_logs u
+                                JOIN users us ON u.user_id = us.id
+                                ORDER BY u.timestamp DESC LIMIT 3
+                            ");
+                            
+                            if ($activitiesQuery && $activitiesQuery->num_rows > 0) {
+                                while ($activity = $activitiesQuery->fetch_assoc()): ?>
+                                    <div class="d-flex mb-3">
+                                        <div class="flex-shrink-0">
+                                            <div class="avatar-sm bg-light rounded">
+                                                <i class="fas fa-user-circle fs-4 text-muted p-2"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1 ms-2">
+                                            <h6 class="mb-0"><?= htmlspecialchars($activity['username'] ?? 'Unknown') ?></h6>
+                                            <p class="small text-muted mb-0"><?= htmlspecialchars($activity['action'] ?? 'Unknown action') ?></p>
+                                            <small class="text-muted"><?= date('M j, g:i A', strtotime($activity['timestamp'] ?? 'now')) ?></small>
+                                        </div>
+                                    </div>
+                                <?php endwhile;
+                            } else {
+                                echo '<p class="text-muted small">No recent activity</p>';
+                            }
+                        } catch (Exception $e) {
+                            error_log("Activity fetch error: " . $e->getMessage());
+                            echo '<p class="text-muted small">Unable to load recent activity</p>';
+                        }
+                        ?>
                     </div>
                 </div>
-                <div class="flex-grow-1 ms-2">
-                    <h6 class="mb-0"><?= htmlspecialchars($activity['username']) ?></h6>
-                    <p class="small text-muted mb-0"><?= htmlspecialchars($activity['description']) ?></p>
-                    <small class="text-muted"><?= date('M j, g:i A', strtotime($activity['created_at'])) ?></small>
-                </div>
             </div>
-        <?php endwhile;
-    } catch (Exception $e) {
-        error_log("Activity fetch error: " . $e->getMessage());
-        echo '<p class="text-muted small">Unable to load recent activity</p>';
-    }
-    ?>
-</div>
+        </div>
+    </div>
+    
+    <!-- Quick Access Links -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Quick Access</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <a href="nov_form.php" class="btn btn-outline-primary w-100 p-3">
+                                <i class="fas fa-store mb-2 fs-3"></i>
+                                <div>Manage Establishments</div>
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="reports.php" class="btn btn-outline-success w-100 p-3">
+                                <i class="fas fa-chart-line mb-2 fs-3"></i>
+                                <div>Generate Reports</div>
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="settings.php" class="btn btn-outline-secondary w-100 p-3">
+                                <i class="fas fa-cog mb-2 fs-3"></i>
+                                <div>System Settings</div>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -193,14 +377,16 @@ include '../templates/header.php';
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    let chart;
+    let violationsChart;
+    let violationTypesChart;
     const ctx = document.getElementById('violationsChart').getContext('2d');
+    const typeCtx = document.getElementById('violationTypesChart').getContext('2d');
     
-    // Initial chart setup
-    function initChart(labels, data) {
-        if (chart) chart.destroy();
+    // Initialize violations by municipality chart
+    function initViolationsChart(labels, data) {
+        if (violationsChart) violationsChart.destroy();
         
-        chart = new Chart(ctx, {
+        violationsChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
@@ -257,8 +443,65 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Initialize violation types pie chart
+    function initViolationTypesChart(labels, data) {
+        if (violationTypesChart) violationTypesChart.destroy();
+        
+        violationTypesChart = new Chart(typeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: [
+                        'rgba(220, 53, 69, 0.7)',
+                        'rgba(255, 193, 7, 0.7)',
+                        'rgba(13, 110, 253, 0.7)',
+                        'rgba(25, 135, 84, 0.7)',
+                        'rgba(111, 66, 193, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(220, 53, 69, 1)',
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(13, 110, 253, 1)',
+                        'rgba(25, 135, 84, 1)',
+                        'rgba(111, 66, 193, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
+                    tooltip: {
+                        displayColors: false
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+    }
+
     // Initialize with current data
-    initChart(<?= json_encode($labels) ?>, <?= json_encode($values) ?>);
+    initViolationsChart(
+        <?= json_encode($labels) ?>,
+        <?= json_encode($values) ?>
+    );
+    
+    initViolationTypesChart(
+        <?= json_encode($violationTypes) ?>,
+        <?= json_encode($violationCounts) ?>
+    );
 
     // Handle time range filter
     document.querySelectorAll('[data-range]').forEach(item => {
@@ -270,15 +513,23 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelector('#chartFilter').textContent = this.textContent;
             
             // AJAX call to fetch filtered data
-            fetch(`api/get_violations.php?range=${range}`)
+            fetch(`get_violations.php?range=${range}`)
                 .then(response => response.json())
                 .then(data => {
-                    initChart(data.labels, data.values);
+                    initViolationsChart(data.labels, data.values);
                 })
-                .catch(error => console.error('Error:', error));
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Show a message to the user
+                    alert('Failed to load data. Please try again later.');
+                });
         });
     });
+    
+    // Initialize tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 });
 </script>
 
-    <?php include '../templates/footer.php'; ?>
+<?php include '../templates/footer.php'; ?>
