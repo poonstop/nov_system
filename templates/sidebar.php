@@ -60,7 +60,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </li>
         <?php endif; ?>
         
-        <!-- IMPORTANT: Utilities dropdown menu with Audit Logs link -->
+        <!-- Modified Utilities dropdown menu with admin-only access to specific pages -->
         <li>
             <a href="#utilitiesSubmenu" data-toggle="collapse" aria-expanded="<?php echo (in_array($current_page, ['audit_logs.php', 'backup_restore.php'])) ? 'true' : 'false'; ?>" class="dropdown-toggle <?php echo (in_array($current_page, ['audit_logs.php', 'backup_restore.php'])) ? 'active' : ''; ?>">
                 <div class="icon-container">
@@ -69,24 +69,28 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <span class="nav-text">Utilities</span>
             </a>
             <ul class="collapse list-unstyled <?php echo (in_array($current_page, ['audit_logs.php', 'backup_restore.php'])) ? 'show' : ''; ?>" id="utilitiesSubmenu">
-                <!-- THIS IS THE AUDIT LOGS LINK -->
-                <li>
-                    <a href="audit_logs.php" class="<?php echo ($current_page == 'audit_logs.php') ? 'active' : ''; ?>">
-                        <div class="icon-container">
-                            <i class="fas fa-history"></i>
-                        </div>
-                        <span class="nav-text">Audit Logs</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="backup_restore.php" class="<?php echo ($current_page == 'backup_restore.php') ? 'active' : ''; ?>">
-                        <div class="icon-container">
-                            <i class="fas fa-database"></i>
-                        </div>
-                        <span class="nav-text">Backup & Restore</span>
-                    </a>
-                </li>
-            </ul>
+    <?php if(isset($_SESSION['user_level']) && $_SESSION['user_level'] === 'admin'): ?>
+    <li>
+        <a href="audit_logs.php" class="<?php echo ($current_page == 'audit_logs.php') ? 'active' : ''; ?>">
+            <div class="icon-container">
+                <i class="fas fa-history"></i>
+            </div>
+            <span class="nav-text">Audit Logs</span>
+        </a>
+    </li>
+    <li>
+        <!-- CHANGE THIS LINE - Update the path to backup_restore.php -->
+        <a href="backup_restore.php" class="<?php echo ($current_page == 'backup_restore.php') ? 'active' : ''; ?>">
+            <div class="icon-container">
+                <i class="fas fa-database"></i>
+            </div>
+            <span class="nav-text">Backup & Restore</span>
+        </a>
+    </li>
+    <?php else: ?>
+    <!-- ... rest of the code ... -->
+    <?php endif; ?>
+</ul>
         </li>
     </ul>
     
@@ -137,17 +141,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Add event listener for the audit logs menu item specifically
-    const auditLogsLink = document.querySelector('a[href="audit_logs.php"]');
-    if (auditLogsLink) {
-        auditLogsLink.addEventListener('click', function(e) {
-            // Navigate to audit_logs.php when clicked
-            window.location.href = 'audit_logs.php';
+    // Make submenu items clickable without toggling parent
+    document.querySelectorAll('#utilitiesSubmenu a').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent event bubbling to parent dropdown toggle
+            // Normal navigation allowed to proceed
         });
-    }
+    });
     
-    // For any dropdown-toggle that's showing (active or current section), 
-    // ensure the submenu is visible
+    // Keep submenu open for active pages
     document.querySelectorAll('.dropdown-toggle.active').forEach(function(element) {
         const submenuId = element.getAttribute('href');
         const submenu = document.querySelector(submenuId);
@@ -157,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Logout button functionality with 1-second delay
+    // Logout button functionality with confirmation
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function() {
@@ -180,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="btn-text">Logging out...</span>
                     `;
                     
-                    // Add 1-second delay before redirecting
+                    // Add delay before redirecting
                     setTimeout(() => {
                         window.location.href = 'logout.php';
                     }, 1000);
@@ -190,3 +192,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<style>
+/* Add this to your CSS for disabled menu items */
+.disabled-menu-item {
+    cursor: not-allowed;
+    opacity: 0.6;
+    border-left: 3px solid #ccc;
+}
+</style>
