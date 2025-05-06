@@ -82,168 +82,411 @@ function formatFileSize($bytes) {
     }
 }
 
-// Improved pure PHP backup function
+// Enhanced PHP backup function with improved INSERT statement generation
 function createPHPBackup($db_connection, $db_name, $backup_file) {
     try {
-        $backup_content = "-- Database Backup for {$db_name}\n";
-        $backup_content .= "-- Generated: " . date("Y-m-d H:i:s") . "\n\n";
+        // Set a higher time limit for large databases
+        set_time_limit(1800); // 30 minutes
+        ini_set('memory_limit', '1024M'); // Increase memory limit further
+        
+        // Open file handle at the start with write mode to create a fresh file
+        $backup_file_handle = fopen($backup_file, 'wb'); // Write mode, binary safe
+        if (!$backup_file_handle) {
+            error_log("Failed to open backup file for writing: " . $backup_file);
+            return false;
+        }
+        
+        // Initialize backup content
+        $header = "-- Database Backup for {$db_name}\n";
+        $header .= "-- Generated: " . date("Y-m-d H:i:s") . "\n\n";
         
         // Add SET statements for better compatibility
-        $backup_content .= "SET FOREIGN_KEY_CHECKS=0;\n";
-        $backup_content .= "SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\n";
-        $backup_content .= "SET time_zone = \"+00:00\";\n\n";
+        $header .= "SET FOREIGN_KEY_CHECKS=0;\n";
+        $header .= "SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\n";
+        $header .= "SET AUTOCOMMIT = 0;\n";
+        $header .= "START TRANSACTION;\n"; // Explicit transaction start
+        $header .= "SET time_zone = \"+00:00\";\n";
+        $header .= "SET CHARACTER_SET_CLIENT=utf8mb4;\n";
+        $header .= "SET CHARACTER_SET_RESULTS=utf8mb4;\n";
+        $header .= "SET NAMES utf8mb4;\n\n";
+        
+        // Write the header to file
+        fwrite($backup_file_handle, $header);
         
         // Get all table names
         $tables_result = $db_connection->query("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'");
+        if (!$tables_result) {
+            error_log("Error fetching tables: " . $db_connection->error);
+            fclose($backup_file_handle);
+            return false;
+        }
+        
         $tables = [];
         while ($table_row = $tables_result->fetch_row()) {
             $tables[] = $table_row[0];
         }
         
-        // First, get all create table statements
-        foreach ($tables as $table_name) {
+        error_log("Found " . count($tables) . " tables to backup");
+        
+        // Process users table first to ensure it's complete
+        $prioritized_tables = array_merge(
+            array_filter($tables, function($table) { return strtolower($table) === 'users'; }),
+            array_filter($tables, function($table) { return strtolower($table) !== 'users'; })
+        );
+        
+        // First pass: Create DROP TABLE and CREATE TABLE statements
+        foreach ($prioritized_tables as $table_name) {
+            $structure_content = "-- Table structure for table `{$table_name}`\n";
+            
             // Add DROP TABLE statement
-            $backup_content .= "DROP TABLE IF EXISTS `{$table_name}`;\n";
+            $structure_content .= "DROP TABLE IF EXISTS `{$table_name}`;\n";
             
             // Get table creation SQL
             $structure_result = $db_connection->query("SHOW CREATE TABLE `{$table_name}`");
+            if (!$structure_result) {
+                error_log("Error getting structure for table {$table_name}: " . $db_connection->error);
+                continue;
+            }
+            
             $structure_row = $structure_result->fetch_row();
-            $backup_content .= $structure_row[1] . ";\n\n";
+            // Use the CREATE TABLE statement exactly as returned by MySQL
+            $structure_content .= $structure_row[1] . ";\n\n";
+            
+            // Write structure to file immediately
+            fwrite($backup_file_handle, $structure_content);
+            fflush($backup_file_handle); // Ensure it's written to disk
+            
+            // Free result set
+            $structure_result->free();
         }
         
-        // Then get all data
-        foreach ($tables as $table_name) {
-            // Get table data
-            $data_result = $db_connection->query("SELECT * FROM `{$table_name}`");
-            $row_count = $data_result->num_rows;
+        // Second pass: Insert data table by table with better binary data handling
+        foreach ($prioritized_tables as $table_name) {
+            // Flag for users table special handling
+            $isUsersTable = (strtolower($table_name) === 'users');
+            
+            // Get column names and types first
+            $fields_result = $db_connection->query("SHOW COLUMNS FROM `{$table_name}`");
+            if (!$fields_result) {
+                error_log("Error getting columns for table {$table_name}: " . $db_connection->error);
+                continue;
+            }
+            
+            $fields = [];
+            $field_types = [];
+            $field_nulls = [];
+            
+            while ($field = $fields_result->fetch_assoc()) {
+                $fields[] = $field['Field'];
+                // Store field type information to handle binary/blob data properly
+                $field_types[$field['Field']] = $field['Type'];
+                // Store if field is nullable
+                $field_nulls[$field['Field']] = ($field['Null'] === 'YES');
+            }
+            
+            // Field names for INSERT statement
+            $field_list = "`" . implode("`, `", $fields) . "`";
+            
+            // Get row count first
+            $count_result = $db_connection->query("SELECT COUNT(*) FROM `{$table_name}`");
+            if (!$count_result) {
+                error_log("Error counting rows in {$table_name}: " . $db_connection->error);
+                continue;
+            }
+            
+            $count_row = $count_result->fetch_row();
+            $row_count = (int)$count_row[0];
+            $count_result->free();
             
             if ($row_count > 0) {
-                $backup_content .= "-- Data for table `{$table_name}`\n";
-                $backup_content .= "-- {$row_count} rows\n";
+                $table_header = "-- Data for table `{$table_name}`\n";
+                $table_header .= "-- {$row_count} rows\n";
+                fwrite($backup_file_handle, $table_header);
+                fflush($backup_file_handle);
                 
-                // Start transaction for faster inserts
-                $backup_content .= "START TRANSACTION;\n";
+                // Process in smaller batches to avoid memory issues
+                $batch_size = 50; // Even smaller batch size for better memory handling
                 
-                // Use multi-row inserts (batches of 100 rows) for better performance
-                $rows = [];
-                $counter = 0;
-                $fields = [];
-                
-                // Get column names
-                $fields_result = $db_connection->query("SHOW COLUMNS FROM `{$table_name}`");
-                while ($field = $fields_result->fetch_assoc()) {
-                    $fields[] = $field['Field'];
+                // Determine appropriate ordering for consistent backups
+                $orderBy = '';
+                if (in_array('id', $fields)) {
+                    $orderBy = " ORDER BY `id` ASC";
+                } elseif (in_array('user_id', $fields)) {
+                    $orderBy = " ORDER BY `user_id` ASC";
+                } elseif ($primary_key = getPrimaryKey($db_connection, $table_name)) {
+                    $orderBy = " ORDER BY `{$primary_key}` ASC";
                 }
                 
-                // Field names for INSERT statement
-                $field_list = "`" . implode("`, `", $fields) . "`";
-                
-                while ($data_row = $data_result->fetch_assoc()) {
-                    $values = [];
-                    foreach ($fields as $field) {
-                        if ($data_row[$field] === null) {
-                            $values[] = "NULL";
-                        } else {
-                            $values[] = "'" . $db_connection->real_escape_string($data_row[$field]) . "'";
+                // FIXED: Use a more reliable method to ensure we process ALL rows
+                // Use a direct query with LIMIT and OFFSET for more reliable pagination
+                for ($offset = 0; $offset < $row_count; $offset += $batch_size) {
+                    // Get a batch of rows
+                    $data_query = "SELECT * FROM `{$table_name}`{$orderBy} LIMIT {$offset}, {$batch_size}";
+                    $data_result = $db_connection->query($data_query);
+                    
+                    if (!$data_result) {
+                        error_log("Error fetching data from {$table_name}: " . $db_connection->error);
+                        error_log("Failed query: " . $data_query);
+                        break;
+                    }
+                    
+                    $processed_rows = $data_result->num_rows;
+                    if ($processed_rows == 0) {
+                        // No more rows to process
+                        error_log("No more rows found for {$table_name} at offset {$offset}");
+                        break;
+                    }
+                    
+                    // Process this batch's rows
+                    $row_values = [];
+                    
+                    while ($row = $data_result->fetch_assoc()) {
+                        $values = [];
+                        
+                        foreach ($fields as $field) {
+                            if (is_null($row[$field])) {
+                                $values[] = "NULL";
+                            } else {
+                                // Handle different field types
+                                $field_type_lower = strtolower($field_types[$field]);
+                                
+                                // Binary data - use hex representation
+                                if (strpos($field_type_lower, 'binary') !== false || 
+                                    strpos($field_type_lower, 'blob') !== false || 
+                                    strpos($field_type_lower, 'varbinary') !== false) {
+                                    $values[] = "0x" . bin2hex($row[$field]);
+                                } 
+                                // Handle bit fields
+                                else if (strpos($field_type_lower, 'bit') === 0) {
+                                    // If it's a single bit, bin2hex should work well
+                                    $bit_val = $row[$field];
+                                    // Handle empty bit values
+                                    if ($bit_val === '') {
+                                        $values[] = "b'0'";
+                                    } else {
+                                        // Convert bit value to binary string representation
+                                        $bit_str = '';
+                                        for ($i = 0; $i < strlen($bit_val); $i++) {
+                                            $bit_str .= str_pad(decbin(ord($bit_val[$i])), 8, '0', STR_PAD_LEFT);
+                                        }
+                                        // Trim leading zeros for bit fields
+                                        $bit_str = ltrim($bit_str, '0');
+                                        if ($bit_str === '') $bit_str = '0'; // Handle case of all zeros
+                                        $values[] = "b'" . $bit_str . "'";
+                                    }
+                                }
+                                // Handle numeric fields without quotes
+                                else if (strpos($field_type_lower, 'int') !== false ||
+                                         strpos($field_type_lower, 'float') !== false ||
+                                         strpos($field_type_lower, 'double') !== false ||
+                                         strpos($field_type_lower, 'decimal') !== false) {
+                                    $values[] = $row[$field];
+                                }
+                                // Handle date/time fields with correct quoting
+                                else if (strpos($field_type_lower, 'date') !== false ||
+                                         strpos($field_type_lower, 'time') !== false) {
+                                    // Ensure valid date/time format or NULL for invalid dates
+                                    if ($row[$field] == '0000-00-00' || $row[$field] == '0000-00-00 00:00:00') {
+                                        // Use NULL for invalid dates when possible
+                                        if ($field_nulls[$field]) {
+                                            $values[] = "NULL";
+                                        } else {
+                                            $values[] = "'0000-00-00 00:00:00'";
+                                        }
+                                    } else {
+                                        $values[] = "'" . $db_connection->real_escape_string($row[$field]) . "'";
+                                    }
+                                }
+                                // All other types - escape properly
+                                else {
+                                    $values[] = "'" . $db_connection->real_escape_string($row[$field]) . "'";
+                                }
+                            }
                         }
+                        
+                        $row_values[] = "(" . implode(", ", $values) . ")";
                     }
                     
-                    $rows[] = "(" . implode(", ", $values) . ")";
-                    $counter++;
+                    // Create and write complete INSERT statement for this batch
+                    if (!empty($row_values)) {
+                        // For users table, use INSERT IGNORE to prevent errors on duplicate keys during restore
+                        $insert_prefix = $isUsersTable 
+                            ? "INSERT IGNORE INTO `{$table_name}` ({$field_list}) VALUES\n" 
+                            : "INSERT INTO `{$table_name}` ({$field_list}) VALUES\n";
+                        
+                        fwrite($backup_file_handle, $insert_prefix);
+                        fwrite($backup_file_handle, implode(",\n", $row_values) . ";\n\n");
+                        fflush($backup_file_handle); // Force flush after each batch
+                        
+                        // VERIFICATION: Log the number of rows processed in this batch
+                        error_log("Wrote {$processed_rows} rows for table {$table_name} at offset {$offset}");
+                        
+                        // Clear row values array to free memory
+                        $row_values = [];
+                    } else {
+                        error_log("WARNING: No values generated for table {$table_name} at offset {$offset}");
+                    }
                     
-                    // Write in batches of 100 rows
-                    if ($counter % 100 === 0 || $counter === $row_count) {
-                        $backup_content .= "INSERT INTO `{$table_name}` ({$field_list}) VALUES\n";
-                        $backup_content .= implode(",\n", $rows) . ";\n";
-                        $rows = [];
+                    // Free result set to conserve memory
+                    $data_result->free();
+                    
+                    // Log progress for large tables
+                    if ($row_count > 1000 && ($offset + $processed_rows) % 1000 < $batch_size) {
+                        error_log("Backup progress for {$table_name}: " . ($offset + $processed_rows) . "/{$row_count} rows processed");
                     }
                 }
                 
-                if (!empty($rows)) {
-                    $backup_content .= "INSERT INTO `{$table_name}` ({$field_list}) VALUES\n";
-                    $backup_content .= implode(",\n", $rows) . ";\n";
-                }
-                
-                $backup_content .= "COMMIT;\n\n";
+                // Log completion for each table
+                error_log("Completed backup of table {$table_name}: {$row_count} rows should be processed");
             }
+            
+            // Free field result to conserve memory
+            $fields_result->free();
         }
         
-        // Get and add views
+        // Add views
         $views_result = $db_connection->query("SHOW FULL TABLES WHERE Table_type = 'VIEW'");
-        while ($view_row = $views_result->fetch_row()) {
-            $view_name = $view_row[0];
+        if ($views_result && $views_result->num_rows > 0) {
+            fwrite($backup_file_handle, "\n-- Views\n\n");
             
-            // Add DROP VIEW statement
-            $backup_content .= "DROP VIEW IF EXISTS `{$view_name}`;\n";
-            
-            // Get view creation SQL
-            $view_result = $db_connection->query("SHOW CREATE VIEW `{$view_name}`");
-            $view_row = $view_result->fetch_row();
-            $backup_content .= $view_row[1] . ";\n\n";
+            while ($view_row = $views_result->fetch_row()) {
+                $view_name = $view_row[0];
+                
+                // Add DROP VIEW statement
+                fwrite($backup_file_handle, "DROP VIEW IF EXISTS `{$view_name}`;\n");
+                
+                // Get view creation SQL
+                $view_result = $db_connection->query("SHOW CREATE VIEW `{$view_name}`");
+                if ($view_result) {
+                    $view_row = $view_result->fetch_row();
+                    fwrite($backup_file_handle, $view_row[1] . ";\n\n");
+                    $view_result->free();
+                }
+            }
+            $views_result->free();
         }
         
-        // Get and add triggers
+        // Add proper DELIMITER commands for triggers, procedures and functions
+        fwrite($backup_file_handle, "\n-- Set proper delimiter for routines\n");
+        fwrite($backup_file_handle, "DELIMITER $$\n\n");
+        fflush($backup_file_handle);
+        
+        // Add triggers
         $triggers_result = $db_connection->query("SHOW TRIGGERS");
-        if ($triggers_result->num_rows > 0) {
-            $backup_content .= "DELIMITER //\n";
+        if ($triggers_result && $triggers_result->num_rows > 0) {
+            fwrite($backup_file_handle, "\n-- Triggers\n\n");
+            
             while ($trigger_row = $triggers_result->fetch_assoc()) {
                 $trigger_name = $trigger_row['Trigger'];
                 
                 // Add DROP TRIGGER statement
-                $backup_content .= "DROP TRIGGER IF EXISTS `{$trigger_name}`//\n";
+                fwrite($backup_file_handle, "DROP TRIGGER IF EXISTS `{$trigger_name}`$$\n");
                 
                 // Get trigger creation SQL
                 $trigger_result = $db_connection->query("SHOW CREATE TRIGGER `{$trigger_name}`");
-                $trigger_row = $trigger_result->fetch_row();
-                $backup_content .= $trigger_row[2] . "//\n\n";
+                if ($trigger_result) {
+                    $trigger_row = $trigger_result->fetch_row();
+                    // Ensure correct termination with our delimiter
+                    $trigger_sql = rtrim($trigger_row[2], ';') . "$$\n\n";
+                    fwrite($backup_file_handle, $trigger_sql);
+                    $trigger_result->free();
+                }
             }
-            $backup_content .= "DELIMITER ;\n\n";
+            $triggers_result->free();
         }
         
-        // Get and add procedures/functions
+        // Add procedures
         $routines_result = $db_connection->query("SHOW PROCEDURE STATUS WHERE Db = '{$db_name}'");
-        if ($routines_result->num_rows > 0) {
-            $backup_content .= "DELIMITER //\n";
+        if ($routines_result && $routines_result->num_rows > 0) {
+            fwrite($backup_file_handle, "\n-- Procedures\n\n");
+            
             while ($routine_row = $routines_result->fetch_assoc()) {
                 $routine_name = $routine_row['Name'];
                 
                 // Add DROP PROCEDURE statement
-                $backup_content .= "DROP PROCEDURE IF EXISTS `{$routine_name}`//\n";
+                fwrite($backup_file_handle, "DROP PROCEDURE IF EXISTS `{$routine_name}`$$\n");
                 
                 // Get procedure creation SQL
                 $procedure_result = $db_connection->query("SHOW CREATE PROCEDURE `{$routine_name}`");
-                $procedure_row = $procedure_result->fetch_row();
-                $backup_content .= $procedure_row[2] . "//\n\n";
+                if ($procedure_result) {
+                    $procedure_row = $procedure_result->fetch_row();
+                    // Ensure correct termination with our delimiter
+                    $procedure_sql = rtrim($procedure_row[2], ';') . "$$\n\n";
+                    fwrite($backup_file_handle, $procedure_sql);
+                    $procedure_result->free();
+                }
             }
-            $backup_content .= "DELIMITER ;\n\n";
+            $routines_result->free();
         }
         
-        // Get and add functions
+        // Add functions
         $functions_result = $db_connection->query("SHOW FUNCTION STATUS WHERE Db = '{$db_name}'");
-        if ($functions_result->num_rows > 0) {
-            $backup_content .= "DELIMITER //\n";
+        if ($functions_result && $functions_result->num_rows > 0) {
+            fwrite($backup_file_handle, "\n-- Functions\n\n");
+            
             while ($function_row = $functions_result->fetch_assoc()) {
                 $function_name = $function_row['Name'];
                 
                 // Add DROP FUNCTION statement
-                $backup_content .= "DROP FUNCTION IF EXISTS `{$function_name}`//\n";
+                fwrite($backup_file_handle, "DROP FUNCTION IF EXISTS `{$function_name}`$$\n");
                 
                 // Get function creation SQL
                 $function_result = $db_connection->query("SHOW CREATE FUNCTION `{$function_name}`");
-                $function_row = $function_result->fetch_row();
-                $backup_content .= $function_row[2] . "//\n\n";
+                if ($function_result) {
+                    $function_row = $function_result->fetch_row();
+                    // Ensure correct termination with our delimiter
+                    $function_sql = rtrim($function_row[2], ';') . "$$\n\n";
+                    fwrite($backup_file_handle, $function_sql);
+                    $function_result->free();
+                }
             }
-            $backup_content .= "DELIMITER ;\n\n";
+            $functions_result->free();
         }
         
-        // Add re-enable foreign key checks
-        $backup_content .= "SET FOREIGN_KEY_CHECKS=1;\n";
+        // Reset delimiter
+        fwrite($backup_file_handle, "\n-- Reset delimiter\n");
+        fwrite($backup_file_handle, "DELIMITER ;\n\n");
         
-        // Write to file
-        return file_put_contents($backup_file, $backup_content) !== false;
+        // Add re-enable foreign key checks and commit transaction at the end
+        fwrite($backup_file_handle, "SET FOREIGN_KEY_CHECKS=1;\n");
+        fwrite($backup_file_handle, "COMMIT;\n");
+        fwrite($backup_file_handle, "\n-- End of backup\n");
+        fflush($backup_file_handle);
+        
+        // Close file handle
+        fclose($backup_file_handle);
+        
+        // Verify the backup file was written correctly
+        clearstatcache();
+        if (file_exists($backup_file) && filesize($backup_file) > 0) {
+            error_log("Backup completed successfully: " . $backup_file . " (Size: " . filesize($backup_file) . " bytes)");
+            return true;
+        } else {
+            error_log("Backup file verification failed. File may be empty or not created properly.");
+            return false;
+        }
     } catch (Exception $e) {
+        error_log("Exception during backup: " . $e->getMessage() . " at line " . $e->getLine() . " in " . $e->getFile());
+        error_log("Stack trace: " . $e->getTraceAsString());
         return false;
     }
+}
+
+/**
+ * Helper function to get primary key column name for a table
+ * 
+ * @param mysqli $db_connection Database connection
+ * @param string $table_name Table to check for primary key
+ * @return string|null Primary key column name or null if not found
+ */
+function getPrimaryKey($db_connection, $table_name) {
+    $result = $db_connection->query("SHOW KEYS FROM `{$table_name}` WHERE Key_name = 'PRIMARY'");
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $result->free();
+        return $row['Column_name'];
+    }
+    return null;
 }
 
 // Enhanced error logging function
