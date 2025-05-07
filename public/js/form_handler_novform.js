@@ -823,72 +823,68 @@ function deleteEstablishment() {
 }
 
 // Table filtering and sorting functions
-    function filterTable() {
-    const searchText = document.getElementById('searchInput').value.toLowerCase();
+function filterTable() {
+    const searchInput = document.getElementById('searchInput').value.toLowerCase();
     const violationFilter = document.getElementById('violationFilter').value.toLowerCase();
-    const natureFilter = document.getElementById('natureFilter').value;
+    const natureFilter = document.getElementById('natureFilter').value.toLowerCase();
     const showUrgent = document.getElementById('showUrgent').checked;
     const showPending = document.getElementById('showPending').checked;
     const showResolved = document.getElementById('showResolved').checked;
     
     const rows = document.querySelectorAll('#recordsTable tbody tr');
-    let visibleCount = 0;
+    let anyVisible = false;
     
     rows.forEach(row => {
-        const name = row.cells[0].textContent.toLowerCase();
-        const address = row.cells[1].textContent.toLowerCase();
-        const representative = row.cells[2].textContent.toLowerCase();
-        const nature = row.cells[3].textContent;
-        const violations = row.cells[4].textContent.toLowerCase();
-        const products = row.cells[5].textContent.toLowerCase();
-        const status = row.getAttribute('data-status');
+        const statusValue = row.getAttribute('data-status');
+        const natureValue = row.getAttribute('data-nature').toLowerCase();
+        const address = row.getAttribute('data-address').toLowerCase();
+        const owner = row.getAttribute('data-owner').toLowerCase();
         
-        // Apply search filter
-        const matchesSearch = 
-            searchText === '' || 
-            name.includes(searchText) || 
-            address.includes(searchText) || 
-            representative.includes(searchText) || 
-            violations.includes(searchText) ||
-            products.includes(searchText);
+        // Status filter check
+        const statusMatch = (statusValue === 'urgent' && showUrgent) || 
+                           (statusValue === 'pending' && showPending) || 
+                           (statusValue === 'resolved' && showResolved);
         
-        // Apply violation filter
-        const matchesViolation = 
-            violationFilter === '' || 
-            violations.includes(violationFilter);
+        // Nature filter check
+        const natureMatch = natureFilter === '' || natureValue.includes(natureFilter);
         
-        // Apply nature filter
-        const matchesNature = 
-            natureFilter === '' || 
-            nature === natureFilter;
+        // Get all content from the row including nested elements
+        const establishmentName = row.querySelector('td:first-child strong')?.textContent.toLowerCase() || '';
+        const addressVisible = row.querySelector('td:first-child small')?.textContent.toLowerCase() || '';
         
-        // Apply status filter
-        const matchesStatus = 
-            (status === 'urgent' && showUrgent) || 
-            (status === 'pending' && showPending) || 
-            (status === 'resolved' && showResolved);
+        // Get all violation badges text
+        const violationsCell = row.querySelector('.violations-cell');
+        const violationBadges = violationsCell.querySelectorAll('.badge');
+        let violationTexts = '';
+        violationBadges.forEach(badge => {
+            violationTexts += ' ' + badge.textContent.toLowerCase();
+        });
+        
+        // Violation filter check - check both badge elements and text content
+        const violationMatch = violationFilter === '' || 
+                               violationsCell.innerHTML.toLowerCase().includes(violationFilter) ||
+                               violationTexts.includes(violationFilter);
+        
+        // Text search check - search in all relevant data
+        const textMatch = searchInput === '' || 
+                          establishmentName.includes(searchInput) || 
+                          addressVisible.includes(searchInput) ||
+                          address.includes(searchInput) || 
+                          owner.includes(searchInput) || 
+                          violationsCell.textContent.toLowerCase().includes(searchInput) ||
+                          violationTexts.includes(searchInput);
         
         // Combine all filters
-        const isVisible = matchesSearch && matchesViolation && matchesNature && matchesStatus;
+        const visible = statusMatch && natureMatch && violationMatch && textMatch;
+        row.style.display = visible ? '' : 'none';
         
-        // Show or hide the row
-        row.style.display = isVisible ? '' : 'none';
-        
-        // Count visible rows
-        if (isVisible) {
-            visibleCount++;
-            
-            // Add search match class for animation
-            if (searchText !== '') {
-                row.classList.add('search-match');
-            } else {
-                row.classList.remove('search-match');
-            }
+        if (visible) {
+            anyVisible = true;
         }
     });
     
-    // Show or hide the "no results" message
-    document.getElementById('noResults').style.display = visibleCount === 0 ? 'block' : 'none';
+    // Show/hide "no results" message
+    document.getElementById('noResults').style.display = anyVisible ? 'none' : 'block';
 }
 
 function sortTable() {
@@ -897,24 +893,22 @@ function sortTable() {
     const rows = Array.from(table.querySelectorAll('tbody tr'));
     
     rows.sort((a, b) => {
-        // Get proper indexes in case table structure changes
-        const nameIndex = 0;
-        const violationsIndex = 4;
-        const violationCountIndex = 5;
-        const dateIndex = 6;
-        
         if (sortOption === 'nameAsc') {
-            return a.cells[nameIndex].textContent.trim().toLowerCase().localeCompare(
-                b.cells[nameIndex].textContent.trim().toLowerCase()
-            );
+            const nameA = a.querySelector('td:first-child strong')?.textContent.trim().toLowerCase() || '';
+            const nameB = b.querySelector('td:first-child strong')?.textContent.trim().toLowerCase() || '';
+            return nameA.localeCompare(nameB);
         } else if (sortOption === 'nameDesc') {
-            return b.cells[nameIndex].textContent.trim().toLowerCase().localeCompare(
-                a.cells[nameIndex].textContent.trim().toLowerCase()
-            );
-        } else if (sortOption === 'dateAsc') {
+            const nameA = a.querySelector('td:first-child strong')?.textContent.trim().toLowerCase() || '';
+            const nameB = b.querySelector('td:first-child strong')?.textContent.trim().toLowerCase() || '';
+            return nameB.localeCompare(nameA);
+        } else if (sortOption === 'dateAsc' || sortOption === 'dateDesc') {
+            // Find the date cell (4th column, index 3)
+            const dateCellA = a.querySelector('td:nth-child(4)');
+            const dateCellB = b.querySelector('td:nth-child(4)');
+            
             // Try to get timestamp from data attribute first
-            const dateAElem = a.cells[dateIndex].querySelector('[data-timestamp]');
-            const dateBElem = b.cells[dateIndex].querySelector('[data-timestamp]');
+            const dateAElem = dateCellA.querySelector('[data-timestamp]');
+            const dateBElem = dateCellB.querySelector('[data-timestamp]');
             
             let dateA, dateB;
             
@@ -923,40 +917,12 @@ function sortTable() {
                 dateB = dateBElem.getAttribute('data-timestamp');
             } else {
                 // Fall back to text content if no data attribute
-                dateA = a.cells[dateIndex].textContent.trim();
-                dateB = b.cells[dateIndex].textContent.trim();
+                dateA = dateCellA.textContent.trim();
+                dateB = dateCellB.textContent.trim();
             }
             
-            return new Date(dateA) - new Date(dateB);
-        } else if (sortOption === 'dateDesc') {
-            // Try to get timestamp from data attribute first
-            const dateAElem = a.cells[dateIndex].querySelector('[data-timestamp]');
-            const dateBElem = b.cells[dateIndex].querySelector('[data-timestamp]');
-            
-            let dateA, dateB;
-            
-            if (dateAElem && dateBElem) {
-                dateA = dateAElem.getAttribute('data-timestamp');
-                dateB = dateBElem.getAttribute('data-timestamp');
-            } else {
-                // Fall back to text content if no data attribute
-                dateA = a.cells[dateIndex].textContent.trim();
-                dateB = b.cells[dateIndex].textContent.trim();
-            }
-            
-            return new Date(dateB) - new Date(dateA);
-        } else if (sortOption === 'violationsDesc') {
-            // First try to get from violation count column if it exists
-            if (a.cells.length > violationCountIndex) {
-                const countA = parseInt(a.cells[violationCountIndex].querySelector('.badge')?.textContent || '0');
-                const countB = parseInt(b.cells[violationCountIndex].querySelector('.badge')?.textContent || '0');
-                return countB - countA;  // Sort by highest count first
-            } else {
-                // Fall back to counting violation badges in the violations column
-                const violationsA = a.cells[violationsIndex].querySelectorAll('.badge').length;
-                const violationsB = b.cells[violationsIndex].querySelectorAll('.badge').length;
-                return violationsB - violationsA;
-            }
+            const comparison = new Date(dateA) - new Date(dateB);
+            return sortOption === 'dateAsc' ? comparison : -comparison;
         }
         return 0;
     });
@@ -966,39 +932,34 @@ function sortTable() {
     rows.forEach(row => tbody.appendChild(row));
 }
 
-// Add event listener to make sure sorting works after the DOM loads
+// Add event listeners for search and filters
 document.addEventListener('DOMContentLoaded', function() {
+    // Add event listeners to all filter controls
+    document.getElementById('searchInput').addEventListener('input', filterTable);
+    document.getElementById('violationFilter').addEventListener('change', filterTable);
+    document.getElementById('natureFilter').addEventListener('change', filterTable);
+    document.getElementById('showUrgent').addEventListener('change', filterTable);
+    document.getElementById('showPending').addEventListener('change', filterTable);
+    document.getElementById('showResolved').addEventListener('change', filterTable);
+    document.getElementById('sortBy').addEventListener('change', sortTable);
+    
     // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
-    // Initial sort
+    // Initial sort and filter
     sortTable();
+    filterTable();
 });
 
-// Initialize event listeners when the DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize tooltips
-    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    tooltips.forEach(tooltip => {
-        new bootstrap.Tooltip(tooltip);
-    });
-    
-    // Close modals when clicking outside of them
-    window.onclick = function(event) {
-        if (event.target.classList.contains('modal')) {
-            event.target.style.display = 'none';
-        }
-    };
-    
-    // Add escape key listener for modals
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            document.querySelectorAll('.modal').forEach(modal => {
-                modal.style.display = 'none';
-            });
-        }
-    });
-});
+// Helper function for AJAX requests with timeout
+function fetchWithTimeout(url, options, timeout = 10000) {
+    return Promise.race([
+        fetch(url, options),
+        new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timed out')), timeout)
+        )
+    ]);
+}

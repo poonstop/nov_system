@@ -562,6 +562,19 @@ unset($_SESSION['success']);
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="css/nov-styles.css">
+    <style>
+        /* Custom styles for the datalist dropdown */
+        input::-webkit-calendar-picker-indicator {
+            opacity: 0.5;
+            cursor: pointer;
+        }
+        .location-input {
+            position: relative;
+        }
+        .location-input .form-control:focus {
+            z-index: 1;
+        }
+    </style>
 </head>
 <body>
     <div class="container py-5">
@@ -591,22 +604,188 @@ unset($_SESSION['success']);
                             <input type="text" name="establishment" class="form-control" id="establishment" required>
                         </div>
                         
-                        <!-- Address Fields -->
-                        <div class="col-md-4">
+                       <!-- Address Fields -->
+                         <div class="col-md-4 location-input">
                             <label for="region">Region:</label>
-                            <input type="text" name="region" id="region" class="form-control" required>
-                        </div>
-                        <div class="col-md-4">
+                            <input type="text" name="region" id="region" class="form-control" list="regionList" placeholder="Select or type region" required>
+                            <datalist id="regionList">
+                            <option value="CAR (Cordillera Administrative Region)">
+                            <option value="Region I (Ilocos Region)">
+                            <option value="Region II (Cagayan Valley)">
+                            <option value="Region III (Central Luzon)">
+                    <!-- Add more regions as needed -->
+                 </datalist>
+                </div>
+                        <div class="col-md-4 location-input">
                             <label for="province">Province:</label>
-                            <input type="text" name="province" id="province" class="form-control" required>
+                            <input type="text" name="province" id="province" class="form-control" list="provinceList" placeholder="Select or type province" required>
+                            <datalist id="provinceList">
+                            <option value="Benguet">
+                            <option value="Ilocos Norte">
+                            <option value="Ilocos Sur">
+                            <option value="La Union">
+                            </datalist>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-4 location-input">
                             <label for="municipality">Municipality:</label>
-                            <input type="text" name="municipality" id="municipality" class="form-control" required>
+                            <input type="text" name="municipality" id="municipality" class="form-control" list="municipalityList" placeholder="Select or type municipality" required>
+                            <datalist id="municipalityList">
+                                <!-- Default municipalities for demo, will be dynamically updated via JS -->
+                                <!-- Ilocos Norte Municipalities -->
+                                <option value="Laoag City">
+                                <option value="Batac">
+                                <option value="Paoay">
+                                <option value="Pagudpud">
+                                <option value="Burgos">
+                                <option value="Bangui">
+                                <option value="Dingras">
+                                <option value="San Nicolas">
+                                <option value="Currimao">
+                                <option value="Badoc">
+                                <option value="Solsona">
+                                <option value="Vintar">
+                                <!-- Ilocos Sur Municipalities -->
+                                <option value="Vigan City">
+                                <option value="Candon City">
+                                <option value="Bantay">
+                                <option value="Santa Maria">
+                                <option value="Narvacan">
+                                <option value="Tagudin">
+                                <option value="Santa Cruz">
+                                <option value="San Esteban">
+                                <option value="Santiago">
+                                <option value="Caoayan">
+                                <option value="Santa Catalina">
+                                <option value="Sinait">
+                                <option value="Cabugao">
+                                <option value="San Juan">
+                                <option value="Magsingal">
+                                <option value="Santa Lucia">
+                                <option value="Galimuyod">
+                                <option value="Salcedo">
+                                <option value="Alilem">
+                                <option value="Sugpon">
+                                <option value="Suyo">
+                                <option value="Quirino">
+                                <option value="Gregorio del Pilar">
+                                <option value="San Ildefonso">
+                                <option value="San Vicente">
+                                <!-- La Union Municipalities -->
+                                <option value="San Fernando City (La Union)">
+                                <option value="Agoo">
+                                <option value="Aringay">
+                                <option value="Bacnotan">
+                                <option value="Bagulin">
+                                <option value="Balaoan">
+                                <option value="Bangar">
+                                <option value="Bauang">
+                                <option value="Burgos">
+                                <option value="Caba">
+                                <option value="Luna">
+                                <option value="Naguilian">
+                                <option value="Pugo">
+                                <option value="Rosario">
+                                <option value="San Gabriel">
+                                <option value="San Juan">
+                                <option value="Santol">
+                                <option value="Santo Tomas">
+                                <option value="Sudipen">
+                                <option value="Tubao">
+                            </datalist>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 location-input">
                             <label for="barangay">Barangay:</label>
-                            <input type="text" name="barangay" id="barangay" class="form-control" required>
+                            <input type="text" name="barangay" id="barangay" class="form-control" list="barangayList" placeholder="Select or type barangay" required>
+                            <datalist id="barangayList">
+                                <!-- Default barangays for demo, will be dynamically updated via JS -->
+                                <!-- San Fernando City Barangays -->
+                                <option value="Barangay I (Pob.)">
+                                <option value="Barangay II (Pob.)">
+                                <option value="Barangay III (Pob.)">
+                                <option value="Barangay IV (Pob.)">
+                                <option value="Barangay V (Pob.)">
+                                <option value="Barangay VI (Pob.)">
+                                <option value="Barangay VII (Pob.)">
+                                <option value="Barangay VIII (Pob.)">
+                                <option value="Barangay IX (Pob.)">
+                                <option value="Barangay X (Pob.)">
+                                <option value="Barangay XI (Pob.)">
+                                <option value="Barangay XII (Pob.)">
+                                <option value="Bacsil">
+                                <option value="Bangbangolan">
+                                <option value="Baraoas">
+                                <option value="Biday">
+                                <option value="Cabaroan">
+                                <option value="Camansi">
+                                <option value="Canaoay">
+                                <option value="Dalumpinas Este">
+                                <option value="Dalumpinas Oeste">
+                                <option value="Dallangayan Este">
+                                <option value="Dallangayan Oeste">
+                                <option value="Langcuas">
+                                <option value="Lingsat">
+                                <option value="Nagyubuyuban">
+                                <option value="Pagdaraoan">
+                                <option value="Pao Norte">
+                                <option value="Pao Sur">
+                                <option value="Puspus">
+                                <option value="San Agustin">
+                                <option value="Santiago Norte">
+                                <option value="Santiago Sur">
+                                <option value="Tanqui">
+                                <option value="Tanquigan">
+                                <option value="Udiao">
+                                <option value="Wangal">
+                                
+                                <!-- Bauang Barangays -->
+                                <option value="Acao">
+                                <option value="Bagbag">
+                                <option value="Ballay">
+                                <option value="Bawanta">
+                                <option value="Boy-utan">
+                                <option value="Cabalayangan">
+                                <option value="Carmay">
+                                <option value="Central East">
+                                <option value="Central West">
+                                <option value="Dili">
+                                <option value="Disso-or">
+                                <option value="Guerrero">
+                                <option value="Lower San Agustin">
+                                <option value="Nagrebcan">
+                                <option value="Palintucang">
+                                <option value="Pagdalagan">
+                                <option value="Paringao">
+                                <option value="Payocpoc Norte Este">
+                                <option value="Payocpoc Norte Oeste">
+                                <option value="Payocpoc Sur">
+                                <option value="Pilar">
+                                <option value="Pottot">
+                                <option value="Quinavite">
+                                <option value="Santa Monica">
+                                <option value="Santo Domingo">
+                                <option value="Upper San Agustin">
+                                <option value="Urayong">
+                                
+                                <!-- Aringay Barangays -->
+                                <option value="Alaska">
+                                <option value="Basca">
+                                <option value="Dulao">
+                                <option value="Gallano">
+                                <option value="Macabato">
+                                <option value="Poblacion">
+                                <option value="Samara">
+                                <option value="San Antonio">
+                                <option value="San Benito">
+                                <option value="San Eugenio">
+                                <option value="San Juan">
+                                <option value="San Simon East">
+                                <option value="San Simon West">
+                                <option value="Santa Lucia">
+                                <option value="Santa Rita East">
+                                <option value="Santa Rita West">
+                                <option value="Santo Rosario East">
+                                <option value="Santo Rosario West">
+                            </datalist>
                         </div>
                         <div class="col-md-6">
                             <label for="street">Street and house no.:</label>
@@ -1006,4 +1185,3 @@ unset($_SESSION['success']);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="js/form_handler_establishments.js"></script>
-    <script>

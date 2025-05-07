@@ -25,11 +25,14 @@ if (!isset($_SESSION['role'])) {
 try {
     // Get violation statistics by municipality
     // FIXED: Using establishments and addresses tables directly since there's no separate municipalities table
+    // Get violation statistics by municipality with proper case handling
     $violationsQuery = $conn->query("
-        SELECT a.municipality, COUNT(e.establishment_id) as violation_count
+        SELECT 
+            CONCAT(UPPER(SUBSTRING(a.municipality, 1, 1)), LOWER(SUBSTRING(a.municipality FROM 2))) as municipality,
+            COUNT(e.establishment_id) as violation_count
         FROM establishments e
         JOIN addresses a ON e.establishment_id = a.establishment_id
-        GROUP BY a.municipality
+        GROUP BY LOWER(a.municipality)
         ORDER BY violation_count DESC
         LIMIT 10
     ");
@@ -44,12 +47,39 @@ try {
     // Get system overview statistics 
     // FIXED: Adjusted queries to work with the available tables
     $statsQuery = $conn->query("
-        SELECT 
-            (SELECT COUNT(*) FROM establishments) as total_violations,
-            (SELECT COUNT(DISTINCT municipality) FROM addresses) as total_municipalities,
-            (SELECT COUNT(*) FROM establishments) as total_establishments,
-            (SELECT COUNT(*) FROM users WHERE status = 'active') as active_users
+    SELECT 
+        (SELECT COUNT(*) FROM establishments) as total_violations,
+        (SELECT COUNT(DISTINCT LOWER(municipality)) FROM addresses) as total_municipalities,
+        (SELECT COUNT(*) FROM establishments) as total_establishments,
+        (SELECT COUNT(*) FROM users WHERE status = 'active') as active_users
+");
+
+// If you want to display specific municipalities in your chart rather than top violations
+// You can modify the violations query like this:
+    $specificMunicipalities = ['Aringay', 'Agoo', 'Bacnotan', 'Bagulin', 'Balaoan', 'Bangar', 'Bauang', 'Burgos', 'Caba', 'Luna', 'Naguilian', 'Pugo', 'Rosario', 'San Gabriel', 'San Juan', 'Santol', 'Sto. Tomas', 'Sudipen', 'San Fernando City', 'Tubao',]; // Add your specific municipalities
+    $placeholders = implode(',', array_fill(0, count($specificMunicipalities), '?'));
+    
+    // Prepare statement for specific municipalities
+    $violationsStmt = $conn->prepare("
+        SELECT a.municipality, COUNT(e.establishment_id) as violation_count
+        FROM establishments e
+        JOIN addresses a ON e.establishment_id = a.establishment_id
+        WHERE LOWER(a.municipality) IN (" . implode(',', array_map(function($m) { return 'LOWER(?)'; }, $specificMunicipalities)) . ")
+        GROUP BY a.municipality
+        ORDER BY violation_count DESC
     ");
+
+    // If you want to show all municipalities but avoid duplicates due to case sensitivity:
+$uniqueViolationsQuery = $conn->query("
+SELECT 
+    UPPER(SUBSTRING(a.municipality, 1, 1)) || LOWER(SUBSTRING(a.municipality, 2)) as municipality, 
+    COUNT(e.establishment_id) as violation_count
+FROM establishments e
+JOIN addresses a ON e.establishment_id = a.establishment_id
+GROUP BY LOWER(a.municipality)
+ORDER BY violation_count DESC
+LIMIT 10
+");
     
     $stats = $statsQuery ? $statsQuery->fetch_assoc() : [];
     
@@ -530,6 +560,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 });
+
 </script>
 
 <?php include '../templates/footer.php'; ?>
