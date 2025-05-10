@@ -1,6 +1,6 @@
 <?php // get_establishment.php
 header('Content-Type: application/json');
-include __DIR__ . '/../db_config.php';
+include __DIR__ . '/../connection.php';
 
 // Initialize response
 $response = ['success' => false];

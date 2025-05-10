@@ -30,6 +30,176 @@ document.addEventListener('DOMContentLoaded', function() {
         natureSelect.dispatchEvent(new Event('change'));
     }
 
+    const regionInput = document.getElementById('region');
+    const provinceInput = document.getElementById('province');
+    const municipalityInput = document.getElementById('municipality');
+    const barangayInput = document.getElementById('barangay');
+    
+    // Data mapping for regions and provinces
+    const regionProvinces = {
+        'CAR (Cordillera Administrative Region)': ['Benguet', 'Abra', 'Apayao', 'Ifugao', 'Kalinga', 'Mountain Province'],
+        'Region I (Ilocos Region)': ['Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan'],
+        'Region II (Cagayan Valley)': ['Batanes', 'Cagayan', 'Isabela', 'Nueva Vizcaya', 'Quirino'],
+        'Region III (Central Luzon)': ['Aurora', 'Bataan', 'Bulacan', 'Nueva Ecija', 'Pampanga', 'Tarlac', 'Zambales']
+    };
+    
+    // Data mapping for provinces and municipalities
+    const provinceMunicipalities = {
+        'Benguet': ['Baguio City', 'La Trinidad', 'Itogon', 'Tuba', 'Tublay', 'Bokod', 'Kabayan', 'Atok', 'Kapangan', 'Kibungan', 'Mankayan', 'Buguias', 'Bakun'],
+        'Ilocos Norte': ['Batac City', 'Currimao', 'Dingras', 'Laoag City', 'Marcos', 'Nueva Era', 'Paoay', 'Pasuquin', 'Piddig', 'San Nicolas', 'Sarrat', 'Solsona', 'Burgos', 'Bangui', 'Vintar', 'Badoc'],
+        'Ilocos Sur': ['Vigan City', 'Candon City', 'Caoayan', 'Galimuyod', 'Gregorio del Pilar', 'Lidlidda', 'Magsingal', 'Narvacan', 'Quirino', 'Salcedo', 'San Ildefonso', 'San Juan', 'San Vicente', 'Santa Catalina', 'Santa Lucia', 'Santa Maria', 'Bantay', 'Tagudin', 'Santa Cruz', 'San Esteban', 'Santiago', 'Sinait', 'Cabugao', 'Santa Lucia', 'Alilem', 'Sugpon', 'Suyo'],
+        'La Union': ['San Fernando City (La Union)', 'Agoo', 'Aringay', 'Bacnotan', 'Bagulin', 'Balaoan', 'Bangar', 'Bauang', 'Burgos', 'Caba', 'Luna', 'Naguilian', 'Pugo', 'Rosario', 'San Gabriel', 'San Juan', 'Santol', 'Santo Tomas', 'Sudipen', 'Tubao'],
+        'Pangasinan': ['Alaminos City', 'Bani', 'Basista', 'Binalonan', 'Binmaley', 'Bolinao', 'Bugallon', 'Calasiao', 'Dasol', 'Lingayen', 'San Carlos City', 'San Fabian', 'San Jacinto', 'San Manuel', 'San Nicolas', 'San Quintin', 'Sison', 'Umingan']
+    };
+    
+    // Data mapping for municipalities and barangays
+    const municipalityBarangays = {
+        'Baguio City': ['Asin Road', 'Aurora Hill', 'Cabinet Hill', 'Camp 7', 'City Camp', 'Engineers Hill', 'Fairview', 'Happy Hollow', 'Hillside', 'Imelda Village', 'Irisan', 'Loakan', 'Mines View', 'Pacdal', 'Quezon Hill'],
+        'La Trinidad': ['Beckel', 'Betag', 'Bokawkan', 'Bontoc', 'Cabalatan', 'Carmen', 'Cecilia', 'Cruz', 'Dagsian', 'Lamtang', 'Longlong', 'Poblacion', 'Shilan'],
+        'San Fernando City (La Union)': [
+            'Barangay I (Pob.)', 'Barangay II (Pob.)', 'Barangay III (Pob.)', 'Barangay IV (Pob.)', 
+            'Barangay V (Pob.)', 'Barangay VI (Pob.)', 'Barangay VII (Pob.)', 'Barangay VIII (Pob.)', 
+            'Barangay IX (Pob.)', 'Barangay X (Pob.)', 'Barangay XI (Pob.)', 'Barangay XII (Pob.)', 
+            'Bacsil', 'Bangbangolan', 'Baraoas', 'Biday', 'Cabaroan', 'Camansi', 'Canaoay', 
+            'Dalumpinas Este', 'Dalumpinas Oeste', 'Dallangayan Este', 'Dallangayan Oeste', 
+            'Langcuas', 'Lingsat', 'Nagyubuyuban', 'Pagdaraoan', 'Pao Norte', 'Pao Sur', 
+            'Puspus', 'San Agustin', 'Santiago Norte', 'Santiago Sur', 'Tanqui', 'Tanquigan', 
+            'Udiao', 'Wangal'
+        ],
+        'Aringay': [
+            'Alaska', 'Basca', 'Dulao', 'Gallano', 'Macabato', 'Poblacion', 
+            'Samara', 'San Antonio', 'San Benito', 'San Eugenio', 'San Juan', 
+            'San Simon East', 'San Simon West', 'Santa Lucia', 'Santa Rita East', 
+            'Santa Rita West', 'Santo Rosario East', 'Santo Rosario West'
+        ],
+        'Bauang': [
+            'Acao', 'Bagbag', 'Ballay', 'Bawanta', 'Boy-utan', 'Cabalayangan', 'Carmay', 
+            'Central East', 'Central West', 'Dili', 'Disso-or', 'Guerrero', 'Lower San Agustin', 
+            'Nagrebcan', 'Palintucang', 'Pagdalagan', 'Paringao', 'Payocpoc Norte Este', 
+            'Payocpoc Norte Oeste', 'Payocpoc Sur', 'Pilar', 'Pottot', 'Quinavite', 
+            'Santa Monica', 'Santo Domingo', 'Upper San Agustin', 'Urayong'
+        ],
+        'Laoag City': [
+            'Barangay 1', 'Barangay 2', 'Barangay 3', 'Barangay 4', 'Barangay 5',
+            'Barangay 6', 'Barangay 7', 'Barangay 8', 'Barangay 9', 'Barangay 10',
+            'Barangay 11', 'Barangay 12', 'Barangay 13', 'Barangay 14', 'Barangay 15',
+            'Calayab', 'San Mateo', 'Santa Rosa', 'San Nicolas', 'Nangalisan'
+        ],
+        'Batac': [
+            'Aglipay', 'Ben-agan', 'Bungon', 'Caaoacan', 'Cangrunaan',
+            'Callaguip', 'Camandingan', 'Colo', 'Mabaleng', 'Pimentel',
+            'Quiling Norte', 'Quiling Sur', 'Ricarte', 'San Julian', 'San Mateo',
+            'San Pedro', 'Tabug', 'Valdez'
+        ],
+        'Vigan City': [
+            'Ayusan Norte', 'Ayusan Sur', 'Bantay', 'Bulala', 'Cabalangegan',
+            'Cabaroan Daya', 'Cabaroan Laud', 'Camangaan', 'Mindoro', 'Pantay Daya',
+            'Pantay Fatima', 'Pantay Laud', 'Paoa', 'Paratong', 'Poblacion',
+            'Raois', 'Salindeg', 'San Jose', 'San Julian Norte', 'San Julian Sur',
+            'San Pedro', 'Tamag'
+        ]
+    };
+
+    // Update datalist options with all available regions
+    function populateRegions() {
+        const regionList = document.getElementById('regionList');
+        if (!regionList) return;
+        
+        clearDropdownList('regionList');
+        
+        for (const region in regionProvinces) {
+            const option = document.createElement('option');
+            option.value = region;
+            regionList.appendChild(option);
+        }
+    }
+
+    // Update provinces when region changes
+    if (regionInput) {
+        // Populate regions on load
+        populateRegions();
+        
+        regionInput.addEventListener('input', function() {
+            const selectedRegion = this.value;
+            
+            // Clear province, municipality, and barangay when region changes
+            if (provinceInput) {
+                provinceInput.value = '';
+                updateDropdownList(selectedRegion, provinceInput, regionProvinces, 'provinceList');
+            }
+            
+            if (municipalityInput) {
+                municipalityInput.value = '';
+                clearDropdownList('municipalityList');
+            }
+            
+            if (barangayInput) {
+                barangayInput.value = '';
+                clearDropdownList('barangayList');
+            }
+        });
+    }
+    
+    // Update municipalities when province changes
+    if (provinceInput) {
+        provinceInput.addEventListener('input', function() {
+            const selectedProvince = this.value;
+            
+            // Clear municipality and barangay when province changes
+            if (municipalityInput) {
+                municipalityInput.value = '';
+                updateDropdownList(selectedProvince, municipalityInput, provinceMunicipalities, 'municipalityList');
+            }
+            
+            if (barangayInput) {
+                barangayInput.value = '';
+                clearDropdownList('barangayList');
+            }
+        });
+    }
+    
+    // Update barangays when municipality changes
+    if (municipalityInput) {
+        municipalityInput.addEventListener('input', function() {
+            const selectedMunicipality = this.value;
+            
+            // Update barangay options
+            if (barangayInput) {
+                barangayInput.value = '';
+                updateDropdownList(selectedMunicipality, barangayInput, municipalityBarangays, 'barangayList');
+            }
+        });
+    }
+    
+    // Function to update dropdown list based on selection
+    function updateDropdownList(selectedValue, targetInput, dataMapping, datalistId) {
+        const datalist = document.getElementById(datalistId);
+        if (!datalist) return;
+        
+        // Clear existing options
+        clearDropdownList(datalistId);
+        
+        // Add new options if the selected value has mappings
+        if (dataMapping[selectedValue]) {
+            const items = dataMapping[selectedValue];
+            items.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item;
+                datalist.appendChild(option);
+            });
+        }
+    }
+    
+    // Function to clear dropdown list
+    function clearDropdownList(datalistId) {
+        const datalist = document.getElementById(datalistId);
+        if (datalist) {
+            while (datalist.firstChild) {
+                datalist.removeChild(datalist.firstChild);
+            }
+        }
+    }
+
     // Establishment form submission
     const novForm = document.getElementById('novForm');
     if (novForm) {

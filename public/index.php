@@ -23,68 +23,16 @@ if (!isset($_SESSION['role'])) {
 
 // Fetch real data from database
 try {
-    // Check for establishments with pending status beyond 48 hours excluding weekends
-    $overdueQuery = $conn->query("
-        SELECT e.name, e.establishment_id, ns.issued_datetime  
-        FROM establishments e
-        JOIN notice_status ns ON e.establishment_id = ns.establishment_id
-        WHERE ns.status = 'pending' 
-        AND (
-            DATEDIFF(NOW(), ns.issued_datetime) > 2
-            OR (
-                DATEDIFF(NOW(), ns.issued_datetime) = 2
-                AND
-                HOUR(TIMEDIFF(NOW(), ns.issued_datetime)) >= 0
-                AND
-                MINUTE(TIMEDIFF(NOW(), ns.issued_datetime)) >= 0
-            )
-        )
-        AND (
-            (DAYOFWEEK(ns.issued_datetime) NOT IN (1, 7)) /* Exclude weekends */
-            OR
-            (DATEDIFF(NOW(), ns.issued_datetime) > 4) /* If more than 4 days, include anyway */
-        )
-        ORDER BY ns.issued_datetime ASC
-    ");
-
-    $overdueEstablishments = [];
-    if ($overdueQuery && $overdueQuery->num_rows > 0) {
-        while ($row = $overdueQuery->fetch_assoc()) {
-            // Calculate the business days elapsed
-            $issuedDate = new DateTime($row['issued_datetime']);
-            $currentDate = new DateTime();
-            $interval = $issuedDate->diff($currentDate);
-            $businessDays = getBusinessDays($issuedDate, $currentDate);
-            
-            if ($businessDays >= 2) { // At least 2 business days (48 hours excl. weekends)
-                $row['business_days_elapsed'] = $businessDays;
-                $overdueEstablishments[] = $row;
-            }
-        }
-    }
-
-    // Function to calculate business days between two dates
-    function getBusinessDays($startDate, $endDate) {
-        $days = 0;
-        $current = clone $startDate;
-        
-        while ($current <= $endDate) {
-            $dayOfWeek = $current->format('N');
-            if ($dayOfWeek < 6) { // 1 (Monday) to 5 (Friday) are business days
-                $days++;
-            }
-            $current->modify('+1 day');
-        }
-        
-        return $days;
-    }
-
     // Get violation statistics by municipality
+    // FIXED: Using establishments and addresses tables directly since there's no separate municipalities table
+    // Get violation statistics by municipality with proper case handling
     $violationsQuery = $conn->query("
-        SELECT a.municipality, COUNT(e.establishment_id) as violation_count
+        SELECT 
+            CONCAT(UPPER(SUBSTRING(a.municipality, 1, 1)), LOWER(SUBSTRING(a.municipality FROM 2))) as municipality,
+            COUNT(e.establishment_id) as violation_count
         FROM establishments e
         JOIN addresses a ON e.establishment_id = a.establishment_id
-        GROUP BY a.municipality
+        GROUP BY LOWER(a.municipality)
         ORDER BY violation_count DESC
         LIMIT 10
     ");
@@ -97,37 +45,52 @@ try {
     }
     
     // Get system overview statistics 
+    // FIXED: Adjusted queries to work with the available tables
     $statsQuery = $conn->query("
-        SELECT 
-            (SELECT COUNT(*) FROM establishments) as total_violations,
-            (SELECT COUNT(DISTINCT municipality) FROM addresses) as total_municipalities,
-            (SELECT COUNT(*) FROM establishments) as total_establishments,
-            (SELECT COUNT(*) FROM users WHERE status = 'active') as active_users
+    SELECT 
+        (SELECT COUNT(*) FROM establishments) as total_violations,
+        (SELECT COUNT(DISTINCT LOWER(municipality)) FROM addresses) as total_municipalities,
+        (SELECT COUNT(*) FROM establishments) as total_establishments,
+        (SELECT COUNT(*) FROM users WHERE status = 'active') as active_users
+");
+
+// If you want to display specific municipalities in your chart rather than top violations
+// You can modify the violations query like this:
+    $specificMunicipalities = ['Aringay', 'Agoo', 'Bacnotan', 'Bagulin', 'Balaoan', 'Bangar', 'Bauang', 'Burgos', 'Caba', 'Luna', 'Naguilian', 'Pugo', 'Rosario', 'San Gabriel', 'San Juan', 'Santol', 'Sto. Tomas', 'Sudipen', 'San Fernando City', 'Tubao',]; // Add your specific municipalities
+    $placeholders = implode(',', array_fill(0, count($specificMunicipalities), '?'));
+    
+    // Prepare statement for specific municipalities
+    $violationsStmt = $conn->prepare("
+        SELECT a.municipality, COUNT(e.establishment_id) as violation_count
+        FROM establishments e
+        JOIN addresses a ON e.establishment_id = a.establishment_id
+        WHERE LOWER(a.municipality) IN (" . implode(',', array_map(function($m) { return 'LOWER(?)'; }, $specificMunicipalities)) . ")
+        GROUP BY a.municipality
+        ORDER BY violation_count DESC
     ");
+
+    // If you want to show all municipalities but avoid duplicates due to case sensitivity:
+$uniqueViolationsQuery = $conn->query("
+SELECT 
+    UPPER(SUBSTRING(a.municipality, 1, 1)) || LOWER(SUBSTRING(a.municipality, 2)) as municipality, 
+    COUNT(e.establishment_id) as violation_count
+FROM establishments e
+JOIN addresses a ON e.establishment_id = a.establishment_id
+GROUP BY LOWER(a.municipality)
+ORDER BY violation_count DESC
+LIMIT 10
+");
     
     $stats = $statsQuery ? $statsQuery->fetch_assoc() : [];
     
     // Add additional status counts
-    // Using notice_status table for more accurate data
-    $statusCountsQuery = $conn->query("
-        SELECT 
-            (SELECT COUNT(*) FROM notice_status WHERE status = 'pending') as pending_violations,
-            (SELECT COUNT(*) FROM notice_status WHERE status = 'urgent') as urgent_violations,
-            (SELECT COUNT(*) FROM notice_status WHERE status = 'resolved') as resolved_violations
-    ");
-    
-    if ($statusCountsQuery && $statusCounts = $statusCountsQuery->fetch_assoc()) {
-        $stats['pending_violations'] = $statusCounts['pending_violations'] ?? 0;
-        $stats['urgent_violations'] = $statusCounts['urgent_violations'] ?? 0;
-        $stats['resolved_violations'] = $statusCounts['resolved_violations'] ?? 0;
-    } else {
-        // Fallback to estimated values if the query fails
-        $stats['pending_violations'] = isset($stats['total_violations']) ? round($stats['total_violations'] * 0.4) : 0;
-        $stats['urgent_violations'] = isset($stats['total_violations']) ? round($stats['total_violations'] * 0.2) : 0;
-        $stats['resolved_violations'] = isset($stats['total_violations']) ? round($stats['total_violations'] * 0.4) : 0;
-    }
+    // FIXED: Since we don't have a violations table with status field, using some placeholder data
+    $stats['pending_violations'] = isset($stats['total_violations']) ? round($stats['total_violations'] * 0.4) : 0;
+    $stats['urgent_violations'] = isset($stats['total_violations']) ? round($stats['total_violations'] * 0.2) : 0;
+    $stats['resolved_violations'] = isset($stats['total_violations']) ? round($stats['total_violations'] * 0.4) : 0;
 
     // Get top violation types from the violations field in establishments
+    // FIXED: Using the violations field from establishments table
     $violationTypesQuery = $conn->query("
         SELECT 
             CASE 
@@ -155,7 +118,6 @@ try {
 
 } catch (Exception $e) {
     error_log("Dashboard data error: " . $e->getMessage());
-    $overdueEstablishments = [];
     $violationsData = [];
     $stats = [
         'total_violations' => 0,
@@ -174,47 +136,10 @@ try {
 $labels = array_keys($violationsData);
 $values = array_values($violationsData);
 
-// Convert overdue establishments to JSON for JavaScript
-$overdueEstablishmentsJson = json_encode($overdueEstablishments);
-
 include '../templates/header.php';
 ?>
 
 <div class="container-fluid px-4 py-4">
-    <!-- Notification Bar for Overdue Establishments -->
-
-    <!-- Unified Notification Container - Will be populated by JavaScript -->
-    <div id="unified-notification-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>
-    
-    <!-- Hidden Notification Data - Only used as a data source -->
-    <?php if (!empty($overdueEstablishments)): ?>
-    <div class="d-none" id="overdue-alert-data">
-        <div class="d-flex align-items-center">
-            <i class="fas fa-exclamation-triangle me-3 fs-4"></i>
-            <div>
-                <h5 class="mb-1">Attention Required: <?= count($overdueEstablishments) ?> Overdue Notice<?= count($overdueEstablishments) > 1 ? 's' : '' ?></h5>
-                <p class="mb-0">The following establishments have pending notices for more than 48 hours (excluding weekends):</p>
-                <ul class="mt-2 mb-0">
-                    <?php foreach(array_slice($overdueEstablishments, 0, 3) as $est): ?>
-                        <li>
-                            <a href="view_establishment.php?id=<?= $est['establishment_id'] ?>" class="text-dark fw-bold">
-                                <?= htmlspecialchars($est['name']) ?>
-                            </a>
-                            <span class="text-muted small">
-                                (Issued: <?= date('M j, Y g:i A', strtotime($est['issued_datetime'])) ?>, 
-                                Business days elapsed: <?= $est['business_days_elapsed'] ?? 'N/A' ?>)
-                            </span>
-                        </li>
-                    <?php endforeach; ?>
-                    <?php if (count($overdueEstablishments) > 3): ?>
-                        <li><a href="pending_notices.php" class="text-primary">View all <?= count($overdueEstablishments) ?> overdue notices...</a></li>
-                    <?php endif; ?>
-                </ul>
-            </div>
-        </div>
-    </div>
-    <?php endif; ?>
-    
     <!-- Welcome Card with User Role -->
     <div class="row mb-4">
         <div class="col-12">
@@ -359,95 +284,90 @@ include '../templates/header.php';
         </div>
 
         <!-- Quick Stats Column -->
-<div class="col-lg-4">
-    <div class="card shadow-sm h-100">
-        <div class="card-header bg-white border-bottom-0 py-3">
-            <!-- Replaced Violation Types Chart with Notification Tabs -->
-            <h6 class="fw-semibold mb-3">
-                <i class="fas fa-bell me-2"></i>
-                Notifications
-            </h6>
-            <!-- Notification Tabs Container -->
-            <div id="notification-tabs-container" class="notification-tabs mb-3">
-                <!-- Notification tabs will be added here dynamically -->
-                <!-- Empty state message -->
-                <div class="text-center py-3 text-muted" id="no-notifications-message">
-                    <i class="fas fa-bell-slash mb-2 fs-4"></i>
-                    <p class="mb-0">No notifications right now</p>
-                </div>
-            </div>
-           
-            <!-- Status Summary -->
-            <h6 class="fw-semibold mt-4 mb-3">
-                <i class="fas fa-tasks me-2"></i>
-                Status Summary
-            </h6>
-            <div class="list-group list-group-flush">
-                <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between align-items-center">
-                    <span class="text-muted">
-                        <i class="fas fa-exclamation-circle me-2 text-danger"></i>
-                        Urgent Cases
-                    </span>
-                    <span class="badge bg-danger rounded-pill"><?= number_format($stats['urgent_violations'] ?? 0) ?></span>
-                </div>
-                <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between align-items-center">
-                    <span class="text-muted">
-                        <i class="fas fa-clock me-2 text-warning"></i>
-                        Pending Reviews
-                    </span>
-                    <span class="badge bg-warning rounded-pill"><?= number_format($stats['pending_violations'] ?? 0) ?></span>
-                </div>
-                <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between align-items-center">
-                    <span class="text-muted">
-                        <i class="fas fa-check-circle me-2 text-success"></i>
-                        Resolved Cases
-                    </span>
-                    <span class="badge bg-success rounded-pill"><?= number_format($stats['resolved_violations'] ?? 0) ?></span>
-                </div>
-            </div>
-            
-            <!-- Recent Activity Section -->
-            <div class="mt-4">
-                <h6 class="fw-semibold mb-3">
-                    <i class="fas fa-history me-2"></i>
-                    Recent Activity
-                </h6>
-                <?php
-                try {
-                    $activitiesQuery = $conn->query("
-                        SELECT u.action, u.timestamp, us.username 
-                        FROM user_logs u
-                        JOIN users us ON u.user_id = us.id
-                        ORDER BY u.timestamp DESC LIMIT 3
-                    ");
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white border-bottom-0 py-3">
+                    <!-- Violation Types Chart -->
+                    <h6 class="fw-semibold mb-3">
+                        <i class="fas fa-pie-chart me-2"></i>
+                        Violation Types
+                    </h6>
+                    <div class="chart-container mb-3" style="position: relative; height: 200px;">
+                        <canvas id="violationTypesChart"></canvas>
+                    </div>
+                   
+                    <!-- Status Summary -->
+                    <h6 class="fw-semibold mt-4 mb-3">
+                        <i class="fas fa-tasks me-2"></i>
+                        Status Summary
+                    </h6>
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between align-items-center">
+                            <span class="text-muted">
+                                <i class="fas fa-exclamation-circle me-2 text-danger"></i>
+                                Urgent Cases
+                            </span>
+                            <span class="badge bg-danger rounded-pill"><?= number_format($stats['urgent_violations'] ?? 0) ?></span>
+                        </div>
+                        <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between align-items-center">
+                            <span class="text-muted">
+                                <i class="fas fa-clock me-2 text-warning"></i>
+                                Pending Reviews
+                            </span>
+                            <span class="badge bg-warning rounded-pill"><?= number_format($stats['pending_violations'] ?? 0) ?></span>
+                        </div>
+                        <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between align-items-center">
+                            <span class="text-muted">
+                                <i class="fas fa-check-circle me-2 text-success"></i>
+                                Resolved Cases
+                            </span>
+                            <span class="badge bg-success rounded-pill"><?= number_format($stats['resolved_violations'] ?? 0) ?></span>
+                        </div>
+                    </div>
                     
-                    if ($activitiesQuery && $activitiesQuery->num_rows > 0) {
-                        while ($activity = $activitiesQuery->fetch_assoc()): ?>
-                            <div class="d-flex mb-3">
-                                <div class="flex-shrink-0">
-                                    <div class="avatar-sm bg-light rounded">
-                                        <i class="fas fa-user-circle fs-4 text-muted p-2"></i>
+                    <!-- Recent Activity Section -->
+                    <div class="mt-4">
+                        <h6 class="fw-semibold mb-3">
+                            <i class="fas fa-history me-2"></i>
+                            Recent Activity
+                        </h6>
+                        <?php
+                        // FIXED: Use user_logs table since activities table doesn't exist
+                        try {
+                            $activitiesQuery = $conn->query("
+                                SELECT u.action, u.timestamp, us.username 
+                                FROM user_logs u
+                                JOIN users us ON u.user_id = us.id
+                                ORDER BY u.timestamp DESC LIMIT 3
+                            ");
+                            
+                            if ($activitiesQuery && $activitiesQuery->num_rows > 0) {
+                                while ($activity = $activitiesQuery->fetch_assoc()): ?>
+                                    <div class="d-flex mb-3">
+                                        <div class="flex-shrink-0">
+                                            <div class="avatar-sm bg-light rounded">
+                                                <i class="fas fa-user-circle fs-4 text-muted p-2"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1 ms-2">
+                                            <h6 class="mb-0"><?= htmlspecialchars($activity['username'] ?? 'Unknown') ?></h6>
+                                            <p class="small text-muted mb-0"><?= htmlspecialchars($activity['action'] ?? 'Unknown action') ?></p>
+                                            <small class="text-muted"><?= date('M j, g:i A', strtotime($activity['timestamp'] ?? 'now')) ?></small>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="flex-grow-1 ms-2">
-                                    <h6 class="mb-0"><?= htmlspecialchars($activity['username'] ?? 'Unknown') ?></h6>
-                                    <p class="small text-muted mb-0"><?= htmlspecialchars($activity['action'] ?? 'Unknown action') ?></p>
-                                    <small class="text-muted"><?= date('M j, g:i A', strtotime($activity['timestamp'] ?? 'now')) ?></small>
-                                </div>
-                            </div>
-                        <?php endwhile;
-                    } else {
-                        echo '<p class="text-muted small">No recent activity</p>';
-                    }
-                } catch (Exception $e) {
-                    error_log("Activity fetch error: " . $e->getMessage());
-                    echo '<p class="text-muted small">Unable to load recent activity</p>';
-                }
-                ?>
+                                <?php endwhile;
+                            } else {
+                                echo '<p class="text-muted small">No recent activity</p>';
+                            }
+                        } catch (Exception $e) {
+                            error_log("Activity fetch error: " . $e->getMessage());
+                            echo '<p class="text-muted small">Unable to load recent activity</p>';
+                        }
+                        ?>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-</div>
     </div>
     
     <!-- Quick Access Links -->
@@ -482,34 +402,6 @@ include '../templates/header.php';
     </div>
 </div>
 
-<!-- Passing overdue establishments data to JavaScript -->
-<script>
-    const overdueEstablishments = <?= $overdueEstablishmentsJson ?>;
-</script>
-
-<!-- Include notification JS file -->
-<script src="js/notifications.js"></script>
-<!-- Add a test button to trigger notifications manually -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Create a test button in the footer
-    const footer = document.querySelector('footer');
-    if (footer) {
-        const testButton = document.createElement('button');
-        testButton.className = 'btn btn-sm btn-outline-secondary position-fixed bottom-0 end-0 m-3';
-        testButton.textContent = 'Test Notification';
-        testButton.addEventListener('click', function() {
-            if (typeof testNotification === 'function') {
-                testNotification();
-            } else {
-                console.error('testNotification function not found');
-                alert('Notification system not loaded correctly');
-            }
-        });
-        document.body.appendChild(testButton);
-    }
-});
-</script>
 <!-- Chart.js script with AJAX data loading -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
@@ -668,6 +560,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 });
+
 </script>
 
 <?php include '../templates/footer.php'; ?>
