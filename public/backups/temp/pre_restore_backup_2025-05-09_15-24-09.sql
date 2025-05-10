@@ -1,5 +1,5 @@
 -- Database Backup for nov_system7
--- Generated: 2025-05-06 15:40:07
+-- Generated: 2025-05-09 15:24:09
 
 SET FOREIGN_KEY_CHECKS=0;
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -34,7 +34,7 @@ CREATE TABLE `addresses` (
   `province` varchar(100) NOT NULL,
   `region` varchar(100) NOT NULL,
   PRIMARY KEY (`address_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Table structure for table `establishments`
 DROP TABLE IF EXISTS `establishments`;
@@ -55,7 +55,7 @@ CREATE TABLE `establishments` (
   `date_created` datetime NOT NULL DEFAULT current_timestamp(),
   `date_updated` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`establishment_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Table structure for table `inventory`
 DROP TABLE IF EXISTS `inventory`;
@@ -88,7 +88,7 @@ CREATE TABLE `notice_status` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`notice_stat_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Table structure for table `user_logs`
 DROP TABLE IF EXISTS `user_logs`;
@@ -103,7 +103,7 @@ CREATE TABLE `user_logs` (
   KEY `idx_user_logs_user_id` (`user_id`),
   KEY `idx_user_logs_action` (`action`),
   KEY `idx_user_logs_timestamp` (`timestamp`)
-) ENGINE=InnoDB AUTO_INCREMENT=135 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=175 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
 -- Set proper delimiter for routines
