@@ -824,58 +824,55 @@ function deleteEstablishment() {
 
 // Table filtering and sorting functions
 function filterTable() {
-    const searchInput = document.getElementById('searchInput').value.toLowerCase();
-    const violationFilter = document.getElementById('violationFilter').value.toLowerCase();
-    const natureFilter = document.getElementById('natureFilter').value.toLowerCase();
-    const showUrgent = document.getElementById('showUrgent').checked;
-    const showPending = document.getElementById('showPending').checked;
-    const showResolved = document.getElementById('showResolved').checked;
+    const searchInput = document.getElementById('search').value.toLowerCase();
+    const statusFilter = document.getElementById('filter_status').value;
+    const violationFilter = document.getElementById('filter_violation').value.toLowerCase();
+    const dateFilter = document.getElementById('filter_date').value;
     
-    const rows = document.querySelectorAll('#recordsTable tbody tr');
+    // If server-side filters are being used, just submit the form
+    if (document.activeElement.id === 'filter_status' || 
+        document.activeElement.id === 'filter_violation' ||
+        document.activeElement.id === 'filter_date') {
+        return; // Let the form submission handle it
+    }
+
+    const rows = document.querySelectorAll('.table tbody tr');
     let anyVisible = false;
     
     rows.forEach(row => {
-        const statusValue = row.getAttribute('data-status');
-        const natureValue = row.getAttribute('data-nature').toLowerCase();
-        const address = row.getAttribute('data-address').toLowerCase();
-        const owner = row.getAttribute('data-owner').toLowerCase();
+        // Skip the "No establishments found" row if it exists
+        if (row.cells.length === 1 && row.cells[0].getAttribute('colspan')) {
+            return;
+        }
+        
+        const nameCell = row.cells[0];
+        const violationsCell = row.cells[1];
+        const statusCell = row.cells[2];
+        const issuedDateCell = row.cells[3];
+        const dateOfAppearanceCell = row.cells[4];
+        
+        const name = nameCell.textContent.toLowerCase();
+        const violations = violationsCell.textContent.toLowerCase();
+        const status = statusCell.textContent.trim().toLowerCase();
+        const issuedDate = issuedDateCell.textContent;
+        const dateOfAppearance = dateOfAppearanceCell.textContent;
+        
+        // Apply filters
+        // Text search check
+        const textMatch = searchInput === '' || 
+                         name.includes(searchInput) || 
+                         violations.includes(searchInput);
         
         // Status filter check
-        const statusMatch = (statusValue === 'urgent' && showUrgent) || 
-                           (statusValue === 'pending' && showPending) || 
-                           (statusValue === 'resolved' && showResolved);
+        const statusMatch = statusFilter === '' || 
+                           status.includes(statusFilter.toLowerCase());
         
-        // Nature filter check
-        const natureMatch = natureFilter === '' || natureValue.includes(natureFilter);
-        
-        // Get all content from the row including nested elements
-        const establishmentName = row.querySelector('td:first-child strong')?.textContent.toLowerCase() || '';
-        const addressVisible = row.querySelector('td:first-child small')?.textContent.toLowerCase() || '';
-        
-        // Get all violation badges text
-        const violationsCell = row.querySelector('.violations-cell');
-        const violationBadges = violationsCell.querySelectorAll('.badge');
-        let violationTexts = '';
-        violationBadges.forEach(badge => {
-            violationTexts += ' ' + badge.textContent.toLowerCase();
-        });
-        
-        // Violation filter check - check both badge elements and text content
+        // Violation filter check
         const violationMatch = violationFilter === '' || 
-                               violationsCell.innerHTML.toLowerCase().includes(violationFilter) ||
-                               violationTexts.includes(violationFilter);
+                              violations.includes(violationFilter);
         
-        // Text search check - search in all relevant data
-        const textMatch = searchInput === '' || 
-                          establishmentName.includes(searchInput) || 
-                          addressVisible.includes(searchInput) ||
-                          address.includes(searchInput) || 
-                          owner.includes(searchInput) || 
-                          violationsCell.textContent.toLowerCase().includes(searchInput) ||
-                          violationTexts.includes(searchInput);
-        
-        // Combine all filters
-        const visible = statusMatch && natureMatch && violationMatch && textMatch;
+        // Apply all filters together
+        const visible = textMatch && statusMatch && violationMatch;
         row.style.display = visible ? '' : 'none';
         
         if (visible) {
@@ -883,9 +880,13 @@ function filterTable() {
         }
     });
     
-    // Show/hide "no results" message
-    document.getElementById('noResults').style.display = anyVisible ? 'none' : 'block';
+    // Show/hide a "no results" message if one exists
+    const noResultsRow = document.querySelector('.no-results-row');
+    if (noResultsRow) {
+        noResultsRow.style.display = anyVisible ? 'none' : '';
+    }
 }
+
 
 function sortTable() {
     const sortOption = document.getElementById('sortBy').value;

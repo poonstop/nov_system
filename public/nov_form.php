@@ -6,6 +6,100 @@ include '../templates/header.php';
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 $filter_status = isset($_GET['filter_status']) ? $_GET['filter_status'] : '';
 $filter_date = isset($_GET['filter_date']) ? $_GET['filter_date'] : '';
+$filter_violation = isset($_GET['filter_violation']) ? $_GET['filter_violation'] : ''; // Added this line to fix undefined variable
+
+// Define the list of violations based on your form checkboxes
+$common_violations = [
+    // Product Standards Violation
+    "No PS/ICC Mark",
+    "Invalid/suspended or cancelled BPS license",
+    
+    // DAO Violation
+    "No Manufacturer's Name",
+    "No Manufacturer's Address",
+    "No Date Manufactured",
+    "No Country of Origin",
+    "No Batch Number/Lot Code",
+    "No Product Contents/Ingredients",
+    
+    // Accreditation Violation
+    "No Accreditation Certification",
+    "Expired Accreditation Certificate",
+    "Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment.",
+    
+    // Freight Forwarding Services Violation
+    "Freight Buisness with No Accreditation Certification",
+    "Freight Business with Expired Accreditation Certificate",
+    "Freight Business with Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment.",
+    
+    // Price Tag Violation
+    "Products with no/ or inappropriate Price Tag",
+    
+    // Pricing Violation
+    "Price grossly in excess of its/their true worth",
+    "Price is beyond the price ceiling",
+    
+    // Business Name Violation
+    "Engaging in business using trade name other than his true name",
+    "Engaging in business using trade name on signages and/or documents without prior registration",
+    "Failure to Display Business Name Certificate",
+    
+    // Sales Promotion Violation
+    "Conducting Sales Promotion without Sales Promotion Permit."
+];
+
+// Sort the violations alphabetically (optional)
+sort($common_violations);
+
+// Alternatively, if you prefer to have the violations organized by category, you can use this structure:
+$violation_categories = [
+    "Product Standards Violation" => [
+        "No PS/ICC Mark",
+        "Invalid/suspended or cancelled BPS license"
+    ],
+    "DAO Violation" => [
+        "No Manufacturer's Name",
+        "No Manufacturer's Address",
+        "No Date Manufactured",
+        "No Country of Origin",
+        "No Batch Number/Lot Code",
+        "No Product Contents/Ingredients"
+    ],
+    "Accreditation Violation" => [
+        "No Accreditation Certification",
+        "Expired Accreditation Certificate",
+        "Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment."
+    ],
+    "Freight Forwarding Services Violation" => [
+        "Freight Buisness with No Accreditation Certification",
+        "Freight Business with Expired Accreditation Certificate",
+        "Freight Business with Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment."
+    ],
+    "Price Tag Violation" => [
+        "Products with no/ or inappropriate Price Tag"
+    ],
+    "Pricing Violation" => [
+        "Price grossly in excess of its/their true worth",
+        "Price is beyond the price ceiling"
+    ],
+    "Business Name Violation" => [
+        "Engaging in business using trade name other than his true name",
+        "Engaging in business using trade name on signages and/or documents without prior registration",
+        "Failure to Display Business Name Certificate"
+    ],
+    "Sales Promotion Violation" => [
+        "Conducting Sales Promotion without Sales Promotion Permit."
+    ]
+];
+
+// If you decide to use the category structure, uncomment this code to create a flat list with categories
+
+$common_violations = [];
+foreach ($violation_categories as $category => $violations) {
+    foreach ($violations as $violation) {
+        $common_violations[] = $violation;
+    }
+}
 
 // Handle status update (settlement)
 if (isset($_POST['settle_establishment'])) {
@@ -55,7 +149,7 @@ if (isset($_POST['settle_establishment'])) {
 
 // Build the SQL query with search and filters
 $sql = "SELECT e.establishment_id, e.name, e.violations, e.notice_status, 
-               ns.issued_datetime, e.date_created, e.date_updated
+               ns.issued_datetime, e.date_updated
         FROM establishments e
         LEFT JOIN notice_status ns ON e.establishment_id = ns.establishment_id
         WHERE 1=1";
@@ -78,12 +172,20 @@ if (!empty($filter_status)) {
 }
 
 if (!empty($filter_date)) {
-    $sql .= " AND DATE(e.date_created) = ?";
+    $sql .= " AND DATE(e.date_updated) = ?";
     $params[] = $filter_date;
     $types .= "s";
 }
 
-$sql .= " ORDER BY e.date_created DESC";
+// Add filter by violation if it exists
+if (!empty($filter_violation)) {
+    $sql .= " AND e.violations LIKE ?";
+    $violation_param = "%$filter_violation%";
+    $params[] = $violation_param;
+    $types .= "s";
+}
+
+$sql .= " ORDER BY e.date_updated DESC";
 
 // Prepare and execute the query
 $stmt = $conn->prepare($sql);
@@ -115,7 +217,7 @@ while ($status_row = $status_query->fetch_assoc()) {
                 </div>
             <?php endif; ?>
             
-            <!-- Search and Filter Form -->
+             <!-- Search and Filter Form -->
             <form method="GET" class="mb-4">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-4">
@@ -124,24 +226,24 @@ while ($status_row = $status_query->fetch_assoc()) {
                                placeholder="Search by name or violations" value="<?php echo htmlspecialchars($search); ?>">
                     </div>
                     <div class="col-md-3">
-                        <label for="filter_status" class="form-label">Filter by Status</label>
-                        <select class="form-select" id="filter_status" name="filter_status">
-                            <option value="">All Statuses</option>
-                            <?php foreach ($statuses as $status): ?>
-                                <option value="<?php echo htmlspecialchars($status); ?>" 
-                                        <?php echo ($filter_status === $status) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($status); ?>
+                        <label for="filter_violation" class="form-label">Filter by Violation</label>
+                        <select class="form-select" id="filter_violation" name="filter_violation">
+                            <option value="">All Violations</option>
+                            <?php foreach ($common_violations as $violation): ?>
+                                <option value="<?php echo htmlspecialchars($violation); ?>" 
+                                        <?php echo ($filter_violation === $violation) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($violation); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label for="filter_date" class="form-label">Filter by Date</label>
                         <input type="date" class="form-control" id="filter_date" name="filter_date" 
                                value="<?php echo htmlspecialchars($filter_date); ?>">
                     </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary w-100">Apply</button>
                     </div>
                 </div>
             </form>
@@ -155,8 +257,7 @@ while ($status_row = $status_query->fetch_assoc()) {
                             <th>Violations</th>
                             <th>Status</th>
                             <th>Issued Date</th>
-                            <th>Date Created</th>
-                            <th>Date Updated</th>
+                            <th>Date of Appearance</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -172,7 +273,6 @@ while ($status_row = $status_query->fetch_assoc()) {
                                         </span>
                                     </td>
                                     <td><?php echo $row['issued_datetime'] ? date('M d, Y h:i A', strtotime($row['issued_datetime'])) : 'N/A'; ?></td>
-                                    <td><?php echo date('M d, Y h:i A', strtotime($row['date_created'])); ?></td>
                                     <td><?php echo date('M d, Y h:i A', strtotime($row['date_updated'])); ?></td>
                                     <td>
                                         <div class="btn-group" role="group">
@@ -247,7 +347,7 @@ while ($status_row = $status_query->fetch_assoc()) {
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="7" class="text-center">No establishments found.</td>
+                                <td colspan="6" class="text-center">No establishments found.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

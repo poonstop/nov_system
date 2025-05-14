@@ -33,10 +33,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nature_custom = $_POST['nature_custom'] ?? '';
         $products = $_POST['products'] ?? '';
         
-        // Process nature of business
-        $nature = ($nature_select === 'Others') 
-            ? trim($nature_custom) 
-            : $nature_select;
+        // Process nature of business - FIXED: Ensure custom value is used when "Others" is selected
+        if ($nature_select === 'Others' && !empty(trim($nature_custom))) {
+            $nature = trim($nature_custom);
+        } else {
+            $nature = $nature_select;
+        }
             
         // Process violations
         $violations = isset($_POST['violations']) ? implode(', ', $_POST['violations']) : '';
@@ -87,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_establishment->bind_param("ssssssssss", 
                 $establishment,
                 $owner_representative,
-                $nature,
+                $nature, // This will now be either the selected value or the custom input
                 $products,
                 $violations,
                 $notice_status,
@@ -236,13 +238,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        // Process nature of business
-        $nature = ($_POST['nature_select'] === 'Others') 
-            ? trim($_POST['nature_custom']) 
-            : $_POST['nature_select'];
-        
-        if ($_POST['nature_select'] === 'Others' && empty(trim($_POST['nature_custom']))) {
-            showError("Please specify the nature of business");
+        // Process nature of business - FIXED: Ensure custom value is properly handled
+        if ($_POST['nature_select'] === 'Others') {
+            if (empty(trim($_POST['nature_custom']))) {
+                showError("Please specify the nature of business");
+            }
+            $nature = trim($_POST['nature_custom']);
+        } else {
+            $nature = $_POST['nature_select'];
         }
         
         // Save form data to session and proceed to violations
@@ -256,7 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'region' => $_POST['region'],
             'nature_select' => $_POST['nature_select'],
             'nature_custom' => $_POST['nature_custom'] ?? '',
-            'nature' => $nature,
+            'nature' => $nature, // Store the processed nature value
             'products' => $_POST['products']
         ];
         
@@ -296,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'municipality' => $formData['municipality'],
             'province' => $formData['province'],
             'region' => $formData['region'],
-            'nature' => $formData['nature'],
+            'nature' => $formData['nature'], // Use the stored nature value
             'owner_representative' => $formData['owner_representative'],
             'products' => $formData['products'],
             'violations' => $violations,
@@ -394,7 +397,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_establishment->bind_param("ssssssssss", 
                 $novDetails['establishment'],
                 $novDetails['owner_representative'],
-                $novDetails['nature'],
+                $novDetails['nature'], // This will have either the selected option or custom text
                 $novDetails['products'],
                 $novDetails['violations'],
                 $notice_status,
@@ -973,8 +976,8 @@ unset($_SESSION['success']);
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Price is beyond the price cieling" id="priceCiel">
-                                        <label class="form-check-label" for="priceCiel">Price is beyond the price cieling</label>
+                                        <input class="form-check-input" type="checkbox" name="violations[]" value="Price is beyond the price ceiling" id="priceCiel">
+                                        <label class="form-check-label" for="priceCiel">Price is beyond the price ceiling</label>
                                     </div>
                                 </div>
                             </div>
