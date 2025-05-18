@@ -23,8 +23,7 @@ if (isset($_POST['action']) && $_POST['action'] == 'logout') {
         
         try {
             $log_stmt = $conn->prepare("INSERT INTO user_logs (user_id, action, user_agent, details, timestamp) VALUES (?, ?, ?, ?, ?)");
-            $log_stmt->bind_param("issss", $user_id, $action, $user_agent, $details, $current_time);
-            $log_stmt->execute();
+            $log_stmt->execute([$user_id, $action, $user_agent, $details, $current_time]);
         } catch (Exception $e) {
             // Log error but continue with logout
             error_log("Error logging logout: " . $e->getMessage());
@@ -51,10 +50,8 @@ if (isset($_POST['action']) && $_POST['action'] == 'logout') {
     // Destroy the session
     session_destroy();
     
-    // Close database connection if it exists
-    if (isset($conn) && $conn) {
-        $conn->close();
-    }
+    // Close database connection if needed
+    $conn = null;
     
     // Return JSON response for AJAX
     header('Content-Type: application/json');
@@ -83,8 +80,7 @@ if (isset($_SESSION['user_id'])) {
     
     try {
         $log_stmt = $conn->prepare("INSERT INTO user_logs (user_id, action, user_agent, details, timestamp) VALUES (?, ?, ?, ?, ?)");
-        $log_stmt->bind_param("issss", $user_id, $action, $user_agent, $details, $current_time);
-        $log_stmt->execute();
+        $log_stmt->execute([$user_id, $action, $user_agent, $details, $current_time]);
     } catch (Exception $e) {
         // Log error but continue with logout
         error_log("Error logging logout: " . $e->getMessage());
@@ -121,10 +117,8 @@ if (ini_get("session.use_cookies")) {
 // Destroy the session
 session_destroy();
 
-// Close database connection if it exists
-if (isset($conn) && $conn) {
-    $conn->close();
-}
+// Close database connection
+$conn = null;
 
 // Check if it's an AJAX request (additional check beyond the action parameter)
 if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {

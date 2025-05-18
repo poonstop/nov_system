@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 // If form submitted, generate and download the report
 if (isset($_POST['export'])) {
@@ -22,11 +23,25 @@ if (isset($_POST['export'])) {
     $violation_search = isset($_POST['violation_search']) ? $_POST['violation_search'] : '';
     $status = isset($_POST['status']) ? $_POST['status'] : '';
     
+    // Create new Spreadsheet object
+    $spreadsheet = new Spreadsheet();
+    
+    // Set document properties
+    $spreadsheet->getProperties()
+        ->setCreator('Establishment Management System')
+        ->setLastModifiedBy('Establishment Management System')
+        ->setTitle('Comprehensive Establishment Report')
+        ->setSubject('Establishments Data Export')
+        ->setDescription('Comprehensive export of establishment data from all tables');
+    
+    // Get the main establishments data
     // Build the SQL query based on filters
     $sql = "SELECT e.establishment_id, e.name, e.owner_representative, e.nature, 
-                   e.violations, e.notice_status, e.remarks, e.issued_datetime, 
-                   e.expiry_date, a.street, a.barangay, a.municipality, a.province, 
-                   ns.witnessed_by, nr.notice_type as action_type, nr.date_responded, 
+                   e.products, e.violations, e.notice_status, e.remarks, e.issued_datetime, 
+                   e.expiry_date, e.num_violations,
+                   a.street, a.barangay, a.municipality, a.province, a.region,
+                   ns.witnessed_by, ns.status as notice_current_status,
+                   nr.notice_type as action_type, nr.date_responded, nr.status as record_status,
                    nr.remarks as action_remarks
             FROM establishments e
             LEFT JOIN addresses a ON e.establishment_id = a.establishment_id
@@ -88,28 +103,20 @@ if (isset($_POST['export'])) {
     
     $stmt->execute();
     $establishments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Create new Spreadsheet object
-    $spreadsheet = new Spreadsheet();
-    $sheet = $spreadsheet->getActiveSheet();
-    
-    // Set document properties
-    $spreadsheet->getProperties()
-        ->setCreator('Establishment Management System')
-        ->setLastModifiedBy('Establishment Management System')
-        ->setTitle('Establishment Report')
-        ->setSubject('Establishments Data Export')
-        ->setDescription('Export of establishment data filtered by custom criteria');
+
+    // ----------------- SHEET 1: MAIN ESTABLISHMENTS DATA -----------------
+    $mainSheet = $spreadsheet->getActiveSheet();
+    $mainSheet->setTitle('Establishments');
     
     // Set up the header row
     $headerRow = [
-        'ID', 'Establishment Name', 'Owner/Representative', 'Nature of Business',
-        'Address', 'Violations', 'Status', 'Action Type', 'Date Responded', 
-        'Expiry Date', 'Witnessed By', 'Remarks'
+        'Establishment Name', 'Owner/Representative', 'Nature of Business', 'Products',
+        'Address', 'Violations', 'Num of Violations', 'Status', 'Action Type', 'Date Responded', 
+        'Expiry Date', 'Witnessed By', 'Remarks', 'Record Status', 'Action Remarks'
     ];
     
     // Style the header row
-    $sheet->fromArray([$headerRow], NULL, 'A1');
+    $mainSheet->fromArray([$headerRow], NULL, 'A1');
     $headerStyle = [
         'font' => [
             'bold' => true,
@@ -129,22 +136,27 @@ if (isset($_POST['export'])) {
             ],
         ],
     ];
-    $sheet->getStyle('A1:L1')->applyFromArray($headerStyle);
+    $mainSheet->getStyle('A1:O1')->applyFromArray($headerStyle);
     
     // Auto-size columns
-    foreach(range('A', 'L') as $col) {
-        $sheet->getColumnDimension($col)->setAutoSize(true);
+    foreach(range('A', 'O') as $col) {
+        $mainSheet->getColumnDimension($col)->setAutoSize(true);
     }
     
     // Add data rows
     $row = 2;
+    $all_establishment_ids = [];
     foreach ($establishments as $establishment) {
+        // Store establishment_id for later use
+        $all_establishment_ids[] = $establishment['establishment_id'];
+        
         // Combine address components
         $address = implode(', ', array_filter([
             $establishment['street'] ?? '',
             $establishment['barangay'] ?? '',
             $establishment['municipality'] ?? '',
-            $establishment['province'] ?? ''
+            $establishment['province'] ?? '',
+            $establishment['region'] ?? ''
         ]));
         
         // Format dates
@@ -152,23 +164,28 @@ if (isset($_POST['export'])) {
             date('M d, Y', strtotime($establishment['expiry_date'])) : 'Not Set';
         $date_responded = !empty($establishment['date_responded']) ? 
             date('M d, Y', strtotime($establishment['date_responded'])) : 'Not Responded';
+        $issued_datetime = !empty($establishment['issued_datetime']) ? 
+            date('M d, Y H:i', strtotime($establishment['issued_datetime'])) : 'Not Set';
         
         $dataRow = [
-            $establishment['establishment_id'],
             $establishment['name'],
             $establishment['owner_representative'] ?? 'N/A',
             $establishment['nature'] ?? 'N/A',
+            $establishment['products'] ?? 'N/A',
             $address,
             $establishment['violations'] ?? 'N/A',
+            $establishment['num_violations'] ?? '0',
             $establishment['notice_status'] ?? 'Pending',
             $establishment['action_type'] ?? 'Not Set',
             $date_responded,
             $expiry_date,
             $establishment['witnessed_by'] ?? 'N/A',
-            $establishment['remarks'] ?? $establishment['action_remarks'] ?? 'N/A'
+            $establishment['remarks'] ?? 'N/A',
+            $establishment['record_status'] ?? 'N/A',
+            $establishment['action_remarks'] ?? 'N/A'
         ];
         
-        $sheet->fromArray([$dataRow], NULL, 'A' . $row);
+        $mainSheet->fromArray([$dataRow], NULL, 'A' . $row);
         
         // Style data row
         $rowStyle = [
@@ -178,19 +195,198 @@ if (isset($_POST['export'])) {
                 ],
             ],
         ];
-        $sheet->getStyle('A' . $row . ':L' . $row)->applyFromArray($rowStyle);
+        $mainSheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($rowStyle);
         
         $row++;
     }
     
     // Wrap text in cells
-    $sheet->getStyle('A1:L' . ($row - 1))->getAlignment()->setWrapText(true);
+    $mainSheet->getStyle('A1:O' . ($row - 1))->getAlignment()->setWrapText(true);
+    
+    // ----------------- SHEET 2: INVENTORY DATA -----------------
+    if (!empty($all_establishment_ids)) {
+        // Create a new sheet for inventory
+        $inventorySheet = $spreadsheet->createSheet();
+        $inventorySheet->setTitle('Inventory');
+        
+        // Set headers
+        $invHeaders = [
+            'Establishment Name', 'Product Name', 'Description', 'Price', 'Pieces', 
+            'Sealed', 'Withdrawn', 'DAO Violation', 'Other Violation', 'Product Remarks', 'Inventory Remarks'
+        ];
+        
+        $inventorySheet->fromArray([$invHeaders], NULL, 'A1');
+        $inventorySheet->getStyle('A1:K1')->applyFromArray($headerStyle);
+        
+        // Auto-size columns
+        foreach(range('A', 'K') as $col) {
+            $inventorySheet->getColumnDimension($col)->setAutoSize(true);
+        }
+        
+        // Prepare placeholders for the IN clause
+        $placeholders = str_repeat('?,', count($all_establishment_ids) - 1) . '?';
+        
+        // Get inventory data
+        $invSql = "SELECT i.*, e.name as establishment_name 
+                  FROM inventory i
+                  LEFT JOIN establishments e ON i.establishment_id = e.establishment_id
+                  WHERE i.establishment_id IN ($placeholders)
+                  ORDER BY i.establishment_id, i.date_created";
+        
+        $invStmt = $conn->prepare($invSql);
+        for ($i = 0; $i < count($all_establishment_ids); $i++) {
+            $invStmt->bindValue($i+1, $all_establishment_ids[$i]);
+        }
+        
+        $invStmt->execute();
+        $inventoryItems = $invStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Add inventory data
+        $invRow = 2;
+        foreach ($inventoryItems as $item) {
+            $inventorySheet->setCellValue('A' . $invRow, $item['establishment_name'] ?? 'Unknown');
+            $inventorySheet->setCellValue('B' . $invRow, $item['product_name'] ?? 'N/A');
+            $inventorySheet->setCellValue('C' . $invRow, $item['description'] ?? 'N/A');
+            $inventorySheet->setCellValue('D' . $invRow, $item['price'] ?? 'N/A');
+            $inventorySheet->setCellValue('E' . $invRow, $item['pieces'] ?? 'N/A');
+            $inventorySheet->setCellValue('F' . $invRow, $item['sealed'] ? 'Yes' : 'No');
+            $inventorySheet->setCellValue('G' . $invRow, $item['withdrawn'] ? 'Yes' : 'No');
+            $inventorySheet->setCellValue('H' . $invRow, $item['dao_violation'] ? 'Yes' : 'No');
+            $inventorySheet->setCellValue('I' . $invRow, $item['other_violation'] ? 'Yes' : 'No');
+            $inventorySheet->setCellValue('J' . $invRow, $item['product_remarks'] ?? 'N/A');
+            $inventorySheet->setCellValue('K' . $invRow, $item['inv_remarks'] ?? 'N/A');
+            
+            // Style row
+            $inventorySheet->getStyle('A' . $invRow . ':K' . $invRow)->applyFromArray($rowStyle);
+            $invRow++;
+        }
+        
+        // Wrap text
+        $inventorySheet->getStyle('A1:K' . ($invRow - 1))->getAlignment()->setWrapText(true);
+        
+        // ----------------- SHEET 3: PENALTIES DATA -----------------
+        $penaltySheet = $spreadsheet->createSheet();
+        $penaltySheet->setTitle('Penalties');
+        
+        // Set headers
+        $penHeaders = [
+            'Establishment Name', 'Amount', 'Description', 'Reference Number', 
+            'Status', 'Issued By', 'Issued Date'
+        ];
+        
+        $penaltySheet->fromArray([$penHeaders], NULL, 'A1');
+        $penaltySheet->getStyle('A1:G1')->applyFromArray($headerStyle);
+        
+        // Auto-size columns
+        foreach(range('A', 'G') as $col) {
+            $penaltySheet->getColumnDimension($col)->setAutoSize(true);
+        }
+        
+        // Get penalties data
+        $penSql = "SELECT p.*, e.name as establishment_name 
+                  FROM penalties p
+                  LEFT JOIN establishments e ON p.establishment_id = e.establishment_id
+                  WHERE p.establishment_id IN ($placeholders)
+                  ORDER BY p.establishment_id, p.issued_date";
+        
+        $penStmt = $conn->prepare($penSql);
+        for ($i = 0; $i < count($all_establishment_ids); $i++) {
+            $penStmt->bindValue($i+1, $all_establishment_ids[$i]);
+        }
+        
+        $penStmt->execute();
+        $penalties = $penStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Add penalties data
+        $penRow = 2;
+        foreach ($penalties as $penalty) {
+            $issued_date = !empty($penalty['issued_date']) ? 
+                date('M d, Y', strtotime($penalty['issued_date'])) : 'N/A';
+                
+            $penaltySheet->setCellValue('A' . $penRow, $penalty['establishment_name'] ?? 'Unknown');
+            $penaltySheet->setCellValue('B' . $penRow, $penalty['amount'] ?? 'N/A');
+            $penaltySheet->setCellValue('C' . $penRow, $penalty['description'] ?? 'N/A');
+            $penaltySheet->setCellValue('D' . $penRow, $penalty['reference_number'] ?? 'N/A');
+            $penaltySheet->setCellValue('E' . $penRow, $penalty['status'] ?? 'N/A');
+            $penaltySheet->setCellValue('F' . $penRow, $penalty['issued_by'] ?? 'N/A');
+            $penaltySheet->setCellValue('G' . $penRow, $issued_date);
+            
+            // Style row
+            $penaltySheet->getStyle('A' . $penRow . ':G' . $penRow)->applyFromArray($rowStyle);
+            $penRow++;
+        }
+        
+        // Wrap text
+        $penaltySheet->getStyle('A1:G' . ($penRow - 1))->getAlignment()->setWrapText(true);
+        
+        // ----------------- SHEET 4: NOTICE RECORDS DATA -----------------
+        $noticeSheet = $spreadsheet->createSheet();
+        $noticeSheet->setTitle('Notice Records');
+        
+        // Set headers
+        $noticeHeaders = [
+            'Establishment Name', 'Notice Type', 'Date Responded', 
+            'Status', 'Remarks', 'Images Count', 'Issuers'
+        ];
+        
+        $noticeSheet->fromArray([$noticeHeaders], NULL, 'A1');
+        $noticeSheet->getStyle('A1:G1')->applyFromArray($headerStyle);
+        
+        // Auto-size columns
+        foreach(range('A', 'G') as $col) {
+            $noticeSheet->getColumnDimension($col)->setAutoSize(true);
+        }
+        
+        // Get notice records data with image count and issuers
+        $noticeSql = "SELECT nr.*, e.name as establishment_name,
+                      (SELECT COUNT(*) FROM notice_images ni WHERE ni.record_id = nr.record_id) as image_count,
+                      (SELECT GROUP_CONCAT(CONCAT(issuer_name, ' (', issuer_position, ')') SEPARATOR '; ') 
+                       FROM notice_issuers ni 
+                       WHERE ni.establishment_id = nr.establishment_id) as issuers
+                      FROM notice_records nr
+                      LEFT JOIN establishments e ON nr.establishment_id = e.establishment_id
+                      WHERE nr.establishment_id IN ($placeholders)
+                      ORDER BY nr.establishment_id, nr.created_at DESC";
+        
+        $noticeStmt = $conn->prepare($noticeSql);
+        for ($i = 0; $i < count($all_establishment_ids); $i++) {
+            $noticeStmt->bindValue($i+1, $all_establishment_ids[$i]);
+        }
+        
+        $noticeStmt->execute();
+        $noticeRecords = $noticeStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Add notice records data
+        $noticeRow = 2;
+        foreach ($noticeRecords as $record) {
+            $date_responded = !empty($record['date_responded']) ? 
+                date('M d, Y', strtotime($record['date_responded'])) : 'Not Responded';
+                
+            $noticeSheet->setCellValue('A' . $noticeRow, $record['establishment_name'] ?? 'Unknown');
+            $noticeSheet->setCellValue('B' . $noticeRow, $record['notice_type'] ?? 'N/A');
+            $noticeSheet->setCellValue('C' . $noticeRow, $date_responded);
+            $noticeSheet->setCellValue('D' . $noticeRow, $record['status'] ?? 'N/A');
+            $noticeSheet->setCellValue('E' . $noticeRow, $record['remarks'] ?? 'N/A');
+            $noticeSheet->setCellValue('F' . $noticeRow, $record['image_count'] ?? '0');
+            $noticeSheet->setCellValue('G' . $noticeRow, $record['issuers'] ?? 'None');
+            
+            // Style row
+            $noticeSheet->getStyle('A' . $noticeRow . ':G' . $noticeRow)->applyFromArray($rowStyle);
+            $noticeRow++;
+        }
+        
+        // Wrap text
+        $noticeSheet->getStyle('A1:G' . ($noticeRow - 1))->getAlignment()->setWrapText(true);
+    }
+    
+    // Set the first sheet as active
+    $spreadsheet->setActiveSheetIndex(0);
     
     // Create the Excel file
     $writer = new Xlsx($spreadsheet);
     
     // Set the filename based on filters
-    $filename = 'establishments_report';
+    $filename = 'comprehensive_report';
     if ($filter_type == 'year') {
         $filename .= "_$year";
     } elseif ($filter_type == 'month') {
@@ -268,7 +464,7 @@ include '../templates/header.php';
     <div class="row">
         <div class="col">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2><i class="fas fa-file-export me-2"></i> Export Establishments Data</h2>
+                <h2><i class="fas fa-file-export me-2"></i> Export Comprehensive Establishments Data</h2>
                 <a href="manage_establishments.php" class="btn btn-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Back to List
                 </a>
@@ -276,9 +472,12 @@ include '../templates/header.php';
             
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-filter me-2"></i> Export Options</h5>
+                    <h5 class="mb-0"><i class="fas fa-filter me-2"></i> Comprehensive Export Options</h5>
                 </div>
                 <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> This export will create a multi-sheet Excel file containing establishment details, inventory items, penalties, notice records, and more.
+                    </div>
                     <form method="POST" id="exportForm">
                         <div class="row mb-3">
                             <div class="col-md-4">
@@ -381,22 +580,40 @@ include '../templates/header.php';
                         
                         <div class="row">
                             <div class="col-12">
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle me-2"></i> The exported Excel file will include establishment details, violations, status, action type, and other relevant information based on your selected filters.
+                                <div class="card">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0"><i class="fas fa-table me-2"></i>Report Content</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <ul class="mb-0">
+                                                    <li><strong>Sheet 1:</strong> Main Establishment Data</li>
+                                                    <li><strong>Sheet 2:</strong> Inventory Items</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <ul class="mb-0">
+                                                    <li><strong>Sheet 3:</strong> Penalties Information</li>
+                                                    <li><strong>Sheet 4:</strong> Notice Records & Actions</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
                             <button type="submit" name="export" class="btn btn-primary">
-                                <i class="fas fa-file-excel me-1"></i> Generate Excel Report
+                                <i class="fas fa-file-excel me-1"></i> Generate Comprehensive Excel Report
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
             
-            <!-- Preview section (if needed) -->
+            <!-- Instructions section -->
             <div class="card mt-4 shadow-sm">
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i> Export Instructions</h5>
@@ -407,21 +624,30 @@ include '../templates/header.php';
                             <h6>Date Filter Options:</h6>
                             <ul>
                                 <li><strong>By Year:</strong> Export all establishments created in the selected year</li>
-                                <li><strong>By Month:</strong> Export establishments created in the specific month of selected year</li>
+                                <li><strong>By Month:</strong> Export all establishments created in the selected month and year</li>
                                 <li><strong>Custom Range:</strong> Export establishments created between two specific dates</li>
+                            </ul>
+                            
+                            <h6 class="mt-3">Additional Filters:</h6>
+                            <ul>
+                                <li><strong>Action Type:</strong> Filter by specific notice types (e.g., Certified First Offence)</li>
+                                <li><strong>Status:</strong> Filter by establishment status</li>
+                                <li><strong>Violation Search:</strong> Search for specific violations in the records</li>
                             </ul>
                         </div>
                         <div class="col-md-6">
-                            <h6>Additional Filters:</h6>
+                            <h6>Generated Excel Report Contains:</h6>
                             <ul>
-                                <li><strong>Action Type:</strong> Filter by specific action taken (CFO, Formal Charge, etc.)</li>
-                                <li><strong>Status:</strong> Filter by current status (Pending, Complied, etc.)</li>
-                                <li><strong>Violation Search:</strong> Filter by specific keywords in violation descriptions</li>
+                                <li><strong>Sheet 1 (Establishments):</strong> Main establishment data including name, owner, nature, address, violations, status, etc.</li>
+                                <li><strong>Sheet 2 (Inventory):</strong> All products/items associated with each establishment</li>
+                                <li><strong>Sheet 3 (Penalties):</strong> All penalties and fines issued to establishments</li>
+                                <li><strong>Sheet 4 (Notice Records):</strong> All notice records, issuers, and action details</li>
                             </ul>
+                            
+                            <div class="alert alert-warning mt-3">
+                                <i class="fas fa-exclamation-triangle me-2"></i> For large datasets, the export may take several seconds to complete. Please wait for the download to start automatically.
+                            </div>
                         </div>
-                    </div>
-                    <div class="text-center mt-3">
-                        <p class="text-muted">Note: The generated Excel file will be automatically downloaded to your device.</p>
                     </div>
                 </div>
             </div>
@@ -431,58 +657,74 @@ include '../templates/header.php';
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Toggle visibility of date filter sections based on selection
-    const filterRadios = document.querySelectorAll('input[name="filter_type"]');
-    const yearSection = document.getElementById('yearSection');
-    const monthSection = document.getElementById('monthSection');
-    const customSection = document.getElementById('customSection');
+    // Handle filter type switching
+    const filterControls = document.querySelectorAll('input[name="filter_type"]');
+    const filterSections = document.querySelectorAll('.filter-section');
     
-    filterRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            // Hide all sections first
-            yearSection.style.display = 'none';
-            monthSection.style.display = 'none';
-            customSection.style.display = 'none';
-            
-            // Show the selected section
-            if (this.value === 'year') {
-                yearSection.style.display = 'flex';
-            } else if (this.value === 'month') {
-                monthSection.style.display = 'flex';
-            } else if (this.value === 'custom') {
-                customSection.style.display = 'flex';
-            }
-        });
+    function updateFilterSections() {
+        const selectedFilter = document.querySelector('input[name="filter_type"]:checked').value;
+        
+        document.getElementById('yearSection').style.display = 'none';
+        document.getElementById('monthSection').style.display = 'none';
+        document.getElementById('customSection').style.display = 'none';
+        
+        if (selectedFilter === 'year') {
+            document.getElementById('yearSection').style.display = 'flex';
+        } else if (selectedFilter === 'month') {
+            document.getElementById('monthSection').style.display = 'flex';
+        } else if (selectedFilter === 'custom') {
+            document.getElementById('customSection').style.display = 'flex';
+        }
+    }
+    
+    filterControls.forEach(control => {
+        control.addEventListener('change', updateFilterSections);
     });
     
-    // Form validation before submission
+    // Set default values for date inputs
+    const today = new Date();
+    const endDateInput = document.getElementById('end_date');
+    endDateInput.valueAsDate = today;
+    
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 1);
+    const startDateInput = document.getElementById('start_date');
+    startDateInput.valueAsDate = startDate;
+    
+    // Set current month in month selector
+    const currentMonth = today.getMonth() + 1; // JavaScript months are 0-indexed
+    document.getElementById('month').value = currentMonth;
+    
+    // Form validation
     document.getElementById('exportForm').addEventListener('submit', function(event) {
-        const filterType = document.querySelector('input[name="filter_type"]:checked').value;
+        const selectedFilter = document.querySelector('input[name="filter_type"]:checked').value;
         
-        if (filterType === 'custom') {
+        if (selectedFilter === 'custom') {
             const startDate = document.getElementById('start_date').value;
             const endDate = document.getElementById('end_date').value;
             
             if (!startDate || !endDate) {
                 event.preventDefault();
-                alert('Please select both start and end dates for custom date range');
+                alert('Please select both start and end dates for custom range filtering.');
                 return;
             }
             
-            if (new Date(startDate) > new Date(endDate)) {
+            if (new Date(endDate) < new Date(startDate)) {
                 event.preventDefault();
-                alert('Start date must be before or equal to end date');
+                alert('End date must be after start date.');
                 return;
             }
-        } else if (filterType === 'month') {
-            const month = document.getElementById('month').value;
-            if (!month) {
+        } else if (selectedFilter === 'month') {
+            if (!document.getElementById('month').value) {
                 event.preventDefault();
-                alert('Please select a month');
+                alert('Please select a month.');
                 return;
             }
         }
     });
+    
+    // Initialize the form
+    updateFilterSections();
 });
 </script>
 
