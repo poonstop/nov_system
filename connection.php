@@ -3,66 +3,58 @@
 date_default_timezone_set('Asia/Manila');
 
 // Database configuration
-$db_host = "127.0.0.1"; // Changed from "localhost" to IP address
-$db_port = 3306;        // Explicitly defining the MySQL port
-$db_user = "root";      // Change this to your database username
-$db_pass = "";          // Change this to your database password
+$db_host = "localhost"; // Using standard "localhost" - common for XAMPP/WAMP setups
+$db_user = "root";      // Default MySQL username for local development
+$db_pass = "";          // Default blank password for local development
 $db_name = "nov_system7";
 
-// Create database connection
+// Create database connection with PDO
 try {
-    $conn = new mysqli($db_host, $db_user, $db_pass, $db_name, $db_port);
-    
-    // Check connection
-    if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
+    // Create PDO connection with correct DSN format
+    $conn = new PDO(
+        "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4",
+        $db_user,
+        $db_pass,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false
+        ]
+    );
+
+    // Set timezone for MySQL
+    $conn->exec("SET time_zone = '+08:00'");
+} catch (PDOException $e) {
+    // Log the error for admin debugging
+    error_log("Database connection failed: " . $e->getMessage() . " (Error code: " . $e->getCode() . ")");
+
+    // Provide clearer error message if in development environment
+    if (isset($_SERVER['SERVER_NAME']) && ($_SERVER['SERVER_NAME'] == 'localhost' || $_SERVER['SERVER_NAME'] == '127.0.0.1')) {
+        die("Database connection failed: " . $e->getMessage());
+    } else {
+        // Generic message for production
+        die("Database connection failed. Please contact the administrator.");
     }
-    
-    // Set character set
-    $conn->set_charset("utf8mb4");
-    
-    // You can also set the session timezone for MySQL if needed
-    $conn->query("SET time_zone = '+08:00'");
-    
-} catch (mysqli_sql_exception $e) {
-    die("Connection failed: " . $e->getMessage() . " (Error code: " . $e->getCode() . ")");
 }
 
 /**
  * Log system actions
- * @param string|int $user_id User ID (not the database connection)
+ * @param string|int $id User ID
  * @param string $action_type Type of action
  * @param string $description Action description
  * @return void
  */
-function logAction($user_id, $action_type, $description) {
+function logAction($id, $action_type, $description) {
     global $conn;
-    
-    // Check if user_id is numeric
-    if (is_numeric($user_id)) {
-        $user_id = (int)$user_id;
-    } else {
-        // For cases when user_id is a string (like 'System')
-        $user_id = $conn->real_escape_string($user_id);
-        // Use quotes for string user_id in the SQL query below
-    }
-    
-    $action_type = $conn->real_escape_string($action_type);
-    $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? 
-                  $conn->real_escape_string($_SERVER['HTTP_USER_AGENT']) : 
-                  'System Process';
-    $description = $conn->real_escape_string($description);
+    $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : 'System Process';
     $ip_address = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1';
     
-    // Adjust SQL based on user_id type
-    if (is_int($user_id)) {
-        $sql = "INSERT INTO user_logs (user_id, action, user_agent, details, timestamp)
-                VALUES ($user_id, '$action_type', '$user_agent', '$description', NOW())";
-    } else {
-        $sql = "INSERT INTO user_logs (user_id, action, user_agent, details, timestamp)
-                VALUES ('$user_id', '$action_type', '$user_agent', '$description', NOW())";
+    try {
+        $stmt = $conn->prepare("INSERT INTO user_logs (user_id, action_type, ip_address, user_agent, description, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([$id, $action_type, $ip_address, $user_agent, $description]);
+    } catch (PDOException $e) {
+        error_log("Failed to log action: " . $e->getMessage());
+        // Don't stop execution if logging fails
     }
-    
-    $conn->query($sql);
 }
 ?>

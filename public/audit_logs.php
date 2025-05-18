@@ -28,33 +28,28 @@ $query = "SELECT l.logs_id, l.user_id, l.action, l.user_agent, l.details, l.time
 
 // Add search conditions
 $params = [];
-$types = '';
 
 if (!empty($search_query)) {
-    $query .= " AND (u.username LIKE ? OR u.fullname LIKE ? OR l.details LIKE ?)";
+    $query .= " AND (u.username LIKE :search1 OR u.fullname LIKE :search2 OR l.details LIKE :search3)";
     $search_param = "%{$search_query}%";
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $types .= 'sss';
+    $params[':search1'] = $search_param;
+    $params[':search2'] = $search_param;
+    $params[':search3'] = $search_param;
 }
 
 if (!empty($filter_action)) {
-    $query .= " AND l.action = ?";
-    $params[] = $filter_action;
-    $types .= 's';
+    $query .= " AND l.action = :action";
+    $params[':action'] = $filter_action;
 }
 
 if (!empty($start_date)) {
-    $query .= " AND l.timestamp >= ?";
-    $params[] = $start_date . ' 00:00:00';
-    $types .= 's';
+    $query .= " AND l.timestamp >= :start_date";
+    $params[':start_date'] = $start_date . ' 00:00:00';
 }
 
 if (!empty($end_date)) {
-    $query .= " AND l.timestamp <= ?";
-    $params[] = $end_date . ' 23:59:59';
-    $types .= 's';
+    $query .= " AND l.timestamp <= :end_date";
+    $params[':end_date'] = $end_date . ' 23:59:59';
 }
 
 // Get total records for pagination
@@ -64,53 +59,55 @@ $count_query = "SELECT COUNT(*) as total FROM user_logs l
 
 // Add the same conditions as the main query
 if (!empty($search_query)) {
-    $count_query .= " AND (u.username LIKE ? OR u.fullname LIKE ? OR l.details LIKE ?)";
+    $count_query .= " AND (u.username LIKE :search1 OR u.fullname LIKE :search2 OR l.details LIKE :search3)";
 }
 
 if (!empty($filter_action)) {
-    $count_query .= " AND l.action = ?";
+    $count_query .= " AND l.action = :action";
 }
 
 if (!empty($start_date)) {
-    $count_query .= " AND l.timestamp >= ?";
+    $count_query .= " AND l.timestamp >= :start_date";
 }
 
 if (!empty($end_date)) {
-    $count_query .= " AND l.timestamp <= ?";
+    $count_query .= " AND l.timestamp <= :end_date";
 }
 
 $stmt_count = $conn->prepare($count_query);
 
 if (!empty($params)) {
-    $stmt_count->bind_param($types, ...$params);
+    foreach ($params as $param_name => $param_value) {
+        $stmt_count->bindValue($param_name, $param_value);
+    }
 }
 
 $stmt_count->execute();
-$result_count = $stmt_count->get_result();
-$row_count = $result_count->fetch_assoc();
-$total_records = $row_count['total'];
-$stmt_count->close();
+$total_records = $stmt_count->fetchColumn();
 
 $total_pages = ceil($total_records / $records_per_page);
 
 // Final query with pagination
-$query .= " ORDER BY l.timestamp DESC LIMIT ?, ?";
-$params[] = $offset;
-$params[] = $records_per_page;
-$types .= 'ii';
+$query .= " ORDER BY l.timestamp DESC LIMIT :offset, :limit";
+$params[':offset'] = $offset;
+$params[':limit'] = $records_per_page;
 
 $stmt = $conn->prepare($query);
 
 if (!empty($params)) {
-    $stmt->bind_param($types, ...$params);
+    foreach ($params as $param_name => $param_value) {
+        $stmt->bindValue($param_name, $param_value);
+    }
 }
 
 $stmt->execute();
-$result = $stmt->get_result();
+$result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get action types for filter dropdown
 $action_query = "SELECT DISTINCT action FROM user_logs ORDER BY action";
-$action_result = $conn->query($action_query);
+$action_stmt = $conn->prepare($action_query);
+$action_stmt->execute();
+$action_result = $action_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Set current page for navigation
 $current_page = 'audit_logs.php';
@@ -157,11 +154,11 @@ include '../templates/header.php';
                             <label for="action" class="form-label">Action:</label>
                             <select class="form-select" id="action" name="action">
                                 <option value="">All Actions</option>
-                                <?php while ($action_row = $action_result->fetch_assoc()): ?>
+                                <?php foreach ($action_result as $action_row): ?>
                                     <option value="<?php echo htmlspecialchars($action_row['action']); ?>" <?php echo ($filter_action == $action_row['action']) ? 'selected' : ''; ?>>
                                         <?php echo htmlspecialchars($action_row['action']); ?>
                                     </option>
-                                <?php endwhile; ?>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -199,14 +196,13 @@ include '../templates/header.php';
                                     <th>User</th>
                                     <th>Action</th>
                                     <th>Details</th>
-
                                     <th>Timestamp</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php 
-                                if ($result->num_rows > 0) {
-                                    while ($row = $result->fetch_assoc()) {
+                                if (count($result) > 0) {
+                                    foreach ($result as $row) {
                                         // Set badge class based on action type
                                         $badge_class = 'bg-secondary';
                                         
@@ -235,7 +231,7 @@ include '../templates/header.php';
                                 <?php
                                     }
                                 } else {
-                                    echo '<tr><td colspan="6" class="text-center p-4 text-muted">No records found</td></tr>';
+                                    echo '<tr><td colspan="5" class="text-center p-4 text-muted">No records found</td></tr>';
                                 }
                                 ?>
                             </tbody>

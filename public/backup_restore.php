@@ -19,7 +19,7 @@ if (isset($_POST['create_backup']) || isset($_GET['create_backup'])) {
         // Get all tables in the database
         $tables = array();
         $result = $conn->query("SHOW TABLES");
-        while ($row = $result->fetch_row()) {
+        while ($row = $result->fetch(PDO::FETCH_NUM)) {
             $tables[] = $row[0];
         }
         
@@ -46,8 +46,8 @@ if (isset($_POST['create_backup']) || isset($_GET['create_backup'])) {
         // Process each table
         foreach ($tables as $table) {
             // Get create table statement
-            $res = $conn->query("SHOW CREATE TABLE `$table`");
-            $row = $res->fetch_row();
+            $stmt = $conn->query("SHOW CREATE TABLE `$table`");
+            $row = $stmt->fetch(PDO::FETCH_NUM);
             
             echo "\n\n-- Structure for table `$table`\n\n";
             echo "DROP TABLE IF EXISTS `$table`;\n";
@@ -55,28 +55,28 @@ if (isset($_POST['create_backup']) || isset($_GET['create_backup'])) {
             
             // Get data
             $result = $conn->query("SELECT * FROM `$table`");
-            $num_fields = $result->field_count;
+            $num_fields = $result->columnCount();
             
-            if ($result->num_rows > 0) {
+            if ($result->rowCount() > 0) {
                 echo "-- Dumping data for table `$table`\n";
                 
                 // Get column names
-                $field_info = $result->fetch_fields();
-                $field_names = array();
-                foreach ($field_info as $field) {
-                    $field_names[] = "`" . $field->name . "`";
+                $columns = [];
+                for ($i = 0; $i < $num_fields; $i++) {
+                    $column = $result->getColumnMeta($i);
+                    $columns[] = "`" . $column['name'] . "`";
                 }
                 
                 // Insert statements
-                $fields = implode(', ', $field_names);
+                $fields = implode(', ', $columns);
                 
-                while ($row = $result->fetch_array(MYSQLI_ASSOC)) {
+                while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
                     $values = array();
                     foreach ($row as $value) {
                         if (is_null($value)) {
                             $values[] = "NULL";
                         } else {
-                            $values[] = "'" . $conn->real_escape_string($value) . "'";
+                            $values[] = "'" . str_replace("'", "\'", $value) . "'";
                         }
                     }
                     echo "INSERT INTO `$table` ($fields) VALUES (" . implode(', ', $values) . ");\n";
@@ -118,11 +118,8 @@ if (isset($_POST['restore_backup']) && isset($_FILES['backup_file'])) {
             throw new Exception("Failed to read the backup file.");
         }
         
-        // Disable foreign key checks and enable error reporting
-        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT); // Enable exceptions for mysqli
-        
         // First, disable foreign key checks to prevent constraint errors
-        $conn->query("SET FOREIGN_KEY_CHECKS=0;");
+        $conn->exec("SET FOREIGN_KEY_CHECKS=0;");
         
         // Split the SQL content into individual queries
         $sql_queries = splitSqlFile($sql_content);
@@ -138,7 +135,8 @@ if (isset($_POST['restore_backup']) && isset($_FILES['backup_file'])) {
             if (empty($query)) continue;
             
             try {
-                if ($conn->query($query) === TRUE) {
+                $result = $conn->exec($query);
+                if ($result !== false) {
                     $queries_executed++;
                     
                     // Count CREATE TABLE operations to track table processing
@@ -149,10 +147,10 @@ if (isset($_POST['restore_backup']) && isset($_FILES['backup_file'])) {
                     // Log the erroneous query and continue with the next one
                     $error_queries[] = [
                         'query' => substr($query, 0, 200) . '...',
-                        'error' => $conn->error
+                        'error' => $conn->errorInfo()[2]
                     ];
                 }
-            } catch (Exception $query_error) {
+            } catch (PDOException $query_error) {
                 // Log the erroneous query and continue with the next one
                 $error_queries[] = [
                     'query' => substr($query, 0, 200) . '...',
@@ -162,7 +160,7 @@ if (isset($_POST['restore_backup']) && isset($_FILES['backup_file'])) {
         }
         
         // Re-enable foreign key checks
-        $conn->query("SET FOREIGN_KEY_CHECKS=1;");
+        $conn->exec("SET FOREIGN_KEY_CHECKS=1;");
         
         // Build appropriate success message
         if (count($error_queries) > 0) {
@@ -240,6 +238,39 @@ function splitSqlFile($sql) {
     return $queries;
 }
 
+// Function to verify all tables exist in the database
+function verifyAllTablesExist($conn) {
+    // Expected tables based on the database schema
+    $expected_tables = [
+        'addresses',
+        'establishments',
+        'inventory',
+        'notice_images',
+        'notice_issuers',
+        'notice_records',
+        'notice_status',
+        'penalties',
+        'users',
+        'user_logs'
+    ];
+    
+    // Get all tables currently in the database
+    $existing_tables = [];
+    $result = $conn->query("SHOW TABLES");
+    while ($row = $result->fetch(PDO::FETCH_NUM)) {
+        $existing_tables[] = $row[0];
+    }
+    
+    // Check for missing tables
+    $missing_tables = array_diff($expected_tables, $existing_tables);
+    
+    return [
+        'all_exist' => empty($missing_tables),
+        'missing' => $missing_tables,
+        'existing' => $existing_tables
+    ];
+}
+
 include '../templates/header.php';
 ?>
 
@@ -282,6 +313,17 @@ include '../templates/header.php';
                     </div>
                 <?php endif; ?>
                 
+                <?php
+                // Verify all tables exist
+                $table_check = verifyAllTablesExist($conn);
+                if (!$table_check['all_exist']) {
+                    echo '<div class="alert alert-warning">
+                        <strong>Warning:</strong> Some expected tables are missing from the database. Missing tables: ' . 
+                        implode(', ', $table_check['missing']) . 
+                        '</div>';
+                }
+                ?>
+                
                 <!-- Backup Section -->
                 <div class="card">
                     <div class="card-header bg-primary text-white">
@@ -289,6 +331,7 @@ include '../templates/header.php';
                     </div>
                     <div class="card-body">
                         <p>Click the button below to create and download a backup of your database.</p>
+                        <p><small>Tables to be backed up: <?php echo implode(', ', $table_check['existing']); ?></small></p>
                         <form method="post">
                             <button type="submit" name="create_backup" class="btn btn-primary">
                                 Download Database Backup

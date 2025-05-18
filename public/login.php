@@ -48,10 +48,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             // Check if user exists and is active
             $stmt = $conn->prepare("SELECT id, username, password, ulvl, status, fullname FROM users WHERE username = ?");
-            $stmt->bind_param("s", $username);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $user = $result->fetch_assoc();
+            $stmt->execute([$username]);
+            $user = $stmt->fetch();
+            
             if ($user) {
                 if ($user['status'] !== 'active') {
                     // Set flag for inactive account
@@ -71,8 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $current_time = date("Y-m-d H:i:s");
                     
                     $log_stmt = $conn->prepare("INSERT INTO user_logs (user_id, action, user_agent, details, timestamp) VALUES (?, ?, ?, ?, ?)");
-                    $log_stmt->bind_param("issss", $user_id, $action, $user_agent, $details, $current_time);
-                    $log_stmt->execute();
+                    $log_stmt->execute([$user_id, $action, $user_agent, $details, $current_time]);
                     
                     // Regenerate session ID to prevent session fixation
                     session_regenerate_id(true);
@@ -95,8 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     $log_stmt = $conn->prepare("INSERT INTO user_logs (user_id, action, user_agent, details, timestamp) VALUES (?, ?, ?, ?, ?)");
                     $user_id = $user['id']; // We have the user ID even though login failed
-                    $log_stmt->bind_param("issss", $user_id, $action, $user_agent, $details, $current_time);
-                    $log_stmt->execute();
+                    $log_stmt->execute([$user_id, $action, $user_agent, $details, $current_time]);
                 }
             } else {
                 $error_message = "Invalid username or password";
@@ -108,8 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $current_time = date("Y-m-d H:i:s");
                 
                 $log_stmt = $conn->prepare("INSERT INTO user_logs (action, user_agent, details, timestamp) VALUES (?, ?, ?, ?)");
-                $log_stmt->bind_param("ssss", $action, $user_agent, $details, $current_time);
-                $log_stmt->execute();
+                $log_stmt->execute([$action, $user_agent, $details, $current_time]);
             }
         } catch (Exception $e) {
             $error_message = "Database error: " . $e->getMessage();

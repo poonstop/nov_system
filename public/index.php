@@ -39,7 +39,7 @@ try {
     
     $violationsData = [];
     if ($violationsQuery) {
-        while ($row = $violationsQuery->fetch_assoc()) {
+        while ($row = $violationsQuery->fetch()) { // Changed from fetch_assoc() to fetch()
             $violationsData[$row['municipality']] = $row['violation_count'];
         }
     }
@@ -52,10 +52,10 @@ try {
         (SELECT COUNT(DISTINCT LOWER(municipality)) FROM addresses) as total_municipalities,
         (SELECT COUNT(*) FROM establishments) as total_establishments,
         (SELECT COUNT(*) FROM users WHERE status = 'active') as active_users
-");
+    ");
 
-// If you want to display specific municipalities in your chart rather than top violations
-// You can modify the violations query like this:
+    // If you want to display specific municipalities in your chart rather than top violations
+    // You can modify the violations query like this:
     $specificMunicipalities = ['Aringay', 'Agoo', 'Bacnotan', 'Bagulin', 'Balaoan', 'Bangar', 'Bauang', 'Burgos', 'Caba', 'Luna', 'Naguilian', 'Pugo', 'Rosario', 'San Gabriel', 'San Juan', 'Santol', 'Sto. Tomas', 'Sudipen', 'San Fernando City', 'Tubao',]; // Add your specific municipalities
     $placeholders = implode(',', array_fill(0, count($specificMunicipalities), '?'));
     
@@ -70,18 +70,18 @@ try {
     ");
 
     // If you want to show all municipalities but avoid duplicates due to case sensitivity:
-$uniqueViolationsQuery = $conn->query("
-SELECT 
-    UPPER(SUBSTRING(a.municipality, 1, 1)) || LOWER(SUBSTRING(a.municipality, 2)) as municipality, 
-    COUNT(e.establishment_id) as violation_count
-FROM establishments e
-JOIN addresses a ON e.establishment_id = a.establishment_id
-GROUP BY LOWER(a.municipality)
-ORDER BY violation_count DESC
-LIMIT 10
-");
+    $uniqueViolationsQuery = $conn->query("
+        SELECT 
+            CONCAT(UPPER(SUBSTRING(a.municipality, 1, 1)), LOWER(SUBSTRING(a.municipality, 2))) as municipality, 
+            COUNT(e.establishment_id) as violation_count
+        FROM establishments e
+        JOIN addresses a ON e.establishment_id = a.establishment_id
+        GROUP BY LOWER(a.municipality)
+        ORDER BY violation_count DESC
+        LIMIT 10
+    ");
     
-    $stats = $statsQuery ? $statsQuery->fetch_assoc() : [];
+    $stats = $statsQuery ? $statsQuery->fetch() : []; // Changed from fetch_assoc() to fetch()
     
     // Add additional status counts
     // FIXED: Since we don't have a violations table with status field, using some placeholder data
@@ -110,7 +110,7 @@ LIMIT 10
     $violationTypes = [];
     $violationCounts = [];
     if ($violationTypesQuery) {
-        while ($row = $violationTypesQuery->fetch_assoc()) {
+        while ($row = $violationTypesQuery->fetch()) { // Changed from fetch_assoc() to fetch()
             $violationTypes[] = $row['violation_type'];
             $violationCounts[] = $row['count'];
         }
@@ -147,7 +147,7 @@ include '../templates/header.php';
                 <div class="card-body p-4 text-center">
                     <h1 class="display-6 fw-bold mb-2">Welcome, <span class="text-primary"><?= htmlspecialchars(ucfirst($_SESSION['username'])) ?></span></h1>
                     <span class="badge bg-info text-dark mb-3"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User')) ?></span>
-                    <p class="lead text-muted mb-0">Monitoring and Enforcement Tracking System Non - Compliance</p>
+                    <p class="lead text-muted mb-0">Monitoring and Enforcement Tracking System</p>
                 </div>
             </div>
         </div>

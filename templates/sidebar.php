@@ -7,7 +7,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <div class="sidebar-header">
         <img src="../images/dti-logo1.png" alt="DTI Logo" class="sidebar-logo">
         <div class="title-container">
-            <h5 class="sidebar-title mb-0">Monitoring and Enforcement Tracking System Non - Compliance</h5>
+            <h5 class="sidebar-title mb-0">Monitoring and Enforcement Tracking System</h5>
         </div>
     </div>
 
