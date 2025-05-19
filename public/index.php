@@ -39,7 +39,7 @@ try {
     
     $violationsData = [];
     if ($violationsQuery) {
-        while ($row = $violationsQuery->fetch()) { // Changed from fetch_assoc() to fetch()
+        while ($row = $violationsQuery->fetch(PDO::FETCH_ASSOC)) { // Fixed: Changed from fetch() to fetch(PDO::FETCH_ASSOC)
             $violationsData[$row['municipality']] = $row['violation_count'];
         }
     }
@@ -81,7 +81,7 @@ try {
         LIMIT 10
     ");
     
-    $stats = $statsQuery ? $statsQuery->fetch() : []; // Changed from fetch_assoc() to fetch()
+    $stats = $statsQuery ? $statsQuery->fetch(PDO::FETCH_ASSOC) : []; // Fixed: Changed from fetch() to fetch(PDO::FETCH_ASSOC)
     
     // Add additional status counts
     // FIXED: Since we don't have a violations table with status field, using some placeholder data
@@ -110,7 +110,7 @@ try {
     $violationTypes = [];
     $violationCounts = [];
     if ($violationTypesQuery) {
-        while ($row = $violationTypesQuery->fetch()) { // Changed from fetch_assoc() to fetch()
+        while ($row = $violationTypesQuery->fetch(PDO::FETCH_ASSOC)) { // Fixed: Changed from fetch() to fetch(PDO::FETCH_ASSOC)
             $violationTypes[] = $row['violation_type'];
             $violationCounts[] = $row['count'];
         }
@@ -341,8 +341,10 @@ include '../templates/header.php';
                                 ORDER BY u.timestamp DESC LIMIT 3
                             ");
                             
-                            if ($activitiesQuery && $activitiesQuery->num_rows > 0) {
-                                while ($activity = $activitiesQuery->fetch_assoc()): ?>
+                            // Fixed: Proper PDO rowCount() check instead of mysqli_num_rows
+                            $rowCount = $activitiesQuery->rowCount();
+                            if ($activitiesQuery && $rowCount > 0) {
+                                while ($activity = $activitiesQuery->fetch(PDO::FETCH_ASSOC)): ?>
                                     <div class="d-flex mb-3">
                                         <div class="flex-shrink-0">
                                             <div class="avatar-sm bg-light rounded">
@@ -384,13 +386,13 @@ include '../templates/header.php';
                             </a>
                         </div>
                         <div class="col-md-4">
-                            <a href="reports.php" class="btn btn-outline-success w-100 p-3">
+                            <a href="export_establishments.php" class="btn btn-outline-success w-100 p-3">
                                 <i class="fas fa-chart-line mb-2 fs-3"></i>
                                 <div>Generate Reports</div>
                             </a>
                         </div>
                         <div class="col-md-4">
-                            <a href="settings.php" class="btn btn-outline-secondary w-100 p-3">
+                            <a href="backup_restore.php" class="btn btn-outline-secondary w-100 p-3">
                                 <i class="fas fa-cog mb-2 fs-3"></i>
                                 <div>System Settings</div>
                             </a>
