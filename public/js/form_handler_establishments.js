@@ -3,8 +3,21 @@ $(document).ready(function() {
     $('#issue_date').on('change', function() {
         if ($(this).val()) {
             const issueDate = new Date($(this).val());
-            const expiryDate = new Date(issueDate);
-            expiryDate.setDate(expiryDate.getDate() + 2); // Add 48 hours (2 days)
+            let expiryDate = new Date(issueDate);
+            
+            // Add 48 hours (2 days) excluding weekends
+            let hoursToAdd = 48;
+            
+            while (hoursToAdd > 0) {
+                // Add 1 hour at a time
+                expiryDate.setHours(expiryDate.getHours() + 1);
+                
+                // Skip counting hours on weekends
+                const dayOfWeek = expiryDate.getDay(); // 0 = Sunday, 6 = Saturday
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                    hoursToAdd--;
+                }
+            }
             
             // Format the date as YYYY-MM-DD for input field
             const yyyy = expiryDate.getFullYear();
@@ -250,3 +263,25 @@ $(document).ready(function() {
         window.location.reload();
     });
 });
+function toggleOthersInput() {
+    var othersCheckbox = document.getElementById('viol_others');
+    var othersInputContainer = document.getElementById('others_input_container');
+    
+    if (othersCheckbox.checked) {
+        othersInputContainer.classList.remove('d-none');
+    } else {
+        othersInputContainer.classList.add('d-none');
+    }
+}
+function toggleAddressEdit() {
+    const displayEl = document.getElementById('address-display');
+    const editEl = document.getElementById('address-edit');
+    
+    if (displayEl.style.display === 'none') {
+        displayEl.style.display = 'block';
+        editEl.style.display = 'none';
+    } else {
+        displayEl.style.display = 'none';
+        editEl.style.display = 'block';
+    }
+}

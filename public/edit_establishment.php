@@ -1,7 +1,6 @@
 <?php
 require_once '../connection.php';
 
-
 // Get establishment ID from URL
 $establishment_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
@@ -18,11 +17,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_establishment']
         $current_stmt->execute();
         $current_data = $current_stmt->fetch(PDO::FETCH_ASSOC);
         
+        // Fetch existing address data
+        $current_address_sql = "SELECT * FROM addresses WHERE establishment_id = :establishment_id";
+        $current_address_stmt = $conn->prepare($current_address_sql);
+        $current_address_stmt->bindParam(':establishment_id', $establishment_id);
+        $current_address_stmt->execute();
+        $current_address = $current_address_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Initialize arrays for address updates
+        $address_updates = [];
+        $address_params = [':establishment_id' => $establishment_id];
+        
         // Build the update query dynamically based on what was submitted
         $update_fields = [];
         $params = [':establishment_id' => $establishment_id];
         
         // Check each field and only update if it's different from current value
+        if (isset($_POST['street']) && (!isset($current_address['street']) || $_POST['street'] !== $current_address['street'])) {
+            // Update address in addresses table instead
+            $address_updates[] = "street = :street";
+            $address_params[':street'] = $_POST['street'];
+        }
+        if (isset($_POST['barangay']) && (!isset($current_address['barangay']) || $_POST['barangay'] !== $current_address['barangay'])) {
+            $address_updates[] = "barangay = :barangay";
+            $address_params[':barangay'] = $_POST['barangay'];
+        }
+        if (isset($_POST['municipality']) && (!isset($current_address['municipality']) || $_POST['municipality'] !== $current_address['municipality'])) {
+            $address_updates[] = "municipality = :municipality";
+            $address_params[':municipality'] = $_POST['municipality'];
+        }
+        if (isset($_POST['province']) && (!isset($current_address['province']) || $_POST['province'] !== $current_address['province'])) {
+            $address_updates[] = "province = :province";
+            $address_params[':province'] = $_POST['province'];
+        }
+        if (isset($_POST['region']) && (!isset($current_address['region']) || $_POST['region'] !== $current_address['region'])) {
+            $address_updates[] = "region = :region";
+            $address_params[':region'] = $_POST['region'];
+        }
+
         if (isset($_POST['name']) && $_POST['name'] !== $current_data['name']) {
             $update_fields[] = "name = :name";
             $params[':name'] = $_POST['name'];
@@ -53,9 +85,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_establishment']
             $params[':remarks'] = $_POST['remarks'];
         }
         
-        // Only update if there are changes
+        // Only update establishments if there are changes
         if (!empty($update_fields)) {
-            $update_fields[] = "date_updated = NOW()";
+            // Replace date_updated with created_at or updated_at depending on what columns exist in the table
+            // If neither exists, simply don't include a timestamp update
+            // Check if updated_at column exists
+            try {
+                $check_column_sql = "SHOW COLUMNS FROM establishments LIKE 'updated_at'";
+                $check_column_stmt = $conn->prepare($check_column_sql);
+                $check_column_stmt->execute();
+                $column_exists = $check_column_stmt->rowCount() > 0;
+                
+                if ($column_exists) {
+                    $update_fields[] = "updated_at = NOW()";
+                }
+            } catch (PDOException $e) {
+                // Skip timestamp update if we can't check columns
+            }
             
             $update_sql = "UPDATE establishments SET " . implode(", ", $update_fields) . " WHERE establishment_id = :establishment_id";
             
@@ -65,15 +111,76 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_establishment']
             }
             $update_stmt->execute();
             
-            // Commit transaction
-            $conn->commit();
+            $has_changes = true;
+        }
+        
+        // Only update addresses if there are changes
+        if (!empty($address_updates)) {
+            // Check if address record exists
+            $check_address_sql = "SELECT COUNT(*) FROM addresses WHERE establishment_id = :establishment_id";
+            $check_address_stmt = $conn->prepare($check_address_sql);
+            $check_address_stmt->bindParam(':establishment_id', $establishment_id);
+            $check_address_stmt->execute();
+            $address_exists = (int)$check_address_stmt->fetchColumn() > 0;
             
-            // Redirect with success message
+            if ($address_exists) {
+                // Update existing address
+                // Similarly check if updated_at or date_updated exists in addresses table
+                try {
+                    $check_column_sql = "SHOW COLUMNS FROM addresses LIKE 'updated_at'";
+                    $check_column_stmt = $conn->prepare($check_column_sql);
+                    $check_column_stmt->execute();
+                    $column_exists = $check_column_stmt->rowCount() > 0;
+                    
+                    if ($column_exists) {
+                        $address_updates[] = "updated_at = NOW()";
+                    }
+                } catch (PDOException $e) {
+                    // Skip timestamp update if we can't check columns
+                }
+                
+                $address_sql = "UPDATE addresses SET " . implode(", ", $address_updates) . " WHERE establishment_id = :establishment_id";
+                
+                $address_stmt = $conn->prepare($address_sql);
+                foreach ($address_params as $key => $value) {
+                    $address_stmt->bindValue($key, $value);
+                }
+                $address_stmt->execute();
+            } else {
+                // Insert new address
+                $address_fields = array_keys($address_params);
+                $address_values = array_map(function($field) {
+                    return substr($field, 1); // Remove the colon from parameter name
+                }, $address_fields);
+                
+                // Add establishment_id if not present
+                if (!in_array('establishment_id', $address_values)) {
+                    $address_fields[] = ':establishment_id';
+                    $address_values[] = 'establishment_id';
+                }
+                
+                // Use created_at instead of date_updated for consistency
+                $address_sql = "INSERT INTO addresses (" . implode(", ", $address_values) . ", created_at) 
+                               VALUES (" . implode(", ", $address_fields) . ", NOW())";
+                
+                $address_stmt = $conn->prepare($address_sql);
+                foreach ($address_params as $key => $value) {
+                    $address_stmt->bindValue($key, $value);
+                }
+                $address_stmt->execute();
+            }
+            
+            $has_changes = true;
+        }
+        
+        // Commit transaction
+        $conn->commit();
+        
+        // Redirect based on whether changes were made
+        if (isset($has_changes) && $has_changes) {
             header("Location: edit_establishment.php?id=$establishment_id&updated=1");
             exit;
         } else {
-            // No changes were made
-            $conn->commit();
             header("Location: edit_establishment.php?id=$establishment_id&no_changes=1");
             exit;
         }
@@ -84,6 +191,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_establishment']
         $error_message = "Database error: " . $e->getMessage();
     }
 }
+
+// The rest of the code remains the same...
 
 // Handle inventory form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_inventory'])) {
@@ -362,24 +471,31 @@ include '../templates/header.php';
                                     <label for="remarks" class="form-label">Remarks</label>
                                     <textarea class="form-control" id="remarks" name="remarks" rows="3"><?php echo htmlspecialchars($establishment['remarks']); ?></textarea>
                                 </div>
-                                
                                 <div class="mb-3">
-                                    <h6>Address Information</h6>
-                                    <p>
-                                        <?php if ($address): ?>
-                                            <?php echo htmlspecialchars($address['street'] . ', ' . $address['barangay'] . ', ' . 
-                                                   $address['municipality'] . ', ' . $address['province'] . ', ' . $address['region']); ?>
-                                            <a href="edit_address.php?id=<?php echo $establishment_id; ?>" class="btn btn-sm btn-outline-secondary ms-2">
-                                                <i class="fas fa-map-marker-alt me-1"></i> Edit Address
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="text-muted">No address information available.</span>
-                                            <a href="add_address.php?id=<?php echo $establishment_id; ?>" class="btn btn-sm btn-outline-primary ms-2">
-                                                <i class="fas fa-plus-circle me-1"></i> Add Address
-                                            </a>
-                                        <?php endif; ?>
-                                    </p>
-                                </div>
+    
+                                <h6>Address Information</h6>
+   
+
+    <!-- Input fields for address -->
+    <div class="row g-2 mt-2">
+        <div class="col-md-6">
+            <input type="text" class="form-control" placeholder="Street" name="street" value="<?php echo $address['street'] ?? ''; ?>">
+        </div>
+        <div class="col-md-6">
+            <input type="text" class="form-control" placeholder="Barangay" name="barangay" value="<?php echo $address['barangay'] ?? ''; ?>">
+        </div>
+        <div class="col-md-6">
+            <input type="text" class="form-control" placeholder="Municipality" name="municipality" value="<?php echo $address['municipality'] ?? ''; ?>">
+        </div>
+        <div class="col-md-6">
+            <input type="text" class="form-control" placeholder="Province" name="province" value="<?php echo $address['province'] ?? ''; ?>">
+        </div>
+        <div class="col-md-6">
+            <input type="text" class="form-control" placeholder="Region" name="region" value="<?php echo $address['region'] ?? ''; ?>">
+        </div>
+    </div>
+</div>
+
                                 
                                 <div class="d-grid gap-2">
                                     <button type="submit" name="update_establishment" class="btn btn-primary">

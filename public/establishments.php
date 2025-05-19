@@ -365,44 +365,57 @@ if ($redirect_to_form) {
                                 <div class="col-md-6">
                                     <div class="form-check mb-2">
                                         <input class="form-check-input" type="checkbox" id="viol_bps_license" name="violations[]" value="Invalid/suspended/cancelled BPS license">
-                                        <label class="form-check-label" for="viol_bps_license">Invalid/suspended/cancelled BPS license</label>
+                                        <label class="form-check-label" for="viol_bps_license">Invalid/suspended/cancelled BPS license or permit. In violation of DAO 2:2007 pursuant to Republic Act 4109 or Product Standards Law and its Implementing Rules and Regulations</label>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="violation-section">
-                            <h6 class="mb-3">DAO Violation:</h6>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" id="viol_manufacturer_name" name="violations[]" value="No Manufacturer's Name">
-                                        <label class="form-check-label" for="viol_manufacturer_name">No Manufacturer's Name</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" id="viol_manufacturer_address" name="violations[]" value="No Manufacturer's Address">
-                                        <label class="form-check-label" for="viol_manufacturer_address">No Manufacturer's Address</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" id="viol_date_manufactured" name="violations[]" value="No Date Manufactured">
-                                        <label class="form-check-label" for="viol_date_manufactured">No Date Manufactured</label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" id="viol_country_origin" name="violations[]" value="No Country of Origin">
-                                        <label class="form-check-label" for="viol_country_origin">No Country of Origin</label>
-                                    </div>
-                                </div>
-                                
-                            </div>
-                        </div>
+    <h6 class="mb-3">DAO Violation:</h6>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="viol_manufacturer_name" name="violations[]" value="No Manufacturer's Name">
+                <label class="form-check-label" for="viol_manufacturer_name">No Manufacturer's Name</label>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="viol_manufacturer_address" name="violations[]" value="No Manufacturer's Address">
+                <label class="form-check-label" for="viol_manufacturer_address">No Manufacturer's Address</label>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="viol_date_manufactured" name="violations[]" value="No Date Manufactured">
+                <label class="form-check-label" for="viol_date_manufactured">No Date Manufactured</label>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="viol_country_origin" name="violations[]" value="No Country of Origin">
+                <label class="form-check-label" for="viol_country_origin">No Country of Origin</label>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="viol_others" name="violations[]" value="Others" onclick="toggleOthersInput()">
+                <label class="form-check-label" for="viol_others">Others</label>
+            </div>
+        </div>
+    </div>
+    <div id="others_input_container" class="row mt-2 d-none">
+        <div class="col-md-8">
+            <div class="form-group">
+                <label for="others_details">Please specify other violation:</label>
+                <input type="text" class="form-control" id="others_details" name="others_details" placeholder="Enter details">
+            </div>
+        </div>
+    </div>
+</div>
 
                         <div class="violation-section">
                             <h6 class="mb-3">Accreditation Violation:</h6>
@@ -424,7 +437,7 @@ if ($redirect_to_form) {
                                 <div class="col-md-12">
                                     <div class="form-check mb-2">
                                         <input class="form-check-input" type="checkbox" id="viol_display_accreditation" name="violations[]" value="Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment">
-                                        <label class="form-check-label" for="viol_display_accreditation">Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment</label>
+                                        <label class="form-check-label" for="viol_display_accreditation">Failure to Display Accreditation Certificate in conspicuous place in the establishment, in violation of PD 1572 or the Accreditation Law in relation to Article 128 of RA 7394 (Consumer Act of the Philippines) and its omplementing rules and regulation</label>
                                     </div>
                                 </div>
                             </div>
@@ -461,7 +474,7 @@ if ($redirect_to_form) {
                                 <div class="col-md-12">
                                     <div class="form-check mb-2">
                                         <input class="form-check-input" type="checkbox" id="viol_freight_display_accreditation" name="violations[]" value="Freight Business with Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment">
-                                        <label class="form-check-label" for="viol_freight_display_accreditation">Freight Business with Failure to Display valid copy of Accreditation Certificate in conspicuous place in the establishment</label>
+                                        <label class="form-check-label" for="viol_freight_display_accreditation">Freight Business with Failure to Display Accreditation Certificate in conspicuous place in the establishment</label>
                                     </div>
                                 </div>
                             </div>
@@ -492,14 +505,25 @@ if ($redirect_to_form) {
                                 </div>
                             </div>
                         </div>
-                        
                         <div class="violation-section">
                             <h6 class="mb-3">Business Name Violation:</h6>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="viol_business_name" name="violations[]" value="Operating without Business Name Registration">
-                                <label class="form-check-label" for="viol_business_name">Operating without Business Name Registration</label>
-                            </div>
-                        </div>
+                                <div class="form-check mb-2">
+                                 <input class="form-check-input" type="checkbox" id="viol_business_name_1" name="violations[]" value="Operating without Business Name Registration">
+                                     <label class="form-check-label" for="viol_business_name_1">Operating without Business Name Registration</label>
+                                     </div>
+                                    <div class="form-check mb-2">
+                                     <input class="form-check-input" type="checkbox" id="viol_business_name_2" name="violations[]" value="Using a trade name other than his true name">
+                                         <label class="form-check-label" for="viol_business_name_2">Using a trade name other than his true name</label>
+                                    </div>
+                                            <div class="form-check mb-2">
+                                                 <input class="form-check-input" type="checkbox" id="viol_business_name_3" name="violations[]" value="Using a trade name on signages and/or documents (e.g receipts) without prior DTI registration">
+                                                     <label class="form-check-label" for="viol_business_name_3">Using a trade name on signages and/or documents (e.g receipts) without prior DTI registration</label>
+                                    </div>
+                                                        <div class="form-check mb-2">
+                                                            <input class="form-check-input" type="checkbox" id="viol_business_name_4" name="violations[]" value="Failure to display Business Name Registration Certificate">
+                                                                <label class="form-check-label" for="viol_business_name_4">Failure to display Business Name Registration Certificate</label>
+                                                            </div>
+                                                        </div>
                         
                         <div class="violation-section">
                             <h6 class="mb-3">Other Violation:</h6>
