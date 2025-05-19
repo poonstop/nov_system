@@ -264,31 +264,46 @@ if ($redirect_to_form) {
                 <input type="text" class="form-control" id="name" name="name" required>
             </div>
             
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <label for="region" class="form-label">Region:</label>
-                    <input type="text" class="form-control" id="region" name="region" required>
-                </div>
-                <div class="col-md-4">
-                    <label for="province" class="form-label">Province:</label>
-                    <input type="text" class="form-control" id="province" name="province" required>
-                </div>
-                <div class="col-md-4">
-                    <label for="municipality" class="form-label">Municipality:</label>
-                    <input type="text" class="form-control" id="municipality" name="municipality" required>
-                </div>
-            </div>
-            
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label for="barangay" class="form-label">Barangay:</label>
-                    <input type="text" class="form-control" id="barangay" name="barangay" required>
-                </div>
-                <div class="col-md-6">
-                    <label for="street" class="form-label">Street and house no.:</label>
-                    <input type="text" class="form-control" id="street" name="street" required>
-                </div>
-            </div>
+           <!-- Replace the existing address input fields in the form with these dynamic dropdowns -->
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <label for="region" class="form-label">Region:</label>
+        <select class="form-select" id="region" name="region" required>
+            <option value="">Select region</option>
+            <!-- Will be populated by JavaScript -->
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label for="province" class="form-label">Province:</label>
+        <select class="form-select" id="province" name="province" required>
+            <option value="">Select province</option>
+            <!-- Will be populated based on region selection -->
+        </select>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <label for="municipality" class="form-label">Municipality:</label>
+        <select class="form-select" id="municipality" name="municipality" required>
+            <option value="">Select municipality</option>
+            <!-- Will be populated based on province selection -->
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label for="barangay" class="form-label">Barangay:</label>
+        <select class="form-select" id="barangay" name="barangay" required>
+            <option value="">Select barangay</option>
+            <!-- Will be populated based on municipality selection -->
+        </select>
+    </div>
+</div>
+
+<div class="mb-3">
+    <label for="street" class="form-label">Street and house no.:</label>
+    <input type="text" class="form-control" id="street" name="street" required>
+</div>  
             
             <div class="mb-3">
                 <label for="nature" class="form-label">Nature of business:</label>
@@ -695,6 +710,7 @@ if ($redirect_to_form) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="js/form_handler_establishments.js"></script>
+    <script src="js/address_dropdown.js"></script>
     <script>
 // Show/hide "Other violations" text field based on checkbox
 $(document).ready(function() {

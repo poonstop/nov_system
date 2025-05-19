@@ -170,172 +170,172 @@ foreach ($all_action_types as $type) {
                 </div>
             </div>
             
-            <!-- Establishments Table -->
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-list me-2"></i> Establishments List</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover mb-0">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Establishment Name</th>
-                                    <th>Violations</th>
-                                    <th>Status</th>
-                                    <th>Action Type</th>
-                                    <th>Date Responded</th>
-                                    <th>Expiry Date</th>
-                                    <th class="text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if ($stmt->rowCount() > 0): ?>
-                                    <?php while ($row = $stmt->fetch(PDO::FETCH_ASSOC)): ?>
-                                        <tr>
-                                            <td>
-                                                <strong><?php echo htmlspecialchars($row['name']); ?></strong>
-                                            </td>
-                                            <td>
-                                                <?php 
-                                                // Limit violations text length
-                                                $violations = htmlspecialchars($row['violations']);
-                                                echo (strlen($violations) > 50) ? substr($violations, 0, 50) . '...' : $violations;
-                                                ?>
-                                            </td>
-                                            <td>
-                                                <span class="badge <?php echo getStatusBadgeClass($row['notice_status']); ?>">
-                                                    <?php echo htmlspecialchars($row['notice_status'] ?? 'Pending'); ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <?php if (!empty($row['action_type'])): ?>
-                                                    <span class="badge <?php echo getActionTypeBadgeClass($row['action_type']); ?>">
-                                                        <?php echo htmlspecialchars($row['action_type']); ?>
-                                                    </span>
-                                                <?php else: ?>
-                                                    <span class="text-muted"><em>Not Set</em></span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <?php if (!empty($row['date_responded'])): ?>
-                                                    <span class="text-secondary">
-                                                        <i class="far fa-calendar-alt me-1"></i>
-                                                        <?php echo date('M d, Y', strtotime($row['date_responded'])); ?>
-                                                    </span>
-                                                <?php else: ?>
-                                                    <span class="text-muted"><em>Not Responded</em></span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <?php if (!empty($row['expiry_date'])): ?>
-                                                    <?php 
-                                                        echo date('M d, Y', strtotime($row['expiry_date']));
-                                                        
-                                                        // Check if already expired
-                                                        if (strtotime($row['expiry_date']) < time()) {
-                                                            echo ' <span class="badge bg-danger">Expired</span>';
-                                                        } elseif (strtotime($row['expiry_date']) < strtotime('+7 days')) {
-                                                            echo ' <span class="badge bg-warning text-dark">Soon</span>';
-                                                        }
-                                                    ?>
-                                                <?php else: ?>
-                                                    <span class="text-muted"><em>Not Set</em></span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td class="text-center">
-                                                <div class="btn-group" role="group">
-                                                    <a href="view_establishment.php?id=<?php echo $row['establishment_id']; ?>" 
-                                                        class="btn btn-sm btn-info" title="View Details">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <a href="edit_establishment.php?id=<?php echo $row['establishment_id']; ?>" 
-                                                        class="btn btn-sm btn-warning" title="Edit Establishment">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <a href="action_taken.php?id=<?php echo $row['establishment_id']; ?>" 
-                                                        class="btn btn-sm btn-primary" title="Manage Actions Taken">
-                                                        <i class="fas fa-tasks"></i>
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endwhile; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4">
-                                            <div class="text-muted">
-                                                <i class="fas fa-info-circle me-2"></i> No establishments found matching your criteria.
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+ <!-- Establishments Table -->
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i> Establishments List</h5>
+            <a href="export_establishments.php" class="btn btn-sm btn-light">
+                <i class="fas fa-download me-1"></i> Export Data
+            </a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Establishment Name</th>
+                        <th>Violations</th>
+                        <th>Status</th>
+                        <th>Action Type</th>
+                        <th>Date Responded</th>
+                        <th>Expiry Date</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if ($stmt->rowCount() > 0): ?>
+                        <?php while ($row = $stmt->fetch(PDO::FETCH_ASSOC)): ?>
+                            <tr>
+                                <td>
+                                    <strong><?php echo htmlspecialchars($row['name']); ?></strong>
+                                </td>
+                                <td>
+                                    <?php 
+                                    // Limit violations text length
+                                    $violations = htmlspecialchars($row['violations']);
+                                    echo (strlen($violations) > 50) ? substr($violations, 0, 50) . '...' : $violations;
+                                    ?>
+                                </td>
+                                <td>
+                                    <span class="badge <?php echo getStatusBadgeClass($row['notice_status']); ?>">
+                                        <?php echo htmlspecialchars($row['notice_status'] ?? 'Pending'); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?php if (!empty($row['action_type'])): ?>
+                                        <span class="badge <?php echo getActionTypeBadgeClass($row['action_type']); ?>">
+                                            <?php echo htmlspecialchars($row['action_type']); ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-muted"><em>Not Set</em></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($row['date_responded'])): ?>
+                                        <span class="text-secondary">
+                                            <i class="far fa-calendar-alt me-1"></i>
+                                            <?php echo date('M d, Y', strtotime($row['date_responded'])); ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-muted"><em>Not Responded</em></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($row['expiry_date'])): ?>
+                                        <?php 
+                                            echo date('M d, Y', strtotime($row['expiry_date']));
+                                            
+                                            // Check if already expired
+                                            if (strtotime($row['expiry_date']) < time()) {
+                                                echo ' <span class="badge bg-danger">Expired</span>';
+                                            } elseif (strtotime($row['expiry_date']) < strtotime('+7 days')) {
+                                                echo ' <span class="badge bg-warning text-dark">Soon</span>';
+                                            }
+                                        ?>
+                                    <?php else: ?>
+                                        <span class="text-muted"><em>Not Set</em></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group" role="group">
+                                        <a href="view_establishment.php?id=<?php echo $row['establishment_id']; ?>" 
+                                            class="btn btn-sm btn-info" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="edit_establishment.php?id=<?php echo $row['establishment_id']; ?>" 
+                                            class="btn btn-sm btn-warning" title="Edit Establishment">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="action_taken.php?id=<?php echo $row['establishment_id']; ?>" 
+                                            class="btn btn-sm btn-primary" title="Manage Actions Taken">
+                                            <i class="fas fa-tasks"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="fas fa-info-circle me-2"></i> No establishments found matching your criteria.
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-light">
+        <span>Total Records: <strong><?php echo $stmt->rowCount(); ?></strong></span>
+    </div>
+</div>
+
+<!-- Legend Section -->
+<div class="card mt-3 shadow-sm">
+    <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i> Status & Action Legend</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Status Types:</h6>
+                <div class="d-flex flex-wrap">
+                    <div class="me-3 mb-2">
+                        <span class="badge bg-info">Pending</span> - Initial stage
                     </div>
-                </div>
-                <div class="card-footer bg-light">
-                    <div class="d-flex justify-content-between">
-                        <span>Total Records: <strong><?php echo $stmt->rowCount(); ?></strong></span>
-                        <a href="export_establishments.php" class="btn btn-sm btn-outline-secondary">
-                            <i class="fas fa-download me-1"></i> Export Data
-                        </a>
+                    <div class="me-3 mb-2">
+                        <span class="badge bg-warning">In Progress</span> - Being processed
+                    </div>
+                    <div class="me-3 mb-2">
+                        <span class="badge bg-success">Complied</span> - Requirements met
+                    </div>
+                    <div class="me-3 mb-2">
+                        <span class="badge bg-danger">Non-Compliant</span> - Failed requirements
+                    </div>
+                    <div class="me-3 mb-2">
+                        <span class="badge bg-secondary">Closed</span> - Case closed
+                    </div>
+                    <div class="me-3 mb-2">
+                        <span class="badge bg-info">Responded</span> - Action has been taken
                     </div>
                 </div>
             </div>
-
-            <!-- Legend Section -->
-            <div class="card mt-3 shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i> Status & Action Legend</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Status Types:</h6>
-                            <div class="d-flex flex-wrap">
-                                <div class="me-3 mb-2">
-                                    <span class="badge bg-info">Pending</span> - Initial stage
-                                </div>
-                                <div class="me-3 mb-2">
-                                    <span class="badge bg-warning">In Progress</span> - Being processed
-                                </div>
-                                <div class="me-3 mb-2">
-                                    <span class="badge bg-success">Complied</span> - Requirements met
-                                </div>
-                                <div class="me-3 mb-2">
-                                    <span class="badge bg-danger">Non-Compliant</span> - Failed requirements
-                                </div>
-                                <div class="me-3 mb-2">
-                                    <span class="badge bg-secondary">Closed</span> - Case closed
-                                </div>
-                                <div class="me-3 mb-2">
-                                    <span class="badge bg-info">Responded</span> - Action has been taken
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Action Types:</h6>
-                            <div class="d-flex flex-wrap">
-                                <div class="me-3 mb-2">
-                                    <span class="badge bg-primary">CFO</span> - Certificate of First Offence
-                                </div>
-                                <div class="me-3 mb-2">
-                                    <span class="badge bg-info">FC</span> - Formal Charge
-                                </div>
-                                <div class="me-3 mb-2">
-                                    <span class="badge bg-success">Compliance</span> - Compliance fulfilled
-                                </div>
-                                <div class="me-3 mb-2">
-                                    <span class="badge bg-secondary">Other</span> - Other action types
-                                </div>
-                            </div>
-                        </div>
+            <div class="col-md-6">
+                <h6>Action Types:</h6>
+                <div class="d-flex flex-wrap">
+                    <div class="me-3 mb-2">
+                        <span class="badge bg-primary">CFO</span> - Certificate of First Offence
+                    </div>
+                    <div class="me-3 mb-2">
+                        <span class="badge bg-info">FC</span> - Formal Charge
+                    </div>
+                    <div class="me-3 mb-2">
+                        <span class="badge bg-success">Compliance</span> - Compliance fulfilled
+                    </div>
+                    <div class="me-3 mb-2">
+                        <span class="badge bg-secondary">Other</span> - Other action types
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
+</div>
+</div>
 </div>
 
 <?php

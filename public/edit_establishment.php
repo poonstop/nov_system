@@ -233,7 +233,7 @@ $penalties = $penalties_stmt->fetchAll(PDO::FETCH_ASSOC);
                     <a href="view_establishment.php?id=<?php echo $establishment_id; ?>" class="btn btn-info me-2">
                         <i class="fas fa-eye me-1"></i> View Details
                     </a>
-                    <a href="index.php" class="btn btn-secondary">
+                    <a href="nov_form.php" class="btn btn-secondary">
                         <i class="fas fa-arrow-left me-1"></i> Back to List
                     </a>
                 </div>
