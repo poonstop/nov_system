@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_establishment']
         $error_message = "Database error: " . $e->getMessage();
     }
 }
-include '../templates/header.php';
+
 // Handle inventory form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_inventory'])) {
     try {
@@ -215,6 +215,8 @@ $penalties_stmt = $conn->prepare($penalties_sql);
 $penalties_stmt->bindParam(':establishment_id', $establishment_id);
 $penalties_stmt->execute();
 $penalties = $penalties_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+include '../templates/header.php';
 ?>
 
 <div class="container-fluid mt-4">
@@ -483,7 +485,7 @@ $penalties = $penalties_stmt->fetchAll(PDO::FETCH_ASSOC);
                                             <th>Status</th>
                                             <th>Violation Type</th>
                                             <th>Date Added</th>
-                                          
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -579,7 +581,7 @@ $penalties = $penalties_stmt->fetchAll(PDO::FETCH_ASSOC);
                                             <th>Name</th>
                                             <th>Position</th>
                                             <th>Date Added</th>
-                                       
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -715,9 +717,7 @@ $penalties = $penalties_stmt->fetchAll(PDO::FETCH_ASSOC);
                                                         <a href="edit_penalty.php?id=<?php echo $penalty['penalty_id']; ?>" class="btn btn-sm btn-warning">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
-                                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#penaltyModal<?php echo $penalty['penalty_id']; ?>">
-                                                            <i class="fas fa-eye"></i>
-                                                        </button>
+                                                        
                                                     </td>
                                                 </tr>
                                                 
