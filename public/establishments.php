@@ -275,7 +275,7 @@ if ($redirect_to_form) {
 </head>
 <body>
     <div class="container mt-4">
-        <h1 class="mb-4">Notice Management</h1>
+        <h1><i class="fas fa-clipboard"></i>Notice Management</h1>
         
         <!-- Establishment Details Form -->
         <form id="establishmentForm" class="form-container">
@@ -461,7 +461,6 @@ if ($redirect_to_form) {
         </div>
     </div>
 </div>
-
                         <div class="violation-section">
                             <h6 class="mb-3">Accreditation Violation:</h6>
                             <div class="row">
