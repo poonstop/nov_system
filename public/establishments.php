@@ -25,9 +25,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Calculate expiry date (48 hours from issue date)
             $expiry_date = date('Y-m-d H:i:s', strtotime($issue_date . ' + 48 hours'));
             
-            // Get violations as JSON array
-            $violations = isset($_POST['violations']) ? json_encode($_POST['violations']) : '[]';
-            $num_violations = isset($_POST['violations']) ? count($_POST['violations']) : 0;
+            // SIMPLIFIED VIOLATIONS PROCESSING - JavaScript sends the correct data
+            $violations_array = $_POST['violations'] ?? [];
+            
+            // Remove any empty values and re-index
+            $violations_array = array_filter($violations_array, function($violation) {
+                return !empty(trim($violation));
+            });
+            $violations_array = array_values($violations_array);
+
+            // Convert to JSON and count violations
+            $violations = json_encode($violations_array);
+            $num_violations = count($violations_array);
+
+            // Debug output (remove this in production)
+            error_log("Violations processed: " . print_r($violations_array, true));
             
             // Insert establishment record
             $stmt = $conn->prepare("INSERT INTO establishments 
@@ -56,6 +68,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $barangay = $_POST['barangay'] ?? '';
             $street = $_POST['street'] ?? '';
             
+            // Handle custom address fields
+            if ($region === 'others') {
+                $region = $_POST['custom_region'] ?? '';
+            }
+            if ($province === 'others') {
+                $province = $_POST['custom_province'] ?? '';
+            }
+            if ($municipality === 'others') {
+                $municipality = $_POST['custom_municipality'] ?? '';
+            }
+            if ($barangay === 'others') {
+                $barangay = $_POST['custom_barangay'] ?? '';
+            }
+            
             $stmt = $conn->prepare("INSERT INTO addresses 
                 (establishment_id, street, barangay, municipality, province, region) 
                 VALUES (?, ?, ?, ?, ?, ?)");
@@ -70,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             
             // 3. Process Inventory (only if not skipped)
-            if (isset($_POST['inventory_skipped']) && $_POST['inventory_skipped'] !== 'true') {
+            if (!isset($_POST['inventory_skipped']) || $_POST['inventory_skipped'] !== 'true') {
                 // Check if inventory data exists
                 if (isset($_POST['product_name']) && is_array($_POST['product_name'])) {
                     $product_names = $_POST['product_name'];
@@ -86,10 +112,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Inventory remarks
                     $inv_remarks = [];
                     if (isset($_POST['sealed_products_left']) && $_POST['sealed_products_left'] == '1') {
-                        $inv_remarks[] = "The sealed products were left";
+                        $inv_remarks[] = "The sealed products were left within the premises of the above-mentioned establishment by the DTI Enforcement Team. Unauthorized removal, tampering the same is punishable under the existing rules and regulation";
                     }
                     if (isset($_POST['withdrawn_products_to_dti']) && $_POST['withdrawn_products_to_dti'] == '1') {
-                        $inv_remarks[] = "The withdrawn products were brought to the DTI";
+                        $inv_remarks[] = "The withdrawn products were brought to the DTI designated holding area by the DTI and will not be disposed of and will remain with DTI custody until proper disposition.";
                     }
                     $inv_remarks_text = implode(", ", $inv_remarks);
                     
@@ -169,6 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $response['status'] = 'success';
             $response['message'] = 'Notice record successfully saved!';
             $response['establishment_id'] = $establishment_id;
+            $response['violations_processed'] = $violations_array; // For debugging
             
             // For AJAX requests, we'll output JSON
             if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
@@ -264,22 +291,30 @@ if ($redirect_to_form) {
                 <input type="text" class="form-control" id="name" name="name" required>
             </div>
             
-           <!-- Replace the existing address input fields in the form with these dynamic dropdowns -->
-
-<div class="row mb-3">
+  <div class="row mb-3">
     <div class="col-md-6">
         <label for="region" class="form-label">Region:</label>
         <select class="form-select" id="region" name="region" required>
             <option value="">Select region</option>
             <!-- Will be populated by JavaScript -->
+            <option value="others">Others (Type manually)</option>
         </select>
+        <!-- Custom region input (hidden by default) -->
+        <div class="mt-2" id="custom_region_container" style="display: none;">
+            <input type="text" class="form-control" id="custom_region" name="custom_region" placeholder="Enter region name">
+        </div>
     </div>
     <div class="col-md-6">
         <label for="province" class="form-label">Province:</label>
         <select class="form-select" id="province" name="province" required>
             <option value="">Select province</option>
             <!-- Will be populated based on region selection -->
+            <option value="others">Others (Type manually)</option>
         </select>
+        <!-- Custom province input (hidden by default) -->
+        <div class="mt-2" id="custom_province_container" style="display: none;">
+            <input type="text" class="form-control" id="custom_province" name="custom_province" placeholder="Enter province name">
+        </div>
     </div>
 </div>
 
@@ -289,21 +324,31 @@ if ($redirect_to_form) {
         <select class="form-select" id="municipality" name="municipality" required>
             <option value="">Select municipality</option>
             <!-- Will be populated based on province selection -->
+            <option value="others">Others (Type manually)</option>
         </select>
+        <!-- Custom municipality input (hidden by default) -->
+        <div class="mt-2" id="custom_municipality_container" style="display: none;">
+            <input type="text" class="form-control" id="custom_municipality" name="custom_municipality" placeholder="Enter municipality name">
+        </div>
     </div>
     <div class="col-md-6">
         <label for="barangay" class="form-label">Barangay:</label>
         <select class="form-select" id="barangay" name="barangay" required>
             <option value="">Select barangay</option>
             <!-- Will be populated based on municipality selection -->
+            <option value="others">Others (Type manually)</option>
         </select>
+        <!-- Custom barangay input (hidden by default) -->
+        <div class="mt-2" id="custom_barangay_container" style="display: none;">
+            <input type="text" class="form-control" id="custom_barangay" name="custom_barangay" placeholder="Enter barangay name">
+        </div>
     </div>
 </div>
 
 <div class="mb-3">
     <label for="street" class="form-label">Street and house no.:</label>
     <input type="text" class="form-control" id="street" name="street" required>
-</div>  
+</div>
             
             <div class="mb-3">
                 <label for="nature" class="form-label">Nature of business:</label>
@@ -441,17 +486,7 @@ if ($redirect_to_form) {
                                     </div>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" id="viol_accreditation_others" name="violations_checkbox_others" value="Others">
-                                        <label class="form-check-label" for="viol_accreditation_others">Others:</label>
-                                    </div>
-                                    <div id="accreditation_others_container" class="mb-2 ms-4" style="display: none;">
-                                        <input type="text" class="form-control" id="viol_accreditation_others_text" name="violations_others" placeholder="Specify other accreditation violation">
-                                    </div>
-                                </div>
-                            </div>
+                            
                         </div>
                         
                         <div class="violation-section">
@@ -626,11 +661,11 @@ if ($redirect_to_form) {
                     <label class="form-label fw-bold">Inventory Remarks:</label>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="sealed_products_left" id="sealedProductsLeft" value="1">
-                        <label class="form-check-label" for="sealedProductsLeft">The sealed products were left</label>
+                        <label class="form-check-label" for="sealedProductsLeft">The sealed products were left within the premises of the above-mentioned establishment by the DTI Enforcement Team. Unauthorized removal, tampering the same is punishable under the existing rules and regulation</label>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="withdrawn_products_to_dti" id="withdrawnProductsToDTI" value="1">
-                        <label class="form-check-label" for="withdrawnProductsToDTI">The withdrawn products were brought to the DTI</label>
+                        <label class="form-check-label" for="withdrawnProductsToDTI">The withdrawn products were brought to the DTI designated holding area by the DTI and will not be disposed of and will remain with DTI custody until proper disposition.</label>
                     </div>
                 </div>
                 
@@ -756,6 +791,7 @@ $(document).ready(function() {
     });
 });
 </script>
+
 
 </body>
 </html>

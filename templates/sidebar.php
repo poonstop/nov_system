@@ -60,7 +60,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </li>
         <?php endif; ?>
         
-        <!-- Modified Utilities dropdown menu with admin-only access to specific pages -->
+        <?php if(isset($_SESSION['user_level']) && $_SESSION['user_level'] === 'inspector'): ?>
+        <!-- Profile section for inspectors -->
+        
+        <?php else: ?>
+        <!-- Utilities dropdown menu for admin users only -->
         <li>
             <a href="#utilitiesSubmenu" data-toggle="collapse" aria-expanded="<?php echo (in_array($current_page, ['audit_logs.php', 'backup_restore.php'])) ? 'true' : 'false'; ?>" class="dropdown-toggle <?php echo (in_array($current_page, ['audit_logs.php', 'backup_restore.php'])) ? 'active' : ''; ?>">
                 <div class="icon-container">
@@ -69,29 +73,25 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <span class="nav-text">Utilities</span>
             </a>
             <ul class="collapse list-unstyled <?php echo (in_array($current_page, ['audit_logs.php', 'backup_restore.php'])) ? 'show' : ''; ?>" id="utilitiesSubmenu">
-    <?php if(isset($_SESSION['user_level']) && $_SESSION['user_level'] === 'admin'): ?>
-    <li>
-        <a href="audit_logs.php" class="<?php echo ($current_page == 'audit_logs.php') ? 'active' : ''; ?>">
-            <div class="icon-container">
-                <i class="fas fa-history"></i>
-            </div>
-            <span class="nav-text">Audit Logs</span>
-        </a>
-    </li>
-    <li>
-        <!-- CHANGE THIS LINE - Update the path to backup_restore.php -->
-        <a href="backup_restore.php" class="<?php echo ($current_page == 'backup_restore.php') ? 'active' : ''; ?>">
-            <div class="icon-container">
-                <i class="fas fa-database"></i>
-            </div>
-            <span class="nav-text">Backup & Restore</span>
-        </a>
-    </li>
-    <?php else: ?>
-    <!-- ... rest of the code ... -->
-    <?php endif; ?>
-</ul>
+                <li>
+                    <a href="audit_logs.php" class="<?php echo ($current_page == 'audit_logs.php') ? 'active' : ''; ?>">
+                        <div class="icon-container">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <span class="nav-text">Audit Logs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="backup_restore.php" class="<?php echo ($current_page == 'backup_restore.php') ? 'active' : ''; ?>">
+                        <div class="icon-container">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <span class="nav-text">Backup & Restore</span>
+                    </a>
+                </li>
+            </ul>
         </li>
+        <?php endif; ?>
     </ul>
     
     <div class="logout-section">

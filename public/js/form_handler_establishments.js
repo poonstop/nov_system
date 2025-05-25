@@ -1,23 +1,30 @@
 $(document).ready(function() {
     // Calculate expiry date when issue date changes
-    $('#issue_date').on('change', function() {
+   $('#issue_date').on('change', function() {
         if ($(this).val()) {
             const issueDate = new Date($(this).val());
-            let expiryDate = new Date(issueDate);
             
-            // Add 48 hours (2 days) excluding weekends
-            let hoursToAdd = 48;
-            
-            while (hoursToAdd > 0) {
-                // Add 1 hour at a time
-                expiryDate.setHours(expiryDate.getHours() + 1);
+            // Function to add business days (excluding weekends)
+            function addBusinessDays(date, days) {
+                let result = new Date(date);
+                let addedDays = 0;
                 
-                // Skip counting hours on weekends
-                const dayOfWeek = expiryDate.getDay(); // 0 = Sunday, 6 = Saturday
-                if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                    hoursToAdd--;
+                while (addedDays < days) {
+                    // Add one day
+                    result.setDate(result.getDate() + 1);
+                    
+                    // Skip weekends (0 = Sunday, 6 = Saturday)
+                    const dayOfWeek = result.getDay();
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                        addedDays++;
+                    }
                 }
+                
+                return result;
             }
+            
+            // 48 hours = 2 business days
+            const expiryDate = addBusinessDays(issueDate, 2);
             
             // Format the date as YYYY-MM-DD for input field
             const yyyy = expiryDate.getFullYear();
@@ -156,27 +163,42 @@ $(document).ready(function() {
             formData.append('nature', $('#other_nature').val());
         }
         
-        // Violations form data
+        // FIXED: Violations form data processing
         const violations = [];
-        $('#violationsForm input[type="checkbox"]:checked').each(function() {
-            // Only include violations[] checkboxes, not the control checkboxes
-            if ($(this).attr('name') === 'violations[]') {
-                violations.push($(this).val());
+
+        // Process ALL regular violation checkboxes EXCEPT the DAO "Others" checkbox
+        $('#violationsForm input[name="violations[]"]:checked').each(function() {
+            const violationValue = $(this).val();
+            // Skip ONLY the DAO "Others" checkbox - we handle its text separately
+            if (violationValue !== 'Others') {
+                violations.push(violationValue);
             }
         });
-        
-        // Add "other violations" if checked
-        if ($('#viol_other_violations').is(':checked')) {
-            const othersText = $('#other_violations_text').val();
-            if (othersText) {
-                violations.push(othersText);
+
+        // FIXED: Handle DAO "Others" - Add the actual text from the input field
+        if ($('#viol_others').is(':checked')) {
+            const othersDetails = $('#others_details').val().trim();
+            if (othersDetails) {
+                violations.push(othersDetails); // Add the actual text input
             }
         }
-        
-        // Add each violation as array element
-        for (let i = 0; i < violations.length; i++) {
-            formData.append(`violations[${i}]`, violations[i]);
+
+        // Handle "Other Violations" section
+        if ($('#viol_other_violations').is(':checked')) {
+            const otherViolationsText = $('#other_violations_text').val().trim();
+            if (otherViolationsText) {
+                violations.push('Other Violations: ' + otherViolationsText);
+            } else {
+                violations.push('Other Violations');
+            }
         }
+
+        // Add each violation as array element to FormData
+        violations.forEach(function(violation, index) {
+            formData.append(`violations[${index}]`, violation);
+        });
+
+        console.log('Violations being sent:', violations); // Debug log
         
         // Inventory form data
         const inventorySkipped = $('#inventorySkipBtn').data('was-clicked') === true;
@@ -203,7 +225,7 @@ $(document).ready(function() {
             
             // Inventory remarks
             formData.append('sealed_products_left', $('#sealedProductsLeft').is(':checked') ? '1' : '0');
-            formData.append('withdrawn_products_to_dti', $('#withdrawnProductsToDTI').is(':checked') ? '1' : '0');
+            formData.append('withdrawn_products_to_dti', $('#withdrawnProductsToDti').is(':checked') ? '1' : '0');
         }
         
         // Status form data
@@ -224,6 +246,12 @@ $(document).ready(function() {
         // Add form submission flag
         formData.append('form_submit', 'save_notice');
         
+        // Debug: Log form data
+        console.log('Form data being submitted:');
+        for (let pair of formData.entries()) {
+            console.log(pair[0] + ': ' + pair[1]);
+        }
+        
         // Submit form via AJAX to the current page (instead of process_notice.php)
         $.ajax({
             url: window.location.href, // Submit to the current page
@@ -233,6 +261,7 @@ $(document).ready(function() {
             contentType: false,
             dataType: 'json',
             success: function(response) {
+                console.log('Server response:', response);
                 if (response.status === 'success') {
                     // Show success modal
                     $('#statusModal').modal('hide');
@@ -263,6 +292,7 @@ $(document).ready(function() {
         window.location.reload();
     });
 });
+
 function toggleOthersInput() {
     var othersCheckbox = document.getElementById('viol_others');
     var othersInputContainer = document.getElementById('others_input_container');
@@ -271,8 +301,11 @@ function toggleOthersInput() {
         othersInputContainer.classList.remove('d-none');
     } else {
         othersInputContainer.classList.add('d-none');
+        // Clear the input when hiding
+        document.getElementById('others_details').value = '';
     }
 }
+
 function toggleAddressEdit() {
     const displayEl = document.getElementById('address-display');
     const editEl = document.getElementById('address-edit');

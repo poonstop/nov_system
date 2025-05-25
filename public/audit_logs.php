@@ -171,8 +171,7 @@ include '../templates/header.php';
                         </div>
                         <div class="col-md-3 d-flex align-items-end">
                             <button type="submit" class="btn btn-primary me-2"><i class="fas fa-search"></i> Filter</button>
-                            <a href="audit_logs.php" class="btn btn-outline-secondary me-2"><i class="fas fa-redo"></i> Reset</a>
-                            <button type="button" id="exportBtn" class="btn btn-success"><i class="fas fa-download"></i> Export</button>
+  
                         </div>
                     </form>
                 </div>

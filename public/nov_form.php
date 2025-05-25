@@ -87,6 +87,31 @@ foreach ($all_action_types as $type) {
         $action_types[] = $type;
     }
 }
+
+// Improved function to update status and action type for expired establishments
+function updateExpiredEstablishment($conn, $establishment_id) {
+    try {
+        // Update establishment status to Non-Compliant
+        $update_status = $conn->prepare("UPDATE establishments SET notice_status = 'Non-Compliant' WHERE establishment_id = ?");
+        $update_status->execute([$establishment_id]);
+        
+        // Check if there's an existing notice record with Formal Charge
+        $check_notice = $conn->prepare("SELECT id FROM notice_records WHERE establishment_id = ? AND notice_type = 'Formal Charge' ORDER BY created_at DESC LIMIT 1");
+        $check_notice->execute([$establishment_id]);
+        
+        if ($check_notice->rowCount() == 0) {
+            // Add new notice record with Formal Charge if none exists
+            $insert_notice = $conn->prepare("INSERT INTO notice_records (establishment_id, notice_type, remarks, created_at) VALUES (?, 'Formal Charge', 'Automatically generated due to expiry', NOW())");
+            $insert_notice->execute([$establishment_id]);
+        }
+        
+        return true;
+    } catch (PDOException $e) {
+        // Log error instead of displaying
+        error_log("Error updating expired establishment: " . $e->getMessage());
+        return false;
+    }
+}
 ?>
 
 <div class="container-fluid mt-4">
@@ -197,7 +222,36 @@ foreach ($all_action_types as $type) {
                 <tbody>
                     <?php if ($stmt->rowCount() > 0): ?>
                         <?php while ($row = $stmt->fetch(PDO::FETCH_ASSOC)): ?>
-                            <tr>
+                            <?php
+                                // ENHANCED: Improved check if establishment is expired and update status if needed
+                                $is_expired = false;
+                                $auto_updated = false;
+                                $display_status = $row['notice_status'] ?? 'Pending';
+                                $display_action_type = $row['action_type'] ?? '';
+                                
+                                // Check if expiry date exists, is in the past, and there's no response
+                                if (!empty($row['expiry_date']) && 
+                                    strtotime($row['expiry_date']) < time() && 
+                                    empty($row['date_responded'])) {
+                                    
+                                    $is_expired = true;
+                                    
+                                    // ALWAYS set display status to Non-Compliant for expired & not responded records
+                                    $display_status = 'Non-Compliant';
+                                    
+                                    // Set display action type to Formal Charge for expired & not responded records
+                                    if (empty($display_action_type) || $display_action_type != 'Formal Charge') {
+                                        $display_action_type = 'Formal Charge';
+                                    }
+                                    
+                                    // Only update the database if current status isn't already Non-Compliant
+                                    if ($row['notice_status'] != 'Non-Compliant') {
+                                        // Update status and action_type in database
+                                        $auto_updated = updateExpiredEstablishment($conn, $row['establishment_id']);
+                                    }
+                                }
+                            ?>
+                            <tr class="<?php echo $is_expired && empty($row['date_responded']) ? 'table-danger' : ''; ?>">
                                 <td>
                                     <strong><?php echo htmlspecialchars($row['name']); ?></strong>
                                 </td>
@@ -209,14 +263,17 @@ foreach ($all_action_types as $type) {
                                     ?>
                                 </td>
                                 <td>
-                                    <span class="badge <?php echo getStatusBadgeClass($row['notice_status']); ?>">
-                                        <?php echo htmlspecialchars($row['notice_status'] ?? 'Pending'); ?>
+                                    <span class="badge <?php echo getStatusBadgeClass($display_status); ?>">
+                                        <?php echo htmlspecialchars($display_status); ?>
                                     </span>
+                                    <?php if ($auto_updated): ?>
+                                        <span class="badge bg-secondary" title="Automatically updated due to expiry">Auto</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
-                                    <?php if (!empty($row['action_type'])): ?>
-                                        <span class="badge <?php echo getActionTypeBadgeClass($row['action_type']); ?>">
-                                            <?php echo htmlspecialchars($row['action_type']); ?>
+                                    <?php if (!empty($display_action_type)): ?>
+                                        <span class="badge <?php echo getActionTypeBadgeClass($display_action_type); ?>">
+                                            <?php echo htmlspecialchars($display_action_type); ?>
                                         </span>
                                     <?php else: ?>
                                         <span class="text-muted"><em>Not Set</em></span>
@@ -237,11 +294,13 @@ foreach ($all_action_types as $type) {
                                         <?php 
                                             echo date('M d, Y', strtotime($row['expiry_date']));
                                             
-                                            // Check if already expired
-                                            if (strtotime($row['expiry_date']) < time()) {
-                                                echo ' <span class="badge bg-danger">Expired</span>';
-                                            } elseif (strtotime($row['expiry_date']) < strtotime('+7 days')) {
-                                                echo ' <span class="badge bg-warning text-dark">Soon</span>';
+                                            // Check if already expired - but only show warning badges if not responded yet
+                                            if (empty($row['date_responded'])) {
+                                                if (strtotime($row['expiry_date']) < time()) {
+                                                    echo ' <span class="badge bg-danger">Expired</span>';
+                                                } elseif (strtotime($row['expiry_date']) < strtotime('+7 days')) {
+                                                    echo ' <span class="badge bg-warning text-dark">Soon</span>';
+                                                }
                                             }
                                         ?>
                                     <?php else: ?>
@@ -295,19 +354,7 @@ foreach ($all_action_types as $type) {
                 <h6>Status Types:</h6>
                 <div class="d-flex flex-wrap">
                     <div class="me-3 mb-2">
-                        <span class="badge bg-info">Pending</span> - Initial stage
-                    </div>
-                    <div class="me-3 mb-2">
-                        <span class="badge bg-warning">In Progress</span> - Being processed
-                    </div>
-                    <div class="me-3 mb-2">
-                        <span class="badge bg-success">Complied</span> - Requirements met
-                    </div>
-                    <div class="me-3 mb-2">
                         <span class="badge bg-danger">Non-Compliant</span> - Failed requirements
-                    </div>
-                    <div class="me-3 mb-2">
-                        <span class="badge bg-secondary">Closed</span> - Case closed
                     </div>
                     <div class="me-3 mb-2">
                         <span class="badge bg-info">Responded</span> - Action has been taken
@@ -318,13 +365,13 @@ foreach ($all_action_types as $type) {
                 <h6>Action Types:</h6>
                 <div class="d-flex flex-wrap">
                     <div class="me-3 mb-2">
-                        <span class="badge bg-primary">CFO</span> - Certificate of First Offence
+                        <span class="badge bg-warning text-dark">Certified First Offence</span> - Certificate of First Offence
                     </div>
                     <div class="me-3 mb-2">
-                        <span class="badge bg-info">FC</span> - Formal Charge
+                        <span class="badge bg-danger">Formal Charge</span> - Formal Charge
                     </div>
                     <div class="me-3 mb-2">
-                        <span class="badge bg-success">Compliance</span> - Compliance fulfilled
+                        <span class="badge bg-primary">Compliance</span> - Compliance fulfilled
                     </div>
                     <div class="me-3 mb-2">
                         <span class="badge bg-secondary">Other</span> - Other action types
@@ -352,6 +399,8 @@ function getStatusBadgeClass($status) {
             return 'bg-secondary';
         case 'Responded':
             return 'bg-info';
+        case 'Received':
+            return 'bg-warning text-dark'; // Yellow background with dark text for better readability
         case 'Pending':
         default:
             return 'bg-info';
@@ -361,12 +410,12 @@ function getStatusBadgeClass($status) {
 // Helper function to get the appropriate Bootstrap badge class based on action type
 function getActionTypeBadgeClass($action_type) {
     switch ($action_type) {
-        case 'CFO':
-            return 'bg-primary';
-        case 'FC':
-            return 'bg-info';
+        case 'Certified First Offence':
+            return 'bg-warning text-dark'; // Yellow (not too bright) with dark text for readability
+        case 'Formal Charge':
+            return 'bg-danger'; // Red
         case 'Compliance':
-            return 'bg-success';
+            return 'bg-primary'; // Blue
         case 'Other':
         default:
             return 'bg-secondary';
@@ -374,49 +423,152 @@ function getActionTypeBadgeClass($action_type) {
 }
 ?>
 
-<!-- Add custom script for hover tooltips, interactions, and auto-refresh to ensure display updates -->
+<!-- Add custom script for hover tooltips, interactions, and improved real-time expiry check -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-    
-    // Add hover effect to table rows
-    const tableRows = document.querySelectorAll('tbody tr');
-    tableRows.forEach(row => {
-        row.addEventListener('mouseover', function() {
-            this.style.backgroundColor = '#f8f9fa';
-        });
-        row.addEventListener('mouseout', function() {
-            this.style.backgroundColor = '';
-        });
-    });
-    
-    // If returning from action_taken.php with updated action, refresh the page to ensure data is current
-    if (window.location.search.includes('action_updated=1')) {
-        // Don't redirect to prevent infinite loop - just display the alert
-        // The page will refresh on its own when the alert is closed or after a timeout
-        setTimeout(function() {
-            // Force reload all data by clearing search params but keep the action_updated param
-            const currentUrl = new URL(window.location.href);
-            const actionUpdated = currentUrl.searchParams.get('action_updated');
+    // Function to fix image paths for all images in the document
+    function fixAllImagePaths() {
+        // Get all images that could be notice images
+        const images = document.querySelectorAll('img[src*="notice_images"], img[src*="uploads"]');
+        
+        // Process each image
+        images.forEach(function(img) {
+            const originalSrc = img.getAttribute('src');
+            const filename = originalSrc.split('/').pop(); // Get just the filename
             
-            // Clear all search params
-            currentUrl.search = '';
+            // Set up error handler for each image
+            img.onerror = function() {
+                // First try: Use our direct image server script
+                const directPath = '/serve_image.php?filename=' + encodeURIComponent(filename);
+                
+                // If this is already the fallback path, then use placeholder
+                if (img.src.includes('serve_image.php')) {
+                    img.src = '/assets/img/placeholder.jpg';
+                    img.setAttribute('data-failed', 'true');
+                    return;
+                }
+                
+                // Try direct path
+                img.src = directPath;
+                
+                // Add a custom attribute to indicate we're using fallback
+                img.setAttribute('data-using-fallback', 'true');
+            };
             
-            // Add back only the action_updated param
-            if (actionUpdated) {
-                currentUrl.searchParams.set('action_updated', actionUpdated);
+            // For modal images, set up better handlers
+            if (img.closest('.modal') || img.id === 'modalImage') {
+                setupModalImageHandlers(img, filename);
+            }
+        });
+    }
+    
+    // Special handling for modal images
+    function setupModalImageHandlers(img, filename) {
+        const loadingStatus = document.getElementById('imageLoadingStatus');
+        
+        // Only set up if we have the loading status element
+        if (!loadingStatus) return;
+        
+        img.onerror = function() {
+            // Try our direct image server
+            if (!img.src.includes('serve_image.php')) {
+                loadingStatus.innerHTML = '<div class="alert alert-warning">Trying alternative path...</div>';
+                img.src = '/serve_image.php?filename=' + encodeURIComponent(filename);
+                return;
             }
             
-            // Reload with cleaned URL after 3 seconds
+            // If direct server also failed, show error
+            img.style.display = 'none';
+            loadingStatus.innerHTML = '<div class="alert alert-danger">' +
+                '<i class="fas fa-exclamation-triangle me-2"></i> ' +
+                'Image could not be loaded. The file may be missing or the path is incorrect.' +
+                '</div>' +
+                '<div class="mt-3">' +
+                '<p><strong>Possible solutions:</strong></p>' +
+                '<ol>' +
+                '<li>Check if the file exists in the uploads/notice_images directory</li>' +
+                '<li>Verify file permissions</li>' +
+                '<li>Make sure the image filename in the database matches the actual file</li>' +
+                '</ol>' +
+                '</div>';
+        };
+        
+        img.onload = function() {
+            img.style.display = 'block';
+            loadingStatus.innerHTML = '<div class="alert alert-success">Image loaded successfully!</div>';
+            
+            // Auto-hide success message after 2 seconds
             setTimeout(function() {
-                window.location.href = currentUrl.toString();
-            }, 3000);
-        }, 1000);
+                loadingStatus.innerHTML = '';
+            }, 2000);
+        };
     }
+    
+    // Enhanced image modal functionality
+    const imageModal = document.getElementById('imageModal');
+    if (imageModal) {
+        imageModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const imgSrc = button.getAttribute('data-img-src');
+            const imgName = button.getAttribute('data-img-name');
+            const originalPath = button.getAttribute('data-img-original-path');
+            
+            const modalImage = document.getElementById('modalImage');
+            const modalTitle = document.getElementById('imageModalLabel');
+            const originalPathElement = document.getElementById('originalPath');
+            const downloadLink = document.getElementById('downloadLink');
+            const loadingStatus = document.getElementById('imageLoadingStatus');
+            
+            // Reset previous content
+            modalImage.style.display = 'none';
+            loadingStatus.innerHTML = '<div class="d-flex justify-content-center">' +
+                                     '<div class="spinner-border text-primary" role="status">' +
+                                     '<span class="visually-hidden">Loading...</span></div></div>' +
+                                     '<p class="text-center mt-2">Loading image...</p>';
+            
+            modalTitle.textContent = imgName;
+            
+            // Extract filename to use with our direct serving script
+            const filename = imgSrc.split('/').pop();
+            
+            // Set original path info
+            originalPathElement.innerHTML = '<strong>Storage path:</strong> ' + originalPath + 
+                                          '<br><strong>Web path:</strong> ' + imgSrc;
+            
+            // Try to load with original path first
+            modalImage.src = imgSrc;
+            
+            // Set up handler for image load failure
+            modalImage.onerror = function() {
+                // Try our direct image server
+                loadingStatus.innerHTML = '<div class="alert alert-warning">Trying alternative path...</div>';
+                modalImage.src = '/serve_image.php?filename=' + encodeURIComponent(filename);
+                
+                // Update download link to use direct script
+                downloadLink.href = '/serve_image.php?filename=' + encodeURIComponent(filename);
+            };
+            
+            // Set up handler for successful image load
+            modalImage.onload = function() {
+                modalImage.style.display = 'block';
+                loadingStatus.innerHTML = '<div class="alert alert-success">Image loaded successfully!</div>';
+                
+                // Auto-hide success message after 2 seconds
+                setTimeout(function() {
+                    loadingStatus.innerHTML = '';
+                }, 2000);
+                
+                // Update download link
+                downloadLink.href = modalImage.src;
+            };
+            
+            // Set download link
+            downloadLink.setAttribute('download', imgName);
+        });
+    }
+    
+    // Run the fix on page load
+    fixAllImagePaths();
 });
 </script>
 

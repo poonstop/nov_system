@@ -1,4 +1,4 @@
-<?php
+inspector<?php
 session_start();
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['username'])) {
     header("Location: login.php");
@@ -31,9 +31,9 @@ if (!isset($conn)) {
 
 // Fetch users from database
 try {
-    $query = "SELECT id, username, fullname, ulvl, email, status FROM users";
+    $query = "SELECT id, username, fullname, ulvl, status FROM users";
     $stmt = $conn->query($query);
-    $users = $stmt->fetchAll(PDO::FETCH_ASSOC); // Changed from MySQLi's fetch_all to PDO's fetchAll
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     // Handle database error
     $error_message = "Database error: " . $e->getMessage();
@@ -47,7 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     $userLevel = trim($_POST['userLevel']);
     $password = $_POST['password'];
     $confirmPassword = $_POST['confirmPassword'];
-    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
     
     $errors = [];
     
@@ -61,8 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     if (empty($errors)) {
         try {
             $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
-            $stmt->execute([$username]); // Changed from bind_param to PDO parameter binding
-            $count = $stmt->fetchColumn(); // Changed from bind_result and fetch to fetchColumn
+            $stmt->execute([$username]);
+            $count = $stmt->fetchColumn();
             
             if ($count > 0) {
                 $errors[] = "Username already exists";
@@ -78,8 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             // Hash password
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
             
-            $stmt = $conn->prepare("INSERT INTO users (username, password, fullname, ulvl, email, status) VALUES (?, ?, ?, ?, ?, 'active')");
-            $result = $stmt->execute([$username, $hashedPassword, $name, $userLevel, $email]); // Changed from bind_param to PDO parameter binding
+            $stmt = $conn->prepare("INSERT INTO users (username, password, fullname, ulvl, status) VALUES (?, ?, ?, ?, 'active')");
+            $result = $stmt->execute([$username, $hashedPassword, $name, $userLevel]);
             
             if ($result) {
                 // Set success message
@@ -104,7 +103,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
     $userLevel = trim($_POST['editUserLevel']);
     $newPassword = $_POST['newPassword'];
     $confirmNewPassword = $_POST['confirmNewPassword'];
-    $email = isset($_POST['editEmail']) ? trim($_POST['editEmail']) : '';
     
     $errors = [];
     
@@ -120,11 +118,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
             // If password is being updated
             if (!empty($newPassword)) {
                 $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-                $stmt = $conn->prepare("UPDATE users SET fullname = ?, ulvl = ?, password = ?, email = ? WHERE id = ?");
-                $result = $stmt->execute([$name, $userLevel, $hashedPassword, $email, $userId]); // Changed from bind_param to PDO parameter binding
+                $stmt = $conn->prepare("UPDATE users SET fullname = ?, ulvl = ?, password = ? WHERE id = ?");
+                $result = $stmt->execute([$name, $userLevel, $hashedPassword, $userId]);
             } else {
-                $stmt = $conn->prepare("UPDATE users SET fullname = ?, ulvl = ?, email = ? WHERE id = ?");
-                $result = $stmt->execute([$name, $userLevel, $email, $userId]); // Changed from bind_param to PDO parameter binding
+                $stmt = $conn->prepare("UPDATE users SET fullname = ?, ulvl = ? WHERE id = ?");
+                $result = $stmt->execute([$name, $userLevel, $userId]);
             }
             
             if ($result) {
@@ -150,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_status'])) {
     
     try {
         $stmt = $conn->prepare("UPDATE users SET status = ? WHERE id = ?");
-        $stmt->execute([$newStatus, $userId]); // Changed from bind_param to PDO parameter binding
+        $stmt->execute([$newStatus, $userId]);
         
         $_SESSION['success_message'] = "User status updated successfully!";
         header("Location: user.php");
@@ -241,7 +239,6 @@ include '../templates/header.php';
                                     <th>Username</th>
                                     <th>Name</th>
                                     <th>Role</th>
-                                    <th>Email</th>
                                     <th>Status</th>
                                     <th>Action</th>
                                 </tr>
@@ -253,7 +250,6 @@ include '../templates/header.php';
                                         <td><?php echo htmlspecialchars($user['username']); ?></td>
                                         <td><?php echo htmlspecialchars($user['fullname']); ?></td>
                                         <td><?php echo htmlspecialchars($user['ulvl']); ?></td>
-                                        <td><?php echo htmlspecialchars($user['email'] ?? 'N/A'); ?></td>
                                         <td>
                                             <?php if ($user['status'] == 'active'): ?>
                                                 <span class="badge bg-success">Active</span>
@@ -267,8 +263,7 @@ include '../templates/header.php';
                                                     data-id="<?php echo $user['id']; ?>"
                                                     data-username="<?php echo htmlspecialchars($user['username']); ?>"
                                                     data-name="<?php echo htmlspecialchars($user['fullname']); ?>"
-                                                    data-role="<?php echo htmlspecialchars($user['ulvl']); ?>"
-                                                    data-email="<?php echo htmlspecialchars($user['email'] ?? ''); ?>">
+                                                    data-role="<?php echo htmlspecialchars($user['ulvl']); ?>">
                                                     <i class="fas fa-edit"></i> Edit
                                                 </button>
                                                 <?php if ($user['status'] == 'active'): ?>
@@ -292,7 +287,7 @@ include '../templates/header.php';
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="6" class="text-center">No users found</td>
+                                        <td colspan="5" class="text-center">No users found</td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>
@@ -328,10 +323,6 @@ include '../templates/header.php';
                             <option value="admin">Admin</option>
                             <option value="inspector">Inspector</option>
                         </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email:</label>
-                        <input type="email" class="form-control" id="email" name="email">
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">Password:</label>
@@ -376,10 +367,6 @@ include '../templates/header.php';
                             <option value="admin">Admin</option>
                             <option value="inspector">Inspector</option>
                         </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editEmail" class="form-label">Email:</label>
-                        <input type="email" class="form-control" id="editEmail" name="editEmail">
                     </div>
                     <div class="mb-3">
                         <label for="newPassword" class="form-label">New Password (leave blank to keep current):</label>
@@ -462,10 +449,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const username = row.cells[0].textContent.toLowerCase();
                 const name = row.cells[1].textContent.toLowerCase();
                 const role = row.cells[2].textContent.toLowerCase();
-                const email = row.cells[3].textContent.toLowerCase();
                 
                 if (username.includes(filter) || name.includes(filter) || 
-                    role.includes(filter) || email.includes(filter)) {
+                    role.includes(filter)) {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
@@ -511,13 +497,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const username = button.getAttribute('data-username');
             const name = button.getAttribute('data-name');
             const role = button.getAttribute('data-role');
-            const email = button.getAttribute('data-email');
             
             document.getElementById('editUserId').value = userId;
             document.getElementById('editUsername').value = username;
             document.getElementById('editName').value = name;
             document.getElementById('editUserLevel').value = role.toLowerCase();
-            document.getElementById('editEmail').value = email;
             document.getElementById('newPassword').value = '';
             document.getElementById('confirmNewPassword').value = '';
         });

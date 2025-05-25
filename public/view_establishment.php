@@ -1,6 +1,373 @@
+
 <?php
 require_once '../connection.php';
 include '../templates/header.php';
+
+/**
+ * Debug function to show image path resolution details
+ * 
+ * @param string $image_path The original image path
+ * @return array Debugging information about path resolution attempts
+ */
+function debugImagePaths($image_path) {
+    if (empty($image_path)) {
+        return ['status' => 'error', 'message' => 'Empty image path provided'];
+    }
+    
+    $filename = basename($image_path);
+    $results = [
+        'original_path' => $image_path,
+        'filename' => $filename,
+        'server_info' => [
+            'document_root' => $_SERVER['DOCUMENT_ROOT'],
+            'script_filename' => $_SERVER['SCRIPT_FILENAME'],
+            'current_file' => __FILE__,
+            'current_dir' => dirname(__FILE__),
+            'parent_dir' => dirname(dirname(__FILE__))
+        ],
+        'path_tests' => []
+    ];
+    
+    // Web paths to try
+    $web_paths = [
+        '/' . ltrim($image_path, '/'),
+        '/uploads/notice_images/' . $filename,
+        '/NOV_SYSTEM/uploads/notice_images/' . $filename,
+        '/nov_system/uploads/notice_images/' . $filename,
+        '/uploads/' . $filename
+    ];
+    
+    foreach ($web_paths as $path) {
+        $full_path = $_SERVER['DOCUMENT_ROOT'] . $path;
+        $results['path_tests'][] = [
+            'type' => 'web_path',
+            'test_path' => $path,
+            'full_path' => $full_path,
+            'exists' => file_exists($full_path),
+            'is_readable' => is_readable($full_path),
+            'file_size' => file_exists($full_path) ? filesize($full_path) : 'N/A'
+        ];
+    }
+    
+    // Server paths to try
+    $server_paths = [
+        $_SERVER['DOCUMENT_ROOT'] . '/uploads/notice_images/' . $filename,
+        dirname(dirname(__FILE__)) . '/uploads/notice_images/' . $filename,
+        'C:/xampp/htdocs/nov_system/uploads/notice_images/' . $filename,
+        'C:/xampp/htdocs/uploads/notice_images/' . $filename
+    ];
+    
+    foreach ($server_paths as $path) {
+        $results['path_tests'][] = [
+            'type' => 'server_path',
+            'test_path' => $path,
+            'exists' => file_exists($path),
+            'is_readable' => is_readable($path),
+            'file_size' => file_exists($path) ? filesize($path) : 'N/A'
+        ];
+    }
+    
+    // Check permissions on parent directories
+    $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/uploads';
+    $notice_images_dir = $upload_dir . '/notice_images';
+    
+    $results['directory_info'] = [
+        'uploads_dir' => [
+            'path' => $upload_dir,
+            'exists' => file_exists($upload_dir),
+            'is_dir' => is_dir($upload_dir),
+            'is_readable' => is_readable($upload_dir),
+            'is_writable' => is_writable($upload_dir),
+            'permissions' => file_exists($upload_dir) ? substr(sprintf('%o', fileperms($upload_dir)), -4) : 'N/A'
+        ],
+        'notice_images_dir' => [
+            'path' => $notice_images_dir,
+            'exists' => file_exists($notice_images_dir),
+            'is_dir' => is_dir($notice_images_dir),
+            'is_readable' => is_readable($notice_images_dir),
+            'is_writable' => is_writable($notice_images_dir),
+            'permissions' => file_exists($notice_images_dir) ? substr(sprintf('%o', fileperms($notice_images_dir)), -4) : 'N/A'
+        ]
+    ];
+    
+    // Add xampp specific paths
+    $xampp_path = 'C:/xampp/htdocs/nov_system/uploads/notice_images';
+    if (file_exists($xampp_path)) {
+        $results['directory_info']['xampp_path'] = [
+            'path' => $xampp_path,
+            'exists' => true,
+            'is_dir' => is_dir($xampp_path),
+            'is_readable' => is_readable($xampp_path),
+            'is_writable' => is_writable($xampp_path),
+            'permissions' => substr(sprintf('%o', fileperms($xampp_path)), -4),
+            'contents' => scandir($xampp_path)
+        ];
+    }
+    
+    return $results;
+}
+
+// Add this code to view_establishment.php to enable more comprehensive debugging
+
+// Start of debug section - add this after the existing debug section
+if (isset($_GET['advanced_debug']) && $_GET['advanced_debug'] == 1) {
+    echo '<div class="container mt-3">';
+    echo '<div class="alert alert-warning">';
+    echo '<h4>Advanced Image Path Debugging</h4>';
+    
+    // Test image paths with visual results
+    echo '<div class="mb-3">';
+    echo '<h5>Visual Path Tests</h5>';
+    
+    if (!empty($images) && count($images) > 0) {
+        $test_image = $images[0];
+        echo '<p>Testing image: <strong>' . htmlspecialchars($test_image['image_name']) . '</strong></p>';
+        echo '<p>Original path: <code>' . htmlspecialchars($test_image['image_path']) . '</code></p>';
+        
+        // Generate a list of potential paths to test
+        $filename = basename($test_image['image_path']);
+        $test_paths = [
+            '/' . ltrim($test_image['image_path'], '/'),
+            '/uploads/notice_images/' . $filename,
+            '/NOV_SYSTEM/uploads/notice_images/' . $filename,
+            '/nov_system/uploads/notice_images/' . $filename,
+            '/uploads/' . $filename
+        ];
+        
+        echo '<div class="row border p-2 mb-3">';
+        foreach ($test_paths as $index => $path) {
+            echo '<div class="col-md-4 mb-3">';
+            echo '<div class="card h-100">';
+            echo '<div class="card-header bg-light">Test Path ' . ($index + 1) . '</div>';
+            echo '<div class="card-body">';
+            echo '<p class="card-text small"><code>' . htmlspecialchars($path) . '</code></p>';
+            echo '<img src="' . htmlspecialchars($path) . '" class="img-fluid border" style="max-height: 100px;" alt="Test image">';
+            echo '<p class="mt-2 small ' . (file_exists($_SERVER['DOCUMENT_ROOT'] . $path) ? 'text-success' : 'text-danger') . '">';
+            echo file_exists($_SERVER['DOCUMENT_ROOT'] . $path) ? 'File exists!' : 'File not found!';
+            echo '</p>';
+            echo '</div>';
+            echo '</div>';
+            echo '</div>';
+        }
+        echo '</div>';
+        
+        // Show detailed debug information
+        $debug_results = debugImagePaths($test_image['image_path']);
+        
+        // Display server information
+        echo '<h5>Server Information</h5>';
+        echo '<div class="table-responsive mb-3">';
+        echo '<table class="table table-sm table-bordered">';
+        foreach ($debug_results['server_info'] as $key => $value) {
+            echo '<tr>';
+            echo '<th>' . htmlspecialchars($key) . '</th>';
+            echo '<td><code>' . htmlspecialchars($value) . '</code></td>';
+            echo '</tr>';
+        }
+        echo '</table>';
+        echo '</div>';
+        
+        // Display directory information
+        echo '<h5>Directory Information</h5>';
+        echo '<div class="table-responsive mb-3">';
+        echo '<table class="table table-sm table-bordered">';
+        echo '<thead><tr><th>Directory</th><th>Path</th><th>Exists</th><th>Is Dir</th><th>Readable</th><th>Writable</th><th>Permissions</th></tr></thead>';
+        echo '<tbody>';
+        foreach ($debug_results['directory_info'] as $dir_name => $dir_info) {
+            echo '<tr>';
+            echo '<th>' . htmlspecialchars($dir_name) . '</th>';
+            echo '<td><code>' . htmlspecialchars($dir_info['path']) . '</code></td>';
+            echo '<td>' . ($dir_info['exists'] ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>') . '</td>';
+            echo '<td>' . ($dir_info['is_dir'] ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>') . '</td>';
+            echo '<td>' . ($dir_info['is_readable'] ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>') . '</td>';
+            echo '<td>' . ($dir_info['is_writable'] ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>') . '</td>';
+            echo '<td><code>' . htmlspecialchars($dir_info['permissions']) . '</code></td>';
+            echo '</tr>';
+        }
+        echo '</tbody>';
+        echo '</table>';
+        echo '</div>';
+        
+        // Display directory contents if available
+        if (isset($debug_results['directory_info']['xampp_path']['contents'])) {
+            echo '<h5>Directory Contents</h5>';
+            echo '<div class="mb-3 border p-2">';
+            echo '<h6>Contents of: <code>' . htmlspecialchars($debug_results['directory_info']['xampp_path']['path']) . '</code></h6>';
+            echo '<ul class="list-group">';
+            foreach ($debug_results['directory_info']['xampp_path']['contents'] as $item) {
+                if ($item != '.' && $item != '..') {
+                    echo '<li class="list-group-item">' . htmlspecialchars($item) . '</li>';
+                }
+            }
+            echo '</ul>';
+            echo '</div>';
+        }
+        
+        // Display all path tests
+        echo '<h5>Path Resolution Tests</h5>';
+        echo '<div class="table-responsive">';
+        echo '<table class="table table-sm table-striped table-bordered">';
+        echo '<thead><tr><th>Type</th><th>Test Path</th><th>Exists</th><th>Readable</th><th>File Size</th></tr></thead>';
+        echo '<tbody>';
+        foreach ($debug_results['path_tests'] as $test) {
+            echo '<tr>';
+            echo '<td>' . htmlspecialchars($test['type']) . '</td>';
+            echo '<td><code>' . htmlspecialchars($test['test_path']) . '</code></td>';
+            echo '<td>' . ($test['exists'] ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>') . '</td>';
+            echo '<td>' . ($test['is_readable'] ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>') . '</td>';
+            echo '<td>' . ($test['file_size'] !== 'N/A' ? htmlspecialchars($test['file_size']) . ' bytes' : 'N/A') . '</td>';
+            echo '</tr>';
+        }
+        echo '</tbody>';
+        echo '</table>';
+        echo '</div>';
+    } else {
+        echo '<p>No images available to test.</p>';
+    }
+    
+    echo '</div>';
+    echo '</div>'; // End alert
+    echo '</div>'; // End container
+}
+// End of advanced debug section
+/**
+ * Enhanced image path resolution function for NOV_SYSTEM
+ * 
+ * @param string $image_path The original image path from database
+ * @return string The web-accessible path to the image or placeholder if not found
+ */
+function getCorrectFilePath($file_path, $file_type = 'image') {
+    // Handle empty path
+    if (empty($file_path)) {
+        return $file_type === 'pdf' ? '/NOV_SYSTEM/assets/img/pdf-placeholder.jpg' : '/NOV_SYSTEM/assets/img/placeholder.jpg';
+    }
+
+    // If it's already a URL, return as is
+    if (preg_match('/^https?:\/\//', $file_path)) {
+        return $file_path;
+    }
+
+    // Extract just the filename from any path format
+    $filename = basename($file_path);
+    
+    // Clean the filename to prevent path traversal
+    $filename = str_replace(['../', '..\\', '/', '\\'], '', $filename);
+    
+    // If filename is empty after cleaning, return placeholder
+    if (empty($filename)) {
+        return $file_type === 'pdf' ? '/NOV_SYSTEM/assets/img/pdf-placeholder.jpg' : '/NOV_SYSTEM/assets/img/placeholder.jpg';
+    }
+    
+    // Define web paths to try in priority order
+    $web_paths = [
+        '/NOV_SYSTEM/uploads/notice_images/' . $filename,     // Current structure
+        '/NOV_SYSTEM/uploads/notice_files/' . $filename,     // If you separate files
+        '/NOV_SYSTEM/public/uploads/notice_images/' . $filename,
+        '/nov_system/uploads/notice_images/' . $filename,
+        '/uploads/notice_images/' . $filename,
+    ];
+
+    // Check if any web path exists on the server
+    foreach ($web_paths as $path) {
+        $full_server_path = $_SERVER['DOCUMENT_ROOT'] . $path;
+        
+        if (file_exists($full_server_path) && is_readable($full_server_path) && filesize($full_server_path) > 0) {
+            return $path;
+        }
+    }
+    
+    // Log the issue for debugging
+    error_log("File not found: " . $file_path . " (Filename: " . $filename . ", Type: " . $file_type . ")");
+    
+    // Return appropriate placeholder
+    return $file_type === 'pdf' ? '/NOV_SYSTEM/assets/img/pdf-placeholder.jpg' : '/NOV_SYSTEM/assets/img/placeholder.jpg';
+}
+
+/**
+ * Check if file is a PDF based on extension or mime type
+ */
+function isPdfFile($filename, $mime_type = '') {
+    $pdf_extensions = ['pdf'];
+    $pdf_mimes = ['application/pdf', 'application/x-pdf'];
+    
+    $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    
+    return in_array($extension, $pdf_extensions) || in_array($mime_type, $pdf_mimes);
+}
+
+/**
+ * Get file icon class based on file type
+ */
+function getFileIcon($filename, $mime_type = '') {
+    if (isPdfFile($filename, $mime_type)) {
+        return 'fas fa-file-pdf text-danger';
+    }
+    
+    $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    $image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+    
+    if (in_array($extension, $image_extensions)) {
+        return 'fas fa-image text-primary';
+    }
+    
+    return 'fas fa-file text-secondary';
+}
+
+
+function debugImageAccess($image_path, $record_id = null) {
+    $filename = basename($image_path);
+    $debug_info = [
+        'original_path' => $image_path,
+        'filename' => $filename,
+        'record_id' => $record_id,
+        'tests' => []
+    ];
+    
+    // Test various paths
+    $test_paths = [
+        '/NOV_SYSTEM/uploads/notice_images/' . $filename,
+        '/nov_system/uploads/notice_images/' . $filename,
+        '/uploads/notice_images/' . $filename,
+        'C:/xampp/htdocs/NOV_SYSTEM/uploads/notice_images/' . $filename,
+        'C:/xampp/htdocs/nov_system/uploads/notice_images/' . $filename
+    ];
+    
+    foreach ($test_paths as $path) {
+        $is_web_path = !preg_match('/^[A-Z]:/', $path);
+        $full_path = $is_web_path ? $_SERVER['DOCUMENT_ROOT'] . $path : $path;
+        
+        $debug_info['tests'][] = [
+            'path' => $path,
+            'type' => $is_web_path ? 'web' : 'absolute',
+            'full_path' => $full_path,
+            'exists' => file_exists($full_path),
+            'readable' => is_readable($full_path),
+            'size' => file_exists($full_path) ? filesize($full_path) : 0
+        ];
+    }
+    
+    return $debug_info;
+}
+
+ 
+function createImageTestUrl($image_path, $image_name) {
+    $corrected_path = getCorrectImagePath($image_path);
+    
+    // Add timestamp to prevent caching issues only if not placeholder
+    if ($corrected_path !== '/assets/img/placeholder.jpg') {
+        $timestamp = time();
+        $test_url = $corrected_path . '?t=' . $timestamp;
+    } else {
+        $test_url = $corrected_path;
+    }
+    
+    return [
+        'url' => $test_url,
+        'original' => $image_path,
+        'corrected' => $corrected_path,
+        'name' => $image_name
+    ];
+}
 
 // Check if ID is provided in URL
 if (!isset($_GET['id']) || empty($_GET['id'])) {
@@ -468,28 +835,153 @@ function getActionTypeBadgeClass($action_type) {
                                             });
                                             ?>
                                             
-                                            <!-- Related Images Section -->
+                                            <!-- Related Images Section with Debug Option -->
                                             <?php if (!empty($record_images)): ?>
-                                                <h5>Related Images</h5>
-                                                <div class="row">
-                                                    <?php foreach ($record_images as $image): ?>
-                                                        <div class="col-md-6 mb-3">
-                                                            <div class="card">
-                                                                <img src="<?php echo htmlspecialchars($image['image_path']); ?>" 
-                                                                     class="card-img-top img-thumbnail" 
-                                                                     alt="<?php echo htmlspecialchars($image['image_name']); ?>">
-                                                                <div class="card-body py-2">
-                                                                    <p class="card-text small mb-0"><?php echo htmlspecialchars($image['image_name']); ?></p>
-                                                                    <p class="card-text small text-muted">
-                                                                        <?php echo htmlspecialchars($image['image_type']); ?> - 
-                                                                        <?php echo date('M d, Y', strtotime($image['upload_date'])); ?>
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    <?php endforeach; ?>
-                                                </div>
-                                            <?php endif; ?>
+    <h5>Related Files 
+        <?php if (isset($_GET['debug_images'])): ?>
+            <small class="text-muted">(Debug Mode)</small>
+        <?php endif; ?>
+    </h5>
+    
+    <div class="row">
+        <?php foreach ($record_images as $file): ?>
+            <?php
+                // Validate file data before processing
+                if (empty($file['image_name']) || empty($file['image_path'])) {
+                    continue; // Skip invalid file records
+                }
+                
+                // Determine if this is a PDF or image
+                $is_pdf = isPdfFile($file['image_name'], $file['image_type']);
+                $file_type = $is_pdf ? 'pdf' : 'image';
+                
+                $file_path = getCorrectFilePath($file['image_path'], $file_type);
+                $file_icon = getFileIcon($file['image_name'], $file['image_type']);
+                
+                // Create test data for modal
+                $file_test = [
+                    'url' => $file_path,
+                    'original' => $file['image_path'],
+                    'corrected' => $file_path,
+                    'name' => $file['image_name'],
+                    'type' => $file_type,
+                    'is_pdf' => $is_pdf
+                ];
+                
+                // Debug information if requested
+                if (isset($_GET['debug_images']) && $_GET['debug_images'] == 1) {
+                    $debug_info = debugImageAccess($file['image_path'], $file['record_id']);
+                }
+            ?>
+            
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <?php if (isset($_GET['debug_images'])): ?>
+                        <!-- Debug Information Panel -->
+                        <div class="card-header bg-info text-white">
+                            <small>
+                                <strong>Debug Info:</strong><br>
+                                Original: <?php echo htmlspecialchars($file_test['original']); ?><br>
+                                Corrected: <?php echo htmlspecialchars($file_test['corrected']); ?><br>
+                                Type: <?php echo htmlspecialchars($file_type); ?><br>
+                                Record ID: <?php echo $file['record_id']; ?>
+                            </small>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <!-- File preview with different handling for PDFs vs Images -->
+                    <div class="position-relative">
+                        <?php if ($is_pdf): ?>
+                            <!-- PDF Preview -->
+                            <div class="card-img-top d-flex align-items-center justify-content-center bg-light" 
+                                 style="height: 150px; cursor: pointer;"
+                                 onclick="openFileModal(<?php echo htmlspecialchars(json_encode($file_test), ENT_QUOTES, 'UTF-8'); ?>)">
+                                <div class="text-center">
+                                    <i class="<?php echo $file_icon; ?>" style="font-size: 3rem;"></i>
+                                    <div class="mt-2 small text-muted">PDF Document</div>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <!-- Image Preview -->
+                            <img id="img-<?php echo $file['image_id']; ?>" 
+                                 src="<?php echo htmlspecialchars($file_path); ?>" 
+                                 class="card-img-top img-thumbnail" 
+                                 alt="<?php echo htmlspecialchars($file['image_name']); ?>"
+                                 style="height: 150px; object-fit: cover; cursor: pointer;"
+                                 onclick="openFileModal(<?php echo htmlspecialchars(json_encode($file_test), ENT_QUOTES, 'UTF-8'); ?>)"
+                                 onerror="handleImageError(this, '<?php echo htmlspecialchars($file['image_name'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo $file['image_id']; ?>')">
+                        <?php endif; ?>
+                        
+                        <!-- Loading indicator -->
+                        <div id="loading-<?php echo $file['image_id']; ?>" 
+                             class="position-absolute top-50 start-50 translate-middle d-none">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Error indicator -->
+                        <div id="error-<?php echo $file['image_id']; ?>" 
+                             class="position-absolute top-0 end-0 d-none">
+                            <span class="badge bg-danger">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body py-2">
+                        <p class="card-text small mb-1">
+                            <i class="<?php echo $file_icon; ?> me-1"></i>
+                            <strong><?php echo htmlspecialchars($file['image_name']); ?></strong>
+                        </p>
+                        <p class="card-text small text-muted mb-1">
+                            Type: <?php echo htmlspecialchars($file['image_type'] ?? ($is_pdf ? 'PDF Document' : 'Image')); ?>
+                        </p>
+                        <p class="card-text small text-muted">
+                            Uploaded: <?php echo date('M d, Y H:i', strtotime($file['upload_date'] ?? 'now')); ?>
+                        </p>
+                        
+                        <!-- Action buttons -->
+                        <div class="btn-group btn-group-sm w-100" role="group">
+                            
+                            <button type="button" class="btn btn-outline-success btn-sm" 
+                                    onclick="downloadFile('<?php echo htmlspecialchars($file_path); ?>', '<?php echo htmlspecialchars($file['image_name']); ?>')">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                            <?php if (isset($_GET['debug_images'])): ?>
+                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                        onclick="showDebugInfo(<?php echo htmlspecialchars(json_encode($debug_info ?? []), ENT_QUOTES, 'UTF-8'); ?>)">
+                                    <i class="fas fa-bug"></i> Debug
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+
+    <!-- Add debug toggle link -->
+<div class="mt-2">
+        <?php if (!isset($_GET['debug_images'])): ?>
+            <a href="?<?php echo http_build_query(array_merge($_GET, ['debug_images' => '1'])); ?>" 
+               class="btn btn-sm btn-outline-info">
+                <i class="fas fa-bug"></i> Enable File Debug Mode
+            </a>
+        <?php else: ?>
+            <a href="?<?php echo http_build_query(array_filter($_GET, function($key) { return $key !== 'debug_images'; }, ARRAY_FILTER_USE_KEY)); ?>" 
+               class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-times"></i> Disable Debug Mode
+            </a>
+        <?php endif; ?>
+    </div>
+    
+<?php else: ?>
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> No files found for this record.
+    </div>
+<?php endif; ?>
+    
                                             
                                             <!-- Related Penalties Section -->
                                             <?php if (!empty($record_penalties)): ?>
@@ -550,15 +1042,483 @@ function getActionTypeBadgeClass($action_type) {
     </div>
 </div>
 
+<!-- Enhanced Image Modal -->
+<div class="modal fade" id="enhancedImageModal" tabindex="-1" aria-labelledby="enhancedImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="enhancedImageModalLabel">File Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <div id="modalFileContainer">
+                        <!-- Image container -->
+                        <img id="modalImage" src="" class="img-fluid d-none" alt="Full size image" style="max-height: 80vh;">
+                        
+                        <!-- PDF container -->
+                        <div id="modalPdfContainer" class="d-none">
+                            <div class="mb-3">
+                                <i class="fas fa-file-pdf text-danger" style="font-size: 4rem;"></i>
+                                <h4 class="mt-2" id="pdfFileName">PDF Document</h4>
+                            </div>
+                            
+                            <!-- PDF embed (if browser supports) -->
+                            <div id="pdfEmbedContainer" class="mb-3" style="height: 70vh;">
+                                <embed id="pdfEmbed" src="" type="application/pdf" width="100%" height="100%" />
+                            </div>
+                            
+                            <!-- Fallback for browsers that don't support PDF embed -->
+                            <div id="pdfFallback" class="d-none">
+                                <div class="alert alert-info">
+                                    <h5><i class="fas fa-info-circle"></i> PDF Preview Not Available</h5>
+                                    <p>Your browser doesn't support PDF preview. Please download the file to view it.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="modalFileStatus" class="mt-3"></div>
+                </div>
+                
+                <!-- File Information -->
+                <div class="mt-3">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>File Information</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th>Name:</th>
+                                    <td id="modalFileName"></td>
+                                </tr>
+                                <tr>
+                                    <th>Type:</th>
+                                    <td id="modalFileType"></td>
+                                </tr>
+                                <tr>
+                                    <th>Original Path:</th>
+                                    <td><code id="modalOriginalPath"></code></td>
+                                </tr>
+                                <tr>
+                                    <th>Resolved Path:</th>
+                                    <td><code id="modalResolvedPath"></code></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Alternative Paths Test</h6>
+                            <div id="pathTestResults"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="downloadFileBtn">
+                    <i class="fas fa-download"></i> Download
+                </button>
+                <button type="button" class="btn btn-primary" id="openInNewTabBtn">
+                    <i class="fas fa-external-link-alt"></i> Open in New Tab
+                </button>
+                <button type="button" class="btn btn-info" id="refreshFileBtn">
+                    <i class="fas fa-refresh"></i> Refresh
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <script>
-// Add any custom JavaScript functionality here
-document.addEventListener('DOMContentLoaded', function() {
-    // Enable tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
+    // Enhanced JavaScript for handling both images and PDFs
+
+let currentFileData = null;
+
+// Replace the existing openImageModal function with this enhanced version
+function openFileModal(fileData) {
+    console.log('Opening modal for file:', fileData);
+    currentFileData = fileData;
+    
+    const modal = new bootstrap.Modal(document.getElementById('enhancedImageModal'));
+    const modalImage = document.getElementById('modalImage');
+    const modalPdfContainer = document.getElementById('modalPdfContainer');
+    const modalStatus = document.getElementById('modalFileStatus');
+    const modalTitle = document.getElementById('enhancedImageModalLabel');
+    
+    // Reset modal
+    modalImage.classList.add('d-none');
+    modalPdfContainer.classList.add('d-none');
+    modalStatus.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+    
+    // Set file information
+    document.getElementById('modalFileName').textContent = fileData.name;
+    document.getElementById('modalFileType').textContent = fileData.is_pdf ? 'PDF Document' : 'Image';
+    document.getElementById('modalOriginalPath').textContent = fileData.original;
+    document.getElementById('modalResolvedPath').textContent = fileData.corrected;
+    
+    if (fileData.is_pdf) {
+        // Handle PDF
+        modalTitle.textContent = 'PDF Preview: ' + fileData.name;
+        document.getElementById('pdfFileName').textContent = fileData.name;
+        
+        const pdfEmbed = document.getElementById('pdfEmbed');
+        const pdfFallback = document.getElementById('pdfFallback');
+        
+        // Try to embed PDF
+        pdfEmbed.src = fileData.url;
+        modalPdfContainer.classList.remove('d-none');
+        
+        // Check if PDF loaded successfully
+        pdfEmbed.onload = function() {
+            modalStatus.innerHTML = '<div class="alert alert-success"><i class="fas fa-check"></i> PDF loaded successfully!</div>';
+        };
+        
+        pdfEmbed.onerror = function() {
+            pdfFallback.classList.remove('d-none');
+            document.getElementById('pdfEmbedContainer').classList.add('d-none');
+            modalStatus.innerHTML = '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> PDF preview not available in this browser</div>';
+        };
+        
+    } else {
+        // Handle Image
+        modalTitle.textContent = 'Image Preview: ' + fileData.name;
+        
+        const testImg = new Image();
+        testImg.onload = function() {
+            modalImage.src = fileData.url;
+            modalImage.classList.remove('d-none');
+            modalStatus.innerHTML = '<div class="alert alert-success"><i class="fas fa-check"></i> Image loaded successfully!</div>';
+        };
+        
+        testImg.onerror = function() {
+            modalStatus.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> Image could not be loaded</div>';
+            testAlternativeFilePaths(fileData.original);
+        };
+        
+        testImg.src = fileData.url;
+    }
+    
+    // Set up action buttons
+    setupModalButtons(fileData);
+    modal.show();
+}
+
+function setupModalButtons(fileData) {
+    // Download button
+    const downloadBtn = document.getElementById('downloadFileBtn');
+    if (downloadBtn) {
+        downloadBtn.onclick = function() {
+            downloadFile(fileData.url, fileData.name);
+        };
+    }
+    
+    // Open in new tab button
+    const openTabBtn = document.getElementById('openInNewTabBtn');
+    if (openTabBtn) {
+        openTabBtn.onclick = function() {
+            window.open(fileData.url, '_blank');
+        };
+    }
+    
+    // Refresh button
+    const refreshBtn = document.getElementById('refreshFileBtn');
+    if (refreshBtn) {
+        refreshBtn.onclick = function() {
+            openFileModal(fileData);
+        };
+    }
+}
+
+function downloadFile(fileUrl, fileName) {
+    try {
+        const link = document.createElement('a');
+        link.href = fileUrl;
+        link.download = fileName;
+        link.target = '_blank'; // Fallback for some browsers
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (e) {
+        console.error('Download failed:', e);
+        // Fallback: open in new window
+        window.open(fileUrl, '_blank');
+    }
+}
+
+function testAlternativeFilePaths(originalPath) {
+    const filename = originalPath.split('/').pop();
+    const testPaths = [
+        '/NOV_SYSTEM/uploads/notice_images/' + filename,
+        '/NOV_SYSTEM/uploads/notice_files/' + filename,
+        '/nov_system/uploads/notice_images/' + filename,
+        '/uploads/notice_images/' + filename,
+        '/public/uploads/notice_images/' + filename
+    ];
+    
+    const resultsContainer = document.getElementById('pathTestResults');
+    if (!resultsContainer) return;
+    
+    resultsContainer.innerHTML = '<h6>Testing Alternative Paths...</h6>';
+    
+    testPaths.forEach((path, index) => {
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'small mb-1';
+        resultDiv.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> Testing: <code>${path}</code>`;
+        resultsContainer.appendChild(resultDiv);
+        
+        // For PDFs, we can't use Image() to test, so we'll use fetch
+        fetch(path, { method: 'HEAD' })
+            .then(response => {
+                if (response.ok) {
+                    resultDiv.innerHTML = `<i class="fas fa-check text-success"></i> <strong>Found:</strong> <code>${path}</code>`;
+                    
+                    // Update modal if this path works
+                    if (currentFileData && currentFileData.is_pdf) {
+                        const pdfEmbed = document.getElementById('pdfEmbed');
+                        if (pdfEmbed && pdfEmbed.src === '') {
+                            pdfEmbed.src = path;
+                        }
+                    } else {
+                        const modalImage = document.getElementById('modalImage');
+                        if (modalImage && modalImage.classList.contains('d-none')) {
+                            modalImage.src = path;
+                            modalImage.classList.remove('d-none');
+                            const statusDiv = document.getElementById('modalFileStatus');
+                            if (statusDiv) {
+                                statusDiv.innerHTML = '<div class="alert alert-success"><i class="fas fa-check"></i> File found using alternative path!</div>';
+                            }
+                        }
+                    }
+                } else {
+                    resultDiv.innerHTML = `<i class="fas fa-times text-danger"></i> Not found: <code>${path}</code>`;
+                }
+            })
+            .catch(() => {
+                resultDiv.innerHTML = `<i class="fas fa-times text-danger"></i> Not found: <code>${path}</code>`;
+            });
     });
+}
+// Fix 4: Improved JavaScript error handling
+let currentImageData = null;
+
+function handleImageError(img, imageName, imageId) {
+    console.log('Image error for:', imageName, 'Image ID:', imageId);
+    
+    // Show error indicator
+    const errorIndicator = document.getElementById('error-' + imageId);
+    if (errorIndicator) {
+        errorIndicator.classList.remove('d-none');
+    }
+    
+    // Try alternative paths
+    const filename = imageName;
+    
+    const alternativePaths = [
+        '/NOV_SYSTEM/uploads/notice_images/' + filename,
+        '/nov_system/uploads/notice_images/' + filename,
+        '/uploads/notice_images/' + filename,
+        '/assets/img/placeholder.jpg'
+    ];
+    
+    let currentIndex = 0;
+    let originalSrc = img.src;
+    
+    function tryNextPath() {
+        if (currentIndex < alternativePaths.length) {
+            const testImg = new Image();
+            testImg.onload = function() {
+                console.log('Found image at:', alternativePaths[currentIndex]);
+                img.src = alternativePaths[currentIndex];
+                if (errorIndicator) {
+                    errorIndicator.classList.add('d-none');
+                }
+            };
+            testImg.onerror = function() {
+                console.log('Failed to load:', alternativePaths[currentIndex]);
+                currentIndex++;
+                setTimeout(tryNextPath, 100); // Small delay to prevent overwhelming
+            };
+            
+            // Don't test the same path again
+            if (alternativePaths[currentIndex] !== originalSrc) {
+                testImg.src = alternativePaths[currentIndex];
+            } else {
+                currentIndex++;
+                tryNextPath();
+            }
+        } else {
+            // All paths failed, show placeholder or default
+            console.log('All paths failed for:', imageName);
+            img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y4ZjlmYSIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjNmM3NTdkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+';
+            img.alt = 'Image not found: ' + imageName;
+        }
+    }
+    
+    tryNextPath();
+}
+
+function openImageModal(imageData) {
+    console.log('Opening modal for:', imageData);
+    currentImageData = imageData;
+    
+    const modal = new bootstrap.Modal(document.getElementById('enhancedImageModal'));
+    const modalImage = document.getElementById('modalImage');
+    const modalStatus = document.getElementById('modalImageStatus');
+    const modalTitle = document.getElementById('enhancedImageModalLabel');
+    
+    // Reset modal
+    modalImage.style.display = 'none';
+    modalStatus.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+    modalTitle.textContent = 'Loading: ' + imageData.name;
+    
+    // Set image information
+    document.getElementById('modalImageName').textContent = imageData.name;
+    document.getElementById('modalOriginalPath').textContent = imageData.original;
+    document.getElementById('modalResolvedPath').textContent = imageData.corrected;
+    
+    // Test image loading
+    const testImg = new Image();
+    testImg.onload = function() {
+        modalImage.src = imageData.url;
+        modalImage.style.display = 'block';
+        modalStatus.innerHTML = '<div class="alert alert-success"><i class="fas fa-check"></i> Image loaded successfully!</div>';
+        modalTitle.textContent = imageData.name;
+        
+        // Set up download button
+        const downloadBtn = document.getElementById('downloadImageBtn');
+        if (downloadBtn) {
+            downloadBtn.onclick = function() {
+                try {
+                    const link = document.createElement('a');
+                    link.href = imageData.url;
+                    link.download = imageData.name;
+                    link.click();
+                } catch (e) {
+                    console.error('Download failed:', e);
+                    alert('Download failed. Please try right-clicking the image and selecting "Save As".');
+                }
+            };
+        }
+    };
+    
+    testImg.onerror = function() {
+        modalStatus.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> Image could not be loaded</div>';
+        modalTitle.textContent = imageData.name + ' (Not Found)';
+        testAlternativePaths(imageData.original);
+    };
+    
+    testImg.src = imageData.url;
+    modal.show();
+}
+
+function testImagePaths(imageId, originalPath) {
+    console.log('Testing paths for image:', imageId, originalPath);
+    
+    const filename = originalPath.split('/').pop();
+    const img = document.getElementById('img-' + imageId);
+    const loading = document.getElementById('loading-' + imageId);
+    
+    if (!img) {
+        console.error('Image element not found:', 'img-' + imageId);
+        return;
+    }
+    
+    if (loading) loading.classList.remove('d-none');
+    
+    // Test paths and update image if found
+    const testPaths = [
+        '/NOV_SYSTEM/uploads/notice_images/' + filename,
+        '/nov_system/uploads/notice_images/' + filename,
+        '/uploads/notice_images/' + filename
+    ];
+    
+    let found = false;
+    let tested = 0;
+    
+    testPaths.forEach(path => {
+        const testImg = new Image();
+        testImg.onload = function() {
+            if (!found) {
+                found = true;
+                img.src = path;
+                const errorIndicator = document.getElementById('error-' + imageId);
+                if (errorIndicator) errorIndicator.classList.add('d-none');
+                console.log('Image found at:', path);
+            }
+            tested++;
+            if (tested === testPaths.length && loading) {
+                loading.classList.add('d-none');
+            }
+        };
+        testImg.onerror = function() {
+            tested++;
+            if (tested === testPaths.length && loading) {
+                loading.classList.add('d-none');
+                if (!found) {
+                    const errorIndicator = document.getElementById('error-' + imageId);
+                    if (errorIndicator) errorIndicator.classList.remove('d-none');
+                    console.log('No working path found for:', originalPath);
+                }
+            }
+        };
+        testImg.src = path;
+    });
+}
+
+function testAlternativePaths(originalPath) {
+    const filename = originalPath.split('/').pop();
+    const testPaths = [
+        '/NOV_SYSTEM/uploads/notice_images/' + filename,
+        '/nov_system/uploads/notice_images/' + filename,
+        '/uploads/notice_images/' + filename,
+        '/public/uploads/notice_images/' + filename
+    ];
+    
+    const resultsContainer = document.getElementById('pathTestResults');
+    if (!resultsContainer) return;
+    
+    resultsContainer.innerHTML = '<h6>Testing Alternative Paths...</h6>';
+    
+    testPaths.forEach((path, index) => {
+        const testImg = new Image();
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'small mb-1';
+        resultDiv.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> Testing: <code>${path}</code>`;
+        resultsContainer.appendChild(resultDiv);
+        
+        testImg.onload = function() {
+            resultDiv.innerHTML = `<i class="fas fa-check text-success"></i> <strong>Found:</strong> <code>${path}</code>`;
+            // If this path works, update the modal image
+            const modalImage = document.getElementById('modalImage');
+            if (modalImage && modalImage.style.display === 'none') {
+                modalImage.src = path;
+                modalImage.style.display = 'block';
+                const statusDiv = document.getElementById('modalImageStatus');
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<div class="alert alert-success"><i class="fas fa-check"></i> Image found using alternative path!</div>';
+                }
+            }
+        };
+        
+        testImg.onerror = function() {
+            resultDiv.innerHTML = `<i class="fas fa-times text-danger"></i> Not found: <code>${path}</code>`;
+        };
+        
+        testImg.src = path;
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Image display system initialized');
+    
+    // Set up refresh button
+    const refreshBtn = document.getElementById('refreshImageBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            if (currentImageData) {
+                openImageModal(currentImageData);
+            }
+        });
+    }
 });
 </script>
-
-<?php include '../templates/footer.php'; ?>

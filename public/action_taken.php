@@ -8,6 +8,82 @@ include '../templates/header.php';
 // Get establishment ID from URL
 $establishment_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
+// Handle image deletion via AJAX
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_image'])) {
+    // Clean any output buffer to ensure clean JSON response
+    if (ob_get_level()) {
+        ob_clean();
+    }
+    
+    $image_id = intval($_POST['image_id']);
+    
+    // Get image details before deletion
+    $get_image = $conn->prepare("SELECT * FROM notice_images WHERE image_id = ?");
+    $get_image->bindParam(1, $image_id, PDO::PARAM_INT);
+    $get_image->execute();
+    $image = $get_image->fetch(PDO::FETCH_ASSOC);
+    
+    if ($image) {
+        // Mark as inactive instead of hard delete (for audit trail)
+        $delete_image = $conn->prepare("UPDATE notice_images SET active = 0 WHERE image_id = ?");
+        $delete_image->bindParam(1, $image_id, PDO::PARAM_INT);
+        
+        if ($delete_image->execute()) {
+            // Also delete the physical file if it exists
+            $file_path = '../' . $image['image_path'];
+            if (file_exists($file_path)) {
+                unlink($file_path);
+            }
+            
+            // Log the deletion
+            $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
+            $action = "Deleted image: " . $image['image_name'];
+            $user_agent = $_SERVER['HTTP_USER_AGENT'];
+            $details = "Deleted image ID: $image_id for record ID: " . $image['record_id'];
+            
+            $log_query = $conn->prepare("INSERT INTO user_logs (user_id, action, user_agent, details, timestamp) VALUES (?, ?, ?, ?, NOW())");
+            $log_query->bindParam(1, $user_id, PDO::PARAM_INT);
+            $log_query->bindParam(2, $action);
+            $log_query->bindParam(3, $user_agent);
+            $log_query->bindParam(4, $details);
+            $log_query->execute();
+            
+            // Return JSON response for AJAX
+            if (isset($_POST['ajax'])) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true, 
+                    'message' => 'Image deleted successfully',
+                    'image_id' => $image_id
+                ]);
+                exit();
+            } else {
+                // Redirect back with success message
+                header("Location: action_taken.php?id=$establishment_id&image_deleted=1");
+                exit();
+            }
+        } else {
+            if (isset($_POST['ajax'])) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => false, 
+                    'message' => 'Failed to delete image from database'
+                ]);
+                exit();
+            }
+        }
+    } else {
+        if (isset($_POST['ajax'])) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Image not found'
+            ]);
+            exit();
+        }
+    }
+}
+
 // Check if establishment exists
 $stmt = $conn->prepare("SELECT e.*, nr.notice_type, nr.remarks as action_remarks, nr.date_responded, nr.record_id
                      FROM establishments e 
@@ -182,6 +258,12 @@ function isNoticeType($existing, $check) {
     
     return false;
 }
+
+// Helper function to check if file type is an image
+function isImageFile($file_type) {
+    $image_types = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'image/tiff'];
+    return in_array(strtolower($file_type), $image_types);
+}
 ?>
 
 <div class="container mt-4">
@@ -193,6 +275,13 @@ function isNoticeType($existing, $check) {
                     <i class="fas fa-arrow-left"></i> Back to List
                 </a>
             </div>
+            
+            <?php if (isset($_GET['image_deleted'])): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Success!</strong> Image has been deleted successfully.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <?php endif; ?>
             
             <?php if ($has_existing_record): ?>
             <div class="alert alert-info">
@@ -268,12 +357,19 @@ function isNoticeType($existing, $check) {
                         <?php if (!empty($existing_images)): ?>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Existing Attachments</label>
-                            <div class="row">
+                            <div class="row" id="existing-images-container">
                                 <?php foreach ($existing_images as $image): ?>
-                                <div class="col-md-4 mb-3">
+                                <div class="col-md-4 mb-3" id="image-card-<?php echo $image['image_id']; ?>">
                                     <div class="card">
                                         <div class="card-body">
-                                            <h6 class="card-title text-truncate"><?php echo htmlspecialchars($image['image_name']); ?></h6>
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <h6 class="card-title text-truncate flex-grow-1"><?php echo htmlspecialchars($image['image_name']); ?></h6>
+                                                <button type="button" class="btn btn-danger btn-sm ms-2" 
+                                                        onclick="deleteImage(<?php echo $image['image_id']; ?>)"
+                                                        title="Delete this image">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
                                             <?php if (isImageFile($image['image_type'])): ?>
                                                 <img src="../<?php echo htmlspecialchars($image['image_path']); ?>" class="img-fluid mb-2" alt="Uploaded Image">
                                             <?php else: ?>
@@ -310,45 +406,241 @@ function isNoticeType($existing, $check) {
     </div>
 </div>
 
-<?php
-// Helper function to check if file type is an image
-function isImageFile($file_type) {
-    $image_types = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'image/tiff'];
-    return in_array(strtolower($file_type), $image_types);
-}
-?>
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteImageModal" tabindex="-1" aria-labelledby="deleteImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteImageModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this image? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
-    // Function to toggle form fields based on selection
-    function toggleFields() {
-        const selectedAction = document.querySelector('input[name="notice_type"]:checked')?.value;
-        const fileUploadDiv = document.getElementById('file_upload_div');
-        const otherDetailsDiv = document.getElementById('other_details_div');
+   let imageToDelete = null;
+
+// Function to toggle form fields based on selection
+function toggleFields() {
+    const selectedAction = document.querySelector('input[name="notice_type"]:checked')?.value;
+    const fileUploadDiv = document.getElementById('file_upload_div');
+    const otherDetailsDiv = document.getElementById('other_details_div');
+    
+    // Hide all conditional fields first
+    fileUploadDiv.style.display = 'none';
+    otherDetailsDiv.style.display = 'none';
+    
+    // Show relevant fields based on selection
+    if (selectedAction === 'FC') {
+        fileUploadDiv.style.display = 'block';
+    } else if (selectedAction === 'Other') {
+        otherDetailsDiv.style.display = 'block';
+        fileUploadDiv.style.display = 'block';
+    }
+}
+
+// Function to show delete confirmation modal
+function deleteImage(imageId) {
+    console.log('Delete image called with ID:', imageId); // Debug log
+    imageToDelete = imageId;
+    
+    // Try different Bootstrap modal methods for compatibility
+    const modalElement = document.getElementById('deleteImageModal');
+    
+    // Bootstrap 5 method
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    }
+    // Bootstrap 4 method (fallback)
+    else if (typeof $ !== 'undefined' && $.fn.modal) {
+        $('#deleteImageModal').modal('show');
+    }
+    // Manual fallback
+    else {
+        modalElement.style.display = 'block';
+        modalElement.classList.add('show');
+        document.body.classList.add('modal-open');
         
-        // Hide all conditional fields first
-        fileUploadDiv.style.display = 'none';
-        otherDetailsDiv.style.display = 'none';
-        
-        // Show relevant fields based on selection
-        if (selectedAction === 'FC') {
-            fileUploadDiv.style.display = 'block';
-        } else if (selectedAction === 'Other') {
-            otherDetailsDiv.style.display = 'block';
-            fileUploadDiv.style.display = 'block';
+        // Create backdrop
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade show';
+        backdrop.id = 'manual-backdrop';
+        document.body.appendChild(backdrop);
+    }
+}
+
+// Function to handle actual image deletion
+function confirmDelete() {
+    console.log('Confirm delete called for image:', imageToDelete); // Debug log
+    
+    if (imageToDelete) {
+        // Show loading state
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        const originalText = confirmBtn.innerHTML;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Deleting...';
+        confirmBtn.disabled = true;
+
+        // Create form data for AJAX request
+        const formData = new FormData();
+        formData.append('delete_image', '1');
+        formData.append('image_id', imageToDelete);
+        formData.append('ajax', '1');
+
+        console.log('Sending delete request...'); // Debug log
+
+        // Send AJAX request
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            console.log('Response status:', response.status); // Debug log
+            console.log('Response headers:', response.headers.get('content-type')); // Debug log
+            
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // If not JSON, get text to see what's being returned
+                return response.text().then(text => {
+                    console.log('Non-JSON response:', text); // Debug log
+                    throw new Error('Server returned non-JSON response: ' + text.substring(0, 200));
+                });
+            }
+        })
+        .then(data => {
+            console.log('Delete response:', data); // Debug log
+            
+            if (data.success) {
+                // Remove the image card from DOM
+                const imageCard = document.getElementById(`image-card-${imageToDelete}`);
+                if (imageCard) {
+                    imageCard.remove();
+                }
+                
+                // Check if no more images exist
+                const imagesContainer = document.getElementById('existing-images-container');
+                if (imagesContainer && imagesContainer.children.length === 0) {
+                    // Hide the entire existing attachments section
+                    const attachmentsSection = imagesContainer.closest('.mb-3');
+                    if (attachmentsSection) {
+                        attachmentsSection.style.display = 'none';
+                    }
+                }
+                
+                // Show success message
+                showAlert('success', data.message);
+            } else {
+                showAlert('danger', data.message || 'Failed to delete image');
+            }
+        })
+        .catch(error => {
+            console.error('Delete error:', error); // Debug log
+            showAlert('danger', 'An error occurred while deleting the image: ' + error.message);
+        })
+        .finally(() => {
+            // Reset button and close modal
+            confirmBtn.innerHTML = originalText;
+            confirmBtn.disabled = false;
+            closeModal();
+            imageToDelete = null;
+        });
+    }
+}
+
+// Function to close modal (compatible with different Bootstrap versions)
+function closeModal() {
+    const modalElement = document.getElementById('deleteImageModal');
+    
+    // Bootstrap 5 method
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
         }
     }
+    // Bootstrap 4 method
+    else if (typeof $ !== 'undefined' && $.fn.modal) {
+        $('#deleteImageModal').modal('hide');
+    }
+    // Manual method
+    else {
+        modalElement.style.display = 'none';
+        modalElement.classList.remove('show');
+        document.body.classList.remove('modal-open');
+        
+        // Remove manual backdrop
+        const backdrop = document.getElementById('manual-backdrop');
+        if (backdrop) {
+            backdrop.remove();
+        }
+    }
+}
 
-    // Add event listeners to all radio buttons
-    document.querySelectorAll('input[name="notice_type"]').forEach(radio => {
-        radio.addEventListener('change', toggleFields);
+// Function to show alert messages
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        <strong>${type === 'success' ? 'Success!' : 'Error!'}</strong> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // Insert alert at the top of the container
+    const container = document.querySelector('.container');
+    const firstChild = container.firstElementChild;
+    container.insertBefore(alertDiv, firstChild.nextElementSibling);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv && alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// Add event listeners to all radio buttons
+document.querySelectorAll('input[name="notice_type"]').forEach(radio => {
+    radio.addEventListener('change', toggleFields);
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing...'); // Debug log
+    
+    toggleFields();
+    
+    // Add event listener to confirm delete button
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', confirmDelete);
+        console.log('Delete button event listener added'); // Debug log
+    } else {
+        console.error('Confirm delete button not found!'); // Debug log
+    }
+    
+    // Add event listeners to modal close buttons
+    const modalCloseButtons = document.querySelectorAll('#deleteImageModal .btn-close, #deleteImageModal [data-bs-dismiss="modal"]');
+    modalCloseButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            imageToDelete = null; // Reset when modal is closed
+        });
     });
     
-    // Initialize fields on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        toggleFields();
-        
-        // Validate form submission
-        document.getElementById('actionForm').addEventListener('submit', function(event) {
+    // Validate form submission
+    const actionForm = document.getElementById('actionForm');
+    if (actionForm) {
+        actionForm.addEventListener('submit', function(event) {
             const selectedAction = document.querySelector('input[name="notice_type"]:checked')?.value;
             const fileInput = document.getElementById('action_file');
             
@@ -357,7 +649,8 @@ function isImageFile($file_type) {
                 alert('Please upload a file for Formal Charge.');
             }
         });
-    });
+    }
+});
 </script>
 
 <?php 
